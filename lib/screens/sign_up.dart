@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class SignupScreen extends StatefulWidget {
@@ -8,7 +9,30 @@ class SignupScreen extends StatefulWidget {
 }
 
 class _SignupScreenState extends State<SignupScreen> {
+  final nameController = TextEditingController();
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
   bool _obscurePassword = true;
+  @override
+  void dispose() {
+    nameController.dispose();
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> createUserWithEmailAndPassword() async {
+    try {
+      final userCredential = await FirebaseAuth.instance
+          .createUserWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
+      print(userCredential);
+    } on FirebaseAuthException catch (e) {
+      print(e.message);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +57,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
               // Name
               TextField(
+                controller: nameController,
                 decoration: InputDecoration(
                   hintText: "Full Name",
                   prefixIcon: const Icon(Icons.person),
@@ -47,6 +72,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
               // Email
               TextField(
+                controller: emailController,
                 decoration: InputDecoration(
                   hintText: "Email",
                   prefixIcon: const Icon(Icons.email),
@@ -61,6 +87,7 @@ class _SignupScreenState extends State<SignupScreen> {
 
               // Password
               TextField(
+                controller: passwordController,
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   hintText: "Password",
@@ -90,9 +117,23 @@ class _SignupScreenState extends State<SignupScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/classifier');
-                    // TODO: Handle signup
+                  onPressed: () async {
+                    // await createUserWithEmailAndPassword();
+                    try {
+                      await FirebaseAuth.instance
+                          .createUserWithEmailAndPassword(
+                            email: emailController.text.trim(),
+                            password: passwordController.text.trim(),
+                          );
+
+                      // Navigate to home screen after successful sign up
+                      if (context.mounted) {
+                        Navigator.pushReplacementNamed(context, '/classifier');
+                      }
+                    } on FirebaseAuthException catch (e) {
+                      print(e.message);
+                      // Show error if needed
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),

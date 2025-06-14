@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 class SignInScreen extends StatefulWidget {
@@ -8,7 +9,29 @@ class SignInScreen extends StatefulWidget {
 }
 
 class _SignInScreenState extends State<SignInScreen> {
+  final emailController = TextEditingController();
+  final passwordController = TextEditingController();
   bool _obscurePassword = true;
+
+  @override
+  void dispose() {
+    emailController.dispose();
+    passwordController.dispose();
+    super.dispose();
+  }
+
+  Future<void> signinWithEmailAndPassword() async {
+    try {
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
+          );
+      print(userCredential);
+    } on FirebaseAuthException catch (e) {
+      print(e.message);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -33,6 +56,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
               // Email Field
               TextField(
+                controller: emailController,
                 decoration: InputDecoration(
                   hintText: "Email",
                   prefixIcon: const Icon(Icons.email),
@@ -47,6 +71,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
               // Password Field
               TextField(
+                controller: passwordController,
                 obscureText: _obscurePassword,
                 decoration: InputDecoration(
                   hintText: "Password",
@@ -76,10 +101,22 @@ class _SignInScreenState extends State<SignInScreen> {
               SizedBox(
                 width: double.infinity,
                 child: ElevatedButton(
-                  onPressed: () {
-                    Navigator.pushNamed(context, '/classifier');
+                  onPressed: () async {
+                    // await signinWithEmailAndPassword();
+                    try {
+                      await FirebaseAuth.instance.signInWithEmailAndPassword(
+                        email: emailController.text.trim(),
+                        password: passwordController.text.trim(),
+                      );
 
-                    // TODO: Handle login
+                      // Navigate to home screen after successful sign in
+                      if (context.mounted) {
+                        Navigator.pushReplacementNamed(context, '/classifier');
+                      }
+                    } on FirebaseAuthException catch (e) {
+                      print(e.message);
+                      // Show error if needed
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF2E7D32),
@@ -136,9 +173,7 @@ class _SignInScreenState extends State<SignInScreen> {
                     "Continue with Google",
                     style: TextStyle(fontSize: 16, color: Colors.black87),
                   ),
-                  onPressed: () {
-                    // TODO: Implement Google Sign-In
-                  },
+                  onPressed: () {},
                   style: OutlinedButton.styleFrom(
                     side: const BorderSide(color: Colors.grey),
                     padding: const EdgeInsets.symmetric(vertical: 14),

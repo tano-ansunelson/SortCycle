@@ -1,5 +1,8 @@
-//import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/authgate.dart';
+import 'package:flutter_application_1/firebase_options.dart';
 import 'package:flutter_application_1/screens/home_screen.dart';
 import 'package:flutter_application_1/screens/sign_in.dart';
 import 'package:flutter_application_1/screens/nearby_center_screen.dart';
@@ -10,10 +13,10 @@ import 'package:flutter_application_1/screens/stats_screen.dart';
 import 'package:flutter_application_1/screens/welcome_screen.dart';
 import 'package:flutter/services.dart';
 
-void main() {
+void main() async {
   // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
-
+  await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
   // Show system UI overlays (status bar + navigation bar)
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
@@ -33,15 +36,16 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final user = FirebaseAuth.instance.currentUser;
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'waste classifier',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
       ),
-      initialRoute: '/',
+      //initialRoute: '/',
+      initialRoute: user != null ? '/classifier' : '/',
       routes: {
-        // '/splash': (context) => const Recent(),
         '/': (context) => const WelcomeScreen(),
         '/login': (context) => const SignInScreen(),
         '/signup': (context) => const SignupScreen(),
@@ -51,7 +55,6 @@ class MyApp extends StatelessWidget {
         '/stats': (context) => const StatsScreen(),
         '/recycling-centers': (context) => const NearbyCentersScreen(),
       },
-      // home: const LoginScreen(),
     );
   }
 }

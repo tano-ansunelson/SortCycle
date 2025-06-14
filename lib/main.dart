@@ -1,7 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/authgate.dart';
+// import 'package:flutter_application_1/authgate.dart';
 import 'package:flutter_application_1/firebase_options.dart';
 import 'package:flutter_application_1/screens/home_screen.dart';
 import 'package:flutter_application_1/screens/sign_in.dart';
@@ -47,8 +47,8 @@ class MyApp extends StatelessWidget {
       initialRoute: user != null ? '/classifier' : '/',
       routes: {
         '/': (context) => const WelcomeScreen(),
-        '/login': (context) => const SignInScreen(),
-        '/signup': (context) => const SignupScreen(),
+        '/signin': (context) => const SignInScreen(),
+        '/signup': (context) => const SignUpScreen(),
         '/classifier': (context) => const HomeScreen(),
         '/profile': (context) => const ProfileScreen(),
         '/recent': (context) => const RecentScreen(),

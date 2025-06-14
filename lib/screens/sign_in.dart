@@ -140,6 +140,30 @@ class _SignInScreenState extends State<SignInScreen> {
                     ],
                   ),
                   const SizedBox(height: 20),
+                  // Google Sign-In Button
+                  SizedBox(
+                    width: double.infinity,
+                    child: OutlinedButton.icon(
+                      icon: Image.asset(
+                        'assests/7123025_logo_google_g_icon.png',
+                        height: 24,
+                        width: 24,
+                      ),
+                      label: const Text(
+                        "Continue with Google",
+                        style: TextStyle(fontSize: 16, color: Colors.black87),
+                      ),
+                      onPressed: () {},
+                      style: OutlinedButton.styleFrom(
+                        side: const BorderSide(color: Colors.grey),
+                        padding: const EdgeInsets.symmetric(vertical: 14),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        backgroundColor: Colors.white,
+                      ),
+                    ),
+                  ),
                 ],
               ),
             ),

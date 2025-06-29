@@ -37,6 +37,15 @@ dependencies:
   geolocator: ^10.1.0
   permission_handler: ^11.3.0
   image_picker: ^1.1.2
+  google_sign_in: ^6.3.0
+  firebase_ml_model_downloader: ^0.3.3+5
+  tflite_flutter: ^0.11.0
+  logger: ^2.6.0
+  image: ^4.5.4
+  #tflite_flutter_helper: ^0.3.1
+  #tflite_flutter_helper_plus: ^0.0.2
+  
+
 
 
   # The following adds the Cupertino Icons font to your application.
@@ -49,7 +58,7 @@ dev_dependencies:
   flutter_test:
     sdk: flutter
   flutter_lints: ^3.0.1   
-  flutter_launcher_icons: ^0.14.3   
+  flutter_launcher_icons: ^0.14.4 
 flutter_launcher_icons:
   android: "launcher_icon"
   ios: true
@@ -59,7 +68,7 @@ flutter_launcher_icons:
   
   # The "flutter_lints" package below contains a set of recommended lints to
   # encourage good coding practices. The lint set provided by the package is
-  # activated in the `analysis_options.yaml` file located at the root of your
+  # activated in the `analysis_options.yaml` file located at the root of ykkkkhhhjkjjjjjour
   # package. See that file for information about deactivating specific lint
   # rules and activating additional ones.
   flutter_lints: ^5.0.0

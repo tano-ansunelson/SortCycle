@@ -2,9 +2,12 @@ import 'dart:io';
 
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_application_1/model/waste_classify_model.dart';
+import 'package:flutter_application_1/screens/classification_result_screen.dart';
 import 'package:flutter_application_1/screens/recent_screen.dart';
 import 'package:flutter_application_1/screens/stats_screen.dart';
 import 'package:image_picker/image_picker.dart';
+import 'package:logger/web.dart';
 import 'package:lucide_icons/lucide_icons.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -14,9 +17,66 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
+final MLService _mlService = MLService();
+
 class _HomeScreenState extends State<HomeScreen> {
   int myIndex = 1;
   File? image;
+
+  final log = Logger();
+  Future<void> _classifyAndNavigate(
+    File imageFile,
+    BuildContext context,
+  ) async {
+    try {
+      showDialog(
+        context: context,
+        barrierDismissible: false,
+        builder: (_) => const Center(child: CircularProgressIndicator()),
+      );
+
+      final result = await _mlService.getTopPrediction(imageFile.path);
+
+      Navigator.pop(context); // close the loading dialog
+
+      if (result != null) {
+        Navigator.push(
+          context,
+          MaterialPageRoute(
+            builder: (_) => ClassificationResultScreen(
+              imagePath: imageFile.path,
+              category: result.category,
+              confidence: result.confidence,
+              recyclingInstructions: RecyclingInstructions.getInstructions(
+                result.category,
+              ),
+            ),
+          ),
+        );
+      } else {
+        _showError(context, 'No classification result found');
+      }
+    } catch (e) {
+      Navigator.pop(context); // close dialog
+      _showError(context, 'Classification failed: $e');
+    }
+  }
+
+  void _showError(BuildContext context, String message) {
+    showDialog(
+      context: context,
+      builder: (_) => AlertDialog(
+        title: const Text('Error'),
+        content: Text(message),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
 
   Future pickImage(ImageSource source) async {
     try {
@@ -27,7 +87,7 @@ class _HomeScreenState extends State<HomeScreen> {
         image = imageTemporary;
       });
     } on PlatformException catch (e) {
-      print('Failed to pick image: $e');
+      log.e('Failed to pick image: $e');
     }
   }
 
@@ -35,7 +95,15 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     final List<Widget> screens = [
       const StatsScreen(),
-      HomeContent(image: image, pickImageCallback: pickImage),
+      HomeContent(
+        image: image,
+        pickImageCallback: pickImage,
+        onSubmit: () async {
+          if (image != null) {
+            await _classifyAndNavigate(image!, context);
+          }
+        },
+      ),
       const RecentScreen(),
     ];
     return Scaffold(
@@ -116,11 +184,13 @@ class _HomeScreenState extends State<HomeScreen> {
 class HomeContent extends StatelessWidget {
   final File? image;
   final Function(ImageSource) pickImageCallback;
+  final VoidCallback? onSubmit;
 
   const HomeContent({
     super.key,
     required this.image,
     required this.pickImageCallback,
+    this.onSubmit,
   });
 
   @override
@@ -376,11 +446,8 @@ class HomeContent extends StatelessWidget {
               width: double.infinity,
               height: 56,
               child: ElevatedButton(
-                onPressed: image != null
-                    ? () {
-                        // TODO: Submit image logic
-                      }
-                    : null,
+                onPressed: image != null ? onSubmit : null,
+
                 style: ElevatedButton.styleFrom(
                   backgroundColor: const Color(0xFF2E7D32),
                   disabledBackgroundColor: Colors.grey.shade300,

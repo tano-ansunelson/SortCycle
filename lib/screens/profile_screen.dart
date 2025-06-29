@@ -1,5 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/screens/classification_result_screen.dart';
+import 'package:logger/logger.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -12,10 +14,12 @@ class _ProfileScreenState extends State<ProfileScreen>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  final log = Logger();
 
   @override
   void initState() {
     super.initState();
+    FirebaseAuth.instance.currentUser?.reload();
     _animationController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -238,6 +242,16 @@ class _ProfileScreenState extends State<ProfileScreen>
             icon: Icons.person_outline,
             title: 'Edit Profile',
             onTap: () {
+              // Call this function when your model completes classification
+              showClassificationResult(
+                context,
+                imagePath: "assests/7123025_logo_google_g_icon.png",
+                category: "cardboard",
+                confidence: 0.99,
+                recyclingInstructions: RecyclingInstructions.getInstructions(
+                  "cardbord",
+                ),
+              );
               // TODO: Navigate to edit profile
             },
           ),
@@ -402,7 +416,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
         );
       }
-      print('Logout error: $e'); // For debugging
+      log.e('Logout error: $e'); // For debugging
     }
   }
 }

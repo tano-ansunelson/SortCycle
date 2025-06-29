@@ -35,7 +35,7 @@ class _RecentScreenState extends State<RecentScreen>
       'category': 'Plastic',
       'tip': 'Clean and squash plastic bottles before recycling.',
       'impact': 4,
-      'color': Color(0xFF2196F3),
+      'color': const Color(0xFF2196F3),
       'icon': Icons.water_drop,
     },
     {
@@ -44,7 +44,7 @@ class _RecentScreenState extends State<RecentScreen>
       'category': 'Glass',
       'tip': 'Remove labels and rinse before recycling glass jars.',
       'impact': 3,
-      'color': Color(0xFF4CAF50),
+      'color': const Color(0xFF4CAF50),
       'icon': Icons.local_drink,
     },
     {
@@ -53,7 +53,7 @@ class _RecentScreenState extends State<RecentScreen>
       'category': 'Cardboard',
       'tip': 'Flatten boxes to save space in recycling.',
       'impact': 2,
-      'color': Color(0xFFFF9800),
+      'color': const Color(0xFFFF9800),
       'icon': Icons.inventory_2,
     },
   ];

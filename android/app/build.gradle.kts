@@ -10,6 +10,7 @@ plugins {
 }
 
 android {
+    // (any other existing configurations here)
     namespace = "com.example.flutter_application_1"
     compileSdk = flutter.compileSdkVersion
     ndkVersion =  "27.0.12077973"
@@ -32,6 +33,12 @@ android {
         targetSdk = flutter.targetSdkVersion
         versionCode = flutter.versionCode
         versionName = flutter.versionName
+        ndk {
+            abiFilters.addAll(listOf("armeabi-v7a", "arm64-v8a", "x86", "x86_64"))
+        }
+    }
+    aaptOptions {
+        noCompress.add("tflite")
     }
 
     buildTypes {
@@ -41,6 +48,18 @@ android {
             signingConfig = signingConfigs.getByName("debug")
         }
     }
+}
+dependencies {
+    // Import the BoM for the Firebase platform
+    implementation(platform("com.google.firebase:firebase-bom:33.15.0"))
+
+    // Add the dependency for the Firebase ML model downloader library
+    // When using the BoM, you don't specify versions in Firebase library dependencies
+    implementation("com.google.firebase:firebase-ml-modeldownloader")
+
+    // Also add the dependency for the TensorFlow Lite library and specify its version
+    implementation("org.tensorflow:tensorflow-lite:2.16.1")
+
 }
 
 flutter {

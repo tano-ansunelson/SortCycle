@@ -1,15 +1,19 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/routes/app_route.dart';
 
-class SignInScreen extends StatefulWidget {
-  const SignInScreen({super.key});
+class SignUpScreen extends StatefulWidget {
+  final String role;
+  const SignUpScreen({super.key, required this.role});
 
   @override
-  State<SignInScreen> createState() => _SignInScreenState();
+  State<SignUpScreen> createState() => _SignUpScreenState();
 }
 
-class _SignInScreenState extends State<SignInScreen> {
+class _SignUpScreenState extends State<SignUpScreen> {
   final _formKey = GlobalKey<FormState>();
+  final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -17,6 +21,7 @@ class _SignInScreenState extends State<SignInScreen> {
 
   @override
   void dispose() {
+    nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -26,7 +31,7 @@ class _SignInScreenState extends State<SignInScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFFEFF5F1),
+      backgroundColor: const Color(0xFF004D40),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -36,15 +41,40 @@ class _SignInScreenState extends State<SignInScreen> {
               child: Column(
                 children: [
                   const Text(
-                    "Welcome Back",
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    "Create Account",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    "Sign in to continue",
-                    style: TextStyle(fontSize: 16),
+                    "Join EcoClassify",
+                    style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                   const SizedBox(height: 40),
+
+                  // Name
+                  TextFormField(
+                    controller: nameController,
+                    decoration: InputDecoration(
+                      hintText: "Full Name",
+                      prefixIcon: const Icon(Icons.person),
+                      filled: true,
+                      fillColor: Colors.white,
+                      border: OutlineInputBorder(
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                    ),
+                    validator: (value) {
+                      if (value == null || value.trim().isEmpty) {
+                        return 'Please enter your full name';
+                      }
+                      return null;
+                    },
+                  ),
+                  const SizedBox(height: 20),
 
                   // Email
                   TextFormField(
@@ -104,13 +134,13 @@ class _SignInScreenState extends State<SignInScreen> {
                   ),
                   const SizedBox(height: 30),
 
-                  // Sign In Button
+                  // Sign Up Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _handleLogin,
+                      onPressed: _handleSignUp,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E7D32),
+                        backgroundColor: const Color(0xFF4CAF50),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
@@ -119,27 +149,49 @@ class _SignInScreenState extends State<SignInScreen> {
                       child: _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
-                              "Sign In",
+                              "Sign up",
                               style: TextStyle(fontSize: 18),
                             ),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // Switch to Sign Up
+                  // Switch to Sign In
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Don't have an account?"),
+                      const Text(
+                        "Already have an account?",
+                        style: TextStyle(color: Colors.white),
+                      ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushNamed(context, '/signup');
+                          // Navigator.pushNamed(context, '/signin');
+                          // Without arguments
+                          Navigator.pushNamed(context, AppRoutes.signIn);
                         },
-                        child: const Text("Sign Up"),
+                        child: const Text(
+                          "Sign In",
+                          style: TextStyle(color: Colors.red),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
+                  // Divider
+                  const Row(
+                    children: [
+                      Expanded(child: Divider(thickness: 1)),
+                      Padding(
+                        padding: EdgeInsets.symmetric(horizontal: 8.0),
+                        child: Text("OR"),
+                      ),
+                      Expanded(child: Divider(thickness: 1)),
+                    ],
+                  ),
+                  const SizedBox(height: 20),
+
+                  // ... rest of your UI remains unchanged
                   // Google Sign-In Button
                   SizedBox(
                     width: double.infinity,
@@ -173,42 +225,61 @@ class _SignInScreenState extends State<SignInScreen> {
     );
   }
 
-  void _handleLogin() async {
+  void _handleSignUp() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
         _isLoading = true;
       });
 
       try {
-        await FirebaseAuth.instance.signInWithEmailAndPassword(
-          email: emailController.text.trim(),
-          password: passwordController.text.trim(),
-        );
+        // Step 1: Create user with Firebase Auth
+        final userCredential = await FirebaseAuth.instance
+            .createUserWithEmailAndPassword(
+              email: emailController.text.trim(),
+              password: passwordController.text.trim(),
+            );
+
+        final uid = userCredential.user!.uid;
+
+        // Step 2: Save role + name to Firestore
+        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+          'name': nameController.text.trim(),
+          'email': emailController.text.trim(),
+          'role': widget.role, // 👈 this is where role is saved
+          'createdAt': FieldValue.serverTimestamp(),
+        });
 
         setState(() {
           _isLoading = false;
         });
 
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Login successful!'),
-              backgroundColor: Color(0xFF4CAF50),
-            ),
+        // Step 3: Navigate to home screen based on role
+        if (widget.role == 'collector') {
+          // Navigator.pushReplacementNamed(context, '/collector');
+          Navigator.pushNamed(
+            context,
+            AppRoutes.collectorHome,
+            arguments: {'role': 'collector'},
           );
-
-          Navigator.pushReplacementNamed(context, '/classifier');
+        } else {
+          Navigator.pushNamed(
+            context,
+            AppRoutes.home,
+            arguments: {'role': 'user'},
+          );
         }
       } on FirebaseAuthException catch (e) {
         setState(() {
           _isLoading = false;
         });
 
-        String errorMsg = 'Login failed. Please try again.';
-        if (e.code == 'user-not-found') {
-          errorMsg = 'No user found for that email.';
-        } else if (e.code == 'wrong-password') {
-          errorMsg = 'Incorrect password.';
+        String errorMsg = 'An error occurred';
+        if (e.code == 'email-already-in-use') {
+          errorMsg = 'This email is already in use.';
+        } else if (e.code == 'weak-password') {
+          errorMsg = 'Password should be at least 6 characters.';
+        } else {
+          errorMsg = e.message ?? errorMsg;
         }
 
         ScaffoldMessenger.of(context).showSnackBar(

@@ -1,6 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/screens/classification_result_screen.dart';
+//import  'package:flutter_application_1/user_screen/classification_result_screen.dart';
 import 'package:logger/logger.dart';
 
 class ProfileScreen extends StatefulWidget {
@@ -243,15 +243,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             title: 'Edit Profile',
             onTap: () {
               // Call this function when your model completes classification
-              showClassificationResult(
-                context,
-                imagePath: "assests/7123025_logo_google_g_icon.png",
-                category: "cardboard",
-                confidence: 0.99,
-                recyclingInstructions: RecyclingInstructions.getInstructions(
-                  "cardbord",
-                ),
-              );
+
               // TODO: Navigate to edit profile
             },
           ),
@@ -398,7 +390,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         // Navigate to login - adjust route name as needed
         Navigator.pushNamedAndRemoveUntil(
           context,
-          '/signin', // Change this to your actual login route
+          '/', // Change this to your actual login route
           (route) => false,
         );
       }

@@ -11,7 +11,7 @@ class _StatsScreenState extends State<StatsScreen>
     with TickerProviderStateMixin {
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
-  late Animation<Offset> _slideAnimation;
+  //late Animation<Offset> _slideAnimation;
 
   final List<Map<String, dynamic>> wasteStats = const [
     {

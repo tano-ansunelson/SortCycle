@@ -138,12 +138,12 @@ class _LoginScreenState extends State<LoginScreen>
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Container(
-        padding: EdgeInsets.all(24),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
           boxShadow: [
-            BoxShadow(
+            const BoxShadow(
               color: Colors.black12,
               blurRadius: 20,
               offset: Offset(0, 10),
@@ -155,7 +155,7 @@ class _LoginScreenState extends State<LoginScreen>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              Text(
+              const Text(
                 'Welcome Back!',
                 style: TextStyle(
                   fontSize: 24,
@@ -164,19 +164,19 @@ class _LoginScreenState extends State<LoginScreen>
                 ),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 8),
+              const SizedBox(height: 8),
               Text(
                 'Sign in to continue your eco journey',
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 textAlign: TextAlign.center,
               ),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               _buildEmailField(),
-              SizedBox(height: 20),
+              const SizedBox(height: 20),
               _buildPasswordField(),
-              SizedBox(height: 12),
+              const SizedBox(height: 12),
               _buildForgotPassword(),
-              SizedBox(height: 30),
+              const SizedBox(height: 30),
               _buildLoginButton(),
             ],
           ),
@@ -191,14 +191,14 @@ class _LoginScreenState extends State<LoginScreen>
       keyboardType: TextInputType.emailAddress,
       decoration: InputDecoration(
         labelText: 'Email',
-        prefixIcon: Icon(Icons.email_outlined, color: Color(0xFF4CAF50)),
+        prefixIcon: const Icon(Icons.email_outlined, color: Color(0xFF4CAF50)),
         border: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
           borderSide: BorderSide(color: Colors.grey[300]!),
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Color(0xFF4CAF50), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 2),
         ),
         filled: true,
         fillColor: Colors.grey[50],
@@ -221,7 +221,7 @@ class _LoginScreenState extends State<LoginScreen>
       obscureText: _obscurePassword,
       decoration: InputDecoration(
         labelText: 'Password',
-        prefixIcon: Icon(Icons.lock_outline, color: Color(0xFF4CAF50)),
+        prefixIcon: const Icon(Icons.lock_outline, color: Color(0xFF4CAF50)),
         suffixIcon: IconButton(
           icon: Icon(
             _obscurePassword ? Icons.visibility_off : Icons.visibility,
@@ -239,7 +239,7 @@ class _LoginScreenState extends State<LoginScreen>
         ),
         focusedBorder: OutlineInputBorder(
           borderRadius: BorderRadius.circular(12),
-          borderSide: BorderSide(color: Color(0xFF4CAF50), width: 2),
+          borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 2),
         ),
         filled: true,
         fillColor: Colors.grey[50],
@@ -263,7 +263,7 @@ class _LoginScreenState extends State<LoginScreen>
         onPressed: () {
           // Handle forgot password
         },
-        child: Text(
+        child: const Text(
           'Forgot Password?',
           style: TextStyle(
             color: Color(0xFF4CAF50),
@@ -280,7 +280,7 @@ class _LoginScreenState extends State<LoginScreen>
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleLogin,
         style: ElevatedButton.styleFrom(
-          backgroundColor: Color(0xFF4CAF50),
+          backgroundColor: const Color(0xFF4CAF50),
           foregroundColor: Colors.white,
           shape: RoundedRectangleBorder(
             borderRadius: BorderRadius.circular(12),
@@ -288,8 +288,8 @@ class _LoginScreenState extends State<LoginScreen>
           elevation: 3,
         ),
         child: _isLoading
-            ? CircularProgressIndicator(color: Colors.white)
-            : Text(
+            ? const CircularProgressIndicator(color: Colors.white)
+            : const Text(
                 'Sign In',
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
               ),
@@ -302,7 +302,7 @@ class _LoginScreenState extends State<LoginScreen>
       opacity: _fadeAnimation,
       child: Column(
         children: [
-          Row(
+          const Row(
             children: [
               Expanded(child: Divider(color: Colors.white54)),
               Padding(
@@ -315,7 +315,7 @@ class _LoginScreenState extends State<LoginScreen>
               Expanded(child: Divider(color: Colors.white54)),
             ],
           ),
-          SizedBox(height: 20),
+          const SizedBox(height: 20),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceEvenly,
             children: [
@@ -337,7 +337,7 @@ class _LoginScreenState extends State<LoginScreen>
         color: Colors.white,
         borderRadius: BorderRadius.circular(15),
         boxShadow: [
-          BoxShadow(
+          const BoxShadow(
             color: Colors.black12,
             blurRadius: 10,
             offset: Offset(0, 5),
@@ -359,13 +359,13 @@ class _LoginScreenState extends State<LoginScreen>
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          Text(
+          const Text(
             "Don't have an account? ",
             style: TextStyle(color: Colors.white70),
           ),
           TextButton(
             onPressed: () {},
-            child: Text(
+            child: const Text(
               'Sign Up',
               style: TextStyle(
                 color: Colors.white,
@@ -386,7 +386,7 @@ class _LoginScreenState extends State<LoginScreen>
       });
 
       // Simulate API call
-      await Future.delayed(Duration(seconds: 2));
+      await Future.delayed(const Duration(seconds: 2));
 
       setState(() {
         _isLoading = false;
@@ -394,7 +394,7 @@ class _LoginScreenState extends State<LoginScreen>
 
       // Navigate to home screen or show success message
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
+        const SnackBar(
           content: Text('Login successful!'),
           backgroundColor: Color(0xFF4CAF50),
         ),

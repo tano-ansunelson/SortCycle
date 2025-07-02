@@ -1,16 +1,17 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/routes/app_route.dart';
 
-class SignUpScreen extends StatefulWidget {
-  const SignUpScreen({super.key});
+class SignInScreen extends StatefulWidget {
+  const SignInScreen({super.key});
 
   @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
+  State<SignInScreen> createState() => _SignInScreenState();
 }
 
-class _SignUpScreenState extends State<SignUpScreen> {
+class _SignInScreenState extends State<SignInScreen> {
   final _formKey = GlobalKey<FormState>();
-  final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   bool _obscurePassword = true;
@@ -18,7 +19,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
   @override
   void dispose() {
-    nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -28,7 +28,7 @@ class _SignUpScreenState extends State<SignUpScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       resizeToAvoidBottomInset: false,
-      backgroundColor: const Color(0xFFEFF5F1),
+      backgroundColor: const Color(0xFF004D40),
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -38,36 +38,19 @@ class _SignUpScreenState extends State<SignUpScreen> {
               child: Column(
                 children: [
                   const Text(
-                    "Create Account",
-                    style: TextStyle(fontSize: 28, fontWeight: FontWeight.bold),
+                    "Welcome Back",
+                    style: TextStyle(
+                      fontSize: 28,
+                      fontWeight: FontWeight.bold,
+                      color: Colors.white,
+                    ),
                   ),
                   const SizedBox(height: 10),
                   const Text(
-                    "Join EcoClassify",
-                    style: TextStyle(fontSize: 16),
+                    "Sign in to continue",
+                    style: TextStyle(fontSize: 16, color: Colors.white),
                   ),
                   const SizedBox(height: 40),
-
-                  // Name
-                  TextFormField(
-                    controller: nameController,
-                    decoration: InputDecoration(
-                      hintText: "Full Name",
-                      prefixIcon: const Icon(Icons.person),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter your full name';
-                      }
-                      return null;
-                    },
-                  ),
-                  const SizedBox(height: 20),
 
                   // Email
                   TextFormField(
@@ -127,13 +110,13 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   const SizedBox(height: 30),
 
-                  // Sign Up Button
+                  // Sign In Button
                   SizedBox(
                     width: double.infinity,
                     child: ElevatedButton(
-                      onPressed: _handleSignUp,
+                      onPressed: _handleSignIn,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: const Color(0xFF2E7D32),
+                        backgroundColor: const Color(0xFF4CAF50),
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         shape: RoundedRectangleBorder(
                           borderRadius: BorderRadius.circular(20),
@@ -142,41 +125,34 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       child: _isLoading
                           ? const CircularProgressIndicator(color: Colors.white)
                           : const Text(
-                              "Sign up",
+                              "Sign In",
                               style: TextStyle(fontSize: 18),
                             ),
                     ),
                   ),
                   const SizedBox(height: 20),
 
-                  // Switch to Sign In
+                  // Switch to Sign Up
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
-                      const Text("Already have an account?"),
+                      const Text(
+                        "Don't have an account?",
+                        style: TextStyle(color: Colors.white),
+                      ),
                       TextButton(
                         onPressed: () {
-                          Navigator.pushNamed(context, '/signin');
+                          // Without arguments
+                          Navigator.pushNamed(context, AppRoutes.signUp);
                         },
-                        child: const Text("Sign In"),
+                        child: const Text(
+                          "Sign Up",
+                          style: TextStyle(color: Colors.red),
+                        ),
                       ),
                     ],
                   ),
                   const SizedBox(height: 20),
-                  // Divider
-                  const Row(
-                    children: [
-                      Expanded(child: Divider(thickness: 1)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Text("OR"),
-                      ),
-                      Expanded(child: Divider(thickness: 1)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ... rest of your UI remains unchanged
                   // Google Sign-In Button
                   SizedBox(
                     width: double.infinity,
@@ -210,54 +186,75 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
-  void _handleSignUp() async {
-    if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+  void _handleSignIn() async {
+    setState(() {
+      _isLoading = true;
+    });
 
-      try {
-        // Create user with Firebase
-        await FirebaseAuth.instance.createUserWithEmailAndPassword(
-          email: emailController.text.trim(),
-          password: passwordController.text.trim(),
-        );
-
-        setState(() {
-          _isLoading = false;
-        });
-
-        // Show success snackbar
-        if (context.mounted) {
-          ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(
-              content: Text('Account created successfully!'),
-              backgroundColor: Color(0xFF4CAF50),
-            ),
+    try {
+      // Step 1: Sign in with Firebase
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+            email: emailController.text.trim(),
+            password: passwordController.text.trim(),
           );
 
-          // Navigate to home screen
-          Navigator.pushReplacementNamed(context, '/classifier');
-        }
-      } on FirebaseAuthException catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
+      final uid = userCredential.user!.uid;
 
-        String errorMsg = 'An error occurred';
-        if (e.code == 'email-already-in-use') {
-          errorMsg = 'This email is already in use.';
-        } else if (e.code == 'weak-password') {
-          errorMsg = 'Password should be at least 6 characters.';
-        } else {
-          errorMsg = e.message ?? errorMsg;
-        }
+      // Step 2: Get the user document from Firestore
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
 
-        // Show error snackbar
+      final data = snapshot.data();
+      final role = data?['role'];
+
+      setState(() {
+        _isLoading = false;
+      });
+
+      if (role == 'collector') {
+        // Navigate with arguments
+        Navigator.pushNamed(
+          context,
+          AppRoutes.collectorHome,
+          arguments: {'role': 'collector'},
+        );
+        //Navigator.pushReplacementNamed(context, '/collector');
+      } else if (role == 'user') {
+        // Navigate with arguments
+        Navigator.pushNamed(
+          context,
+          AppRoutes.home,
+          arguments: {'role': 'user'},
+        );
+        //Navigator.pushReplacementNamed(context, '/classifier');
+      } else {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+          const SnackBar(
+            content: Text('Role not found. Please contact support.'),
+            backgroundColor: Colors.red,
+          ),
         );
       }
+    } on FirebaseAuthException catch (e) {
+      setState(() {
+        _isLoading = false;
+      });
+
+      String errorMsg = 'An error occurred';
+      if (e.code == 'user-not-found') {
+        errorMsg = 'No user found for that email.';
+      } else if (e.code == 'wrong-password') {
+        errorMsg = 'Incorrect password.';
+      } else {
+        errorMsg = e.message ?? errorMsg;
+      }
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+      );
     }
   }
 }

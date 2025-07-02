@@ -1,32 +1,36 @@
-import 'package:firebase_auth/firebase_auth.dart';
-import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/firebase_options.dart';
-import 'package:flutter_application_1/screens/home_screen.dart';
-import 'package:flutter_application_1/screens/sign_in.dart';
-import 'package:flutter_application_1/screens/nearby_center_screen.dart';
-import 'package:flutter_application_1/screens/profile_screen.dart';
-import 'package:flutter_application_1/screens/recent_screen.dart';
-import 'package:flutter_application_1/screens/sign_up.dart';
-import 'package:flutter_application_1/screens/stats_screen.dart';
-import 'package:flutter_application_1/screens/welcome_screen.dart';
+import 'package:firebase_core/firebase_core.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_application_1/routes/app_route.dart';
+
+import 'firebase_options.dart';
+//import 'routes/app_routes.dart';
+import 'service/welcome_screen.dart';
+import 'user_screen/home_screen.dart';
+import 'user_screen/sign_in.dart';
+import 'user_screen/sign_up.dart';
+import 'user_screen/profile_screen.dart';
+import 'user_screen/recent_screen.dart';
+import 'user_screen/stats_screen.dart';
+import 'user_screen/nearby_center_screen.dart';
+import 'service/role_selection.dart';
+import 'waste_collector/collector_homepage.dart';
+import 'waste_collector/pickup.dart';
+import 'waste_collector/profile_screen.dart';
 
 void main() async {
-  // Ensure Flutter binding is initialized
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  // Show system UI overlays (status bar + navigation bar)
-  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
 
-  // Optional: Set status bar color and brightness
+  SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent, // Make it transparent or set a color
-      statusBarIconBrightness:
-          Brightness.dark, // or Brightness.light depending on background
+      statusBarColor: Colors.transparent,
+      statusBarIconBrightness: Brightness.dark,
     ),
   );
+
   runApp(const MyApp());
 }
 
@@ -36,26 +40,101 @@ class MyApp extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
+
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      title: 'waste classifier',
+      title: 'Waste Classifier',
       theme: ThemeData(
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
+        useMaterial3: true,
       ),
-      //initialRoute: '/',
-      initialRoute: user != null ? '/classifier' : '/',
-      routes: {
-        '/': (context) => const WelcomeScreen(),
-        '/signin': (context) => const SignInScreen(),
-        '/signup': (context) => const SignUpScreen(),
-        '/classifier': (context) => const HomeScreen(),
-        '/profile': (context) => const ProfileScreen(),
-        '/recent': (context) => const RecentScreen(),
-        '/stats': (context) => const StatsScreen(),
-        '/recycling-centers': (context) => const NearbyCentersScreen(),
+      initialRoute: user != null ? AppRoutes.home : AppRoutes.welcome,
+      onGenerateRoute: (settings) {
+        final args = settings.arguments as Map<String, dynamic>? ?? {};
 
-        //'/sign': (context) => LoginScreen(),
+        switch (settings.name) {
+          case AppRoutes.welcome:
+            return _createRoute(const WelcomeScreen());
+
+          case AppRoutes.signIn:
+            return _createRoute(const SignInScreen());
+
+          case AppRoutes.signUp:
+            final role = args['role'] ?? 'user';
+            return _createRoute(SignUpScreen(role: role));
+
+          case AppRoutes.roleSelection:
+            return _createRoute(const RoleSelectionScreen());
+
+          case AppRoutes.home:
+            return _createRoute(const HomeScreen());
+
+          case AppRoutes.profile:
+            return _createRoute(const ProfileScreen());
+
+          case AppRoutes.recent:
+            return _createRoute(const RecentScreen());
+
+          case AppRoutes.stats:
+            return _createRoute(const StatsScreen());
+
+          case AppRoutes.recyclingCenters:
+            return _createRoute(const NearbyCentersScreen());
+
+          case AppRoutes.collectorHome:
+            return _createRoute(const CollectorMainScreen());
+
+          case AppRoutes.pickup:
+            return _createRoute(const PickupManagementPage());
+
+          case AppRoutes.collectorProfile:
+            return _createRoute(const CollectorProfileScreen());
+
+          default:
+            return _createRoute(
+              Scaffold(
+                appBar: AppBar(title: const Text('404')),
+                body: const Center(child: Text('Page not found')),
+              ),
+            );
+        }
       },
+    );
+  }
+
+  // Optional: custom transition
+  // PageRouteBuilder _buildPage(Widget child) {
+  //   return PageRouteBuilder(
+  //     pageBuilder: (_, __, ___) => child,
+  //     transitionsBuilder: (_, anim, __, child) {
+  //       return SlideTransition(
+  //         position: Tween(
+  //           begin: const Offset(1.0, 0.0),
+  //           end: Offset.zero,
+  //         ).animate(CurvedAnimation(parent: anim, curve: Curves.easeInOut)),
+  //         child: child,
+  //       );
+  //     },
+  //     transitionDuration: const Duration(milliseconds: 300),
+  //   );
+  // }
+  // Custom page transition
+  static PageRouteBuilder _createRoute(Widget page) {
+    return PageRouteBuilder(
+      pageBuilder: (context, animation, secondaryAnimation) => page,
+      transitionsBuilder: (context, animation, secondaryAnimation, child) {
+        const begin = Offset(1.0, 0.0);
+        const end = Offset.zero;
+        const curve = Curves.easeInOut;
+
+        var tween = Tween(
+          begin: begin,
+          end: end,
+        ).chain(CurveTween(curve: curve));
+
+        return SlideTransition(position: animation.drive(tween), child: child);
+      },
+      transitionDuration: const Duration(milliseconds: 300),
     );
   }
 }

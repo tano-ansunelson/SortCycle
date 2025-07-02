@@ -10,7 +10,6 @@ class NearbyCentersScreen extends StatefulWidget {
 }
 
 class _NearbyCentersScreenState extends State<NearbyCentersScreen> {
-  // ignore: unused_field
   late GoogleMapController _mapController;
   LatLng _initialPosition = const LatLng(
     37.7749,

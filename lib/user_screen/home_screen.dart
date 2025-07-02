@@ -3,9 +3,9 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_application_1/model/waste_classify_model.dart';
-import 'package:flutter_application_1/screens/classification_result_screen.dart';
-import 'package:flutter_application_1/screens/recent_screen.dart';
-import 'package:flutter_application_1/screens/stats_screen.dart';
+import 'package:flutter_application_1/user_screen/classification_result_screen.dart';
+import 'package:flutter_application_1/user_screen/recent_screen.dart';
+import 'package:flutter_application_1/user_screen/stats_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/web.dart';
 import 'package:lucide_icons/lucide_icons.dart';
@@ -28,6 +28,7 @@ class _HomeScreenState extends State<HomeScreen> {
     File imageFile,
     BuildContext context,
   ) async {
+    final navigator = Navigator.of(context);
     try {
       showDialog(
         context: context,
@@ -36,12 +37,12 @@ class _HomeScreenState extends State<HomeScreen> {
       );
 
       final result = await _mlService.getTopPrediction(imageFile.path);
-
-      Navigator.pop(context); // close the loading dialog
+      if (!mounted) return;
+      navigator.pop(); // close the loading dialog
 
       if (result != null) {
-        Navigator.push(
-          context,
+        if (!mounted) return;
+        navigator.push(
           MaterialPageRoute(
             builder: (_) => ClassificationResultScreen(
               imagePath: imageFile.path,
@@ -54,10 +55,11 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         );
       } else {
+        if (!mounted) return;
         _showError(context, 'No classification result found');
       }
     } catch (e) {
-      Navigator.pop(context); // close dialog
+      navigator.pop(); // close dialog
       _showError(context, 'Classification failed: $e');
     }
   }
@@ -176,6 +178,15 @@ class _HomeScreenState extends State<HomeScreen> {
             });
           },
         ),
+      ),
+      // Floating action button for location
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+          Navigator.pushNamed(context, '/recycling-centers');
+        },
+        tooltip: 'Location',
+        backgroundColor: Colors.green,
+        child: const Icon(Icons.location_on_outlined),
       ),
     );
   }
@@ -331,19 +342,19 @@ class HomeContent extends StatelessWidget {
                       child: InkWell(
                         onTap: () => pickImageCallback(ImageSource.gallery),
                         borderRadius: BorderRadius.circular(20),
-                        child: Column(
+                        child: const Column(
                           mainAxisAlignment: MainAxisAlignment.center,
                           children: [
                             Icon(
                               Icons.photo_library_rounded,
-                              color: const Color(0xFF2E7D32),
+                              color: Color(0xFF2E7D32),
                               size: 32,
                             ),
-                            const SizedBox(height: 8),
+                            SizedBox(height: 8),
                             Text(
                               'Gallery',
                               style: TextStyle(
-                                color: const Color(0xFF2E7D32),
+                                color: Color(0xFF2E7D32),
                                 fontSize: 16,
                                 fontWeight: FontWeight.w600,
                               ),

@@ -1,10 +1,10 @@
 import 'dart:io';
-
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_application_1/model/waste_classify_model.dart';
 import 'package:flutter_application_1/user_screen/classification_result_screen.dart';
 import 'package:flutter_application_1/user_screen/recent_screen.dart';
+import 'package:flutter_application_1/user_screen/request_pickup.dart';
 import 'package:flutter_application_1/user_screen/stats_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/web.dart';
@@ -20,7 +20,7 @@ class HomeScreen extends StatefulWidget {
 final MLService _mlService = MLService();
 
 class _HomeScreenState extends State<HomeScreen> {
-  int myIndex = 1;
+  int myIndex = 2;
   File? image;
 
   final log = Logger();
@@ -96,7 +96,9 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final List<Widget> screens = [
+      const WastePickupForm(),
       const StatsScreen(),
+
       HomeContent(
         image: image,
         pickImageCallback: pickImage,
@@ -160,11 +162,17 @@ class _HomeScreenState extends State<HomeScreen> {
           selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
           items: const [
             BottomNavigationBarItem(
+              icon: Icon(Icons.local_shipping_outlined),
+              activeIcon: Icon(Icons.local_shipping),
+              label: 'Pickup',
+            ),
+            BottomNavigationBarItem(
               icon: Icon(LucideIcons.barChart2),
               label: 'Stats',
             ),
             BottomNavigationBarItem(
-              icon: Icon(Icons.home_rounded),
+              icon: Icon(Icons.home_outlined),
+              activeIcon: Icon(Icons.home),
               label: 'Home',
             ),
             BottomNavigationBarItem(
@@ -180,14 +188,14 @@ class _HomeScreenState extends State<HomeScreen> {
         ),
       ),
       // Floating action button for location
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-          Navigator.pushNamed(context, '/recycling-centers');
-        },
-        tooltip: 'Location',
-        backgroundColor: Colors.green,
-        child: const Icon(Icons.location_on_outlined),
-      ),
+      // floatingActionButton: FloatingActionButton(
+      //   onPressed: () {
+      //     Navigator.pushNamed(context, '/recycling-centers');
+      //   },
+      //   tooltip: 'Location',
+      //   backgroundColor: Colors.green,
+      //   child: const Icon(Icons.location_on_outlined),
+      // ),
     );
   }
 }

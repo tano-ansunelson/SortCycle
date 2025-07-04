@@ -11,4 +11,6 @@ abstract class AppRoutes {
   static const collectorHome = '/collector';
   static const pickup = '/pickup';
   static const collectorProfile = '/collector-profile';
+  static const requestpickup = '/requestpickup';
+  static const String collectorSignup = '/collector_signup';
 }

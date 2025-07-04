@@ -2,7 +2,11 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_application_1/provider/provider.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
+import 'package:flutter_application_1/user_screen/request_pickup.dart';
+import 'package:flutter_application_1/waste_collector/collector_signup.dart';
+import 'package:provider/provider.dart';
 
 import 'firebase_options.dart';
 //import 'routes/app_routes.dart';
@@ -31,7 +35,12 @@ void main() async {
     ),
   );
 
-  runApp(const MyApp());
+  runApp(
+    MultiProvider(
+      providers: [ChangeNotifierProvider(create: (_) => UserProvider())],
+      child: const MyApp(),
+    ),
+  );
 }
 
 class MyApp extends StatelessWidget {
@@ -62,6 +71,9 @@ class MyApp extends StatelessWidget {
           case AppRoutes.signUp:
             final role = args['role'] ?? 'user';
             return _createRoute(SignUpScreen(role: role));
+          case AppRoutes.collectorSignup:
+            final role = args['role'] ?? 'collector';
+            return _createRoute(CollectorSignup(role: role));
 
           case AppRoutes.roleSelection:
             return _createRoute(const RoleSelectionScreen());
@@ -89,6 +101,8 @@ class MyApp extends StatelessWidget {
 
           case AppRoutes.collectorProfile:
             return _createRoute(const CollectorProfileScreen());
+          case AppRoutes.requestpickup:
+            return _createRoute(const WastePickupForm());
 
           default:
             return _createRoute(
@@ -102,22 +116,6 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  // Optional: custom transition
-  // PageRouteBuilder _buildPage(Widget child) {
-  //   return PageRouteBuilder(
-  //     pageBuilder: (_, __, ___) => child,
-  //     transitionsBuilder: (_, anim, __, child) {
-  //       return SlideTransition(
-  //         position: Tween(
-  //           begin: const Offset(1.0, 0.0),
-  //           end: Offset.zero,
-  //         ).animate(CurvedAnimation(parent: anim, curve: Curves.easeInOut)),
-  //         child: child,
-  //       );
-  //     },
-  //     transitionDuration: const Duration(milliseconds: 300),
-  //   );
-  // }
   // Custom page transition
   static PageRouteBuilder _createRoute(Widget page) {
     return PageRouteBuilder(

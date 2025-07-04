@@ -254,11 +254,19 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
                 width: 200,
                 child: ElevatedButton(
                   onPressed: () {
-                    Navigator.pushNamed(
-                      context,
-                      AppRoutes.signUp,
-                      arguments: {'role': _selectedRole},
-                    );
+                    if (_selectedRole == 'collector') {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.collectorSignup,
+                        arguments: {'role': _selectedRole},
+                      );
+                    } else {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.signUp,
+                        arguments: {'role': _selectedRole},
+                      );
+                    }
                   },
                   style: ElevatedButton.styleFrom(
                     backgroundColor: const Color(0xFF4CAF50),

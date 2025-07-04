@@ -1,7 +1,9 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/provider/provider.dart';
 //import  'package:flutter_application_1/user_screen/classification_result_screen.dart';
 import 'package:logger/logger.dart';
+import 'package:provider/provider.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -28,6 +30,8 @@ class _ProfileScreenState extends State<ProfileScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.forward();
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    userProvider.fetchUsername();
   }
 
   @override
@@ -39,7 +43,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   @override
   Widget build(BuildContext context) {
     final user = FirebaseAuth.instance.currentUser;
-
+    final username = context.watch<UserProvider>().username;
     return Scaffold(
       body: Container(
         decoration: const BoxDecoration(
@@ -67,7 +71,7 @@ class _ProfileScreenState extends State<ProfileScreen>
                     child: Column(
                       children: [
                         const SizedBox(height: 20),
-                        _buildUserInfo(user),
+                        _buildUserInfo(user, username),
                         const SizedBox(height: 40),
                         _buildStatsSection(),
                         const SizedBox(height: 30),
@@ -111,7 +115,7 @@ class _ProfileScreenState extends State<ProfileScreen>
     );
   }
 
-  Widget _buildUserInfo(User? user) {
+  Widget _buildUserInfo(User? user, String? username) {
     return FadeTransition(
       opacity: _fadeAnimation,
       child: Column(
@@ -148,7 +152,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            user?.displayName ?? 'Eco Warrior',
+            " ${username ?? 'Eco Warrior'}",
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,

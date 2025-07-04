@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/provider/provider.dart';
 import 'package:logger/logger.dart';
+import 'package:provider/provider.dart';
 //import 'package:logger/web.dart';
 
 class CollectorProfileScreen extends StatefulWidget {
@@ -12,8 +14,16 @@ class CollectorProfileScreen extends StatefulWidget {
 
 class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
   final log = Logger();
+
+  @override
+  void initState() {
+    super.initState();
+    Provider.of<UserProvider>(context, listen: false).fetchUsername();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final username = context.watch<UserProvider>().username;
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SingleChildScrollView(
@@ -107,9 +117,10 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
                               children: [
                                 Row(
                                   children: [
-                                    const Text(
-                                      'John Doe',
-                                      style: TextStyle(
+                                    Text(
+                                      " ${username ?? 'Guest'}",
+
+                                      style: const TextStyle(
                                         color: Colors.white,
                                         fontSize: 20,
                                         fontWeight: FontWeight.bold,

@@ -222,12 +222,12 @@ class _SignInScreenState extends State<SignInScreen> {
           arguments: {'role': 'collector'},
         );
         //Navigator.pushReplacementNamed(context, '/collector');
-      } else if (role == 'user') {
+      } else if (role == 'User') {
         // Navigate with arguments
         Navigator.pushNamed(
           context,
           AppRoutes.home,
-          arguments: {'role': 'user'},
+          arguments: {'role': 'User'},
         );
         //Navigator.pushReplacementNamed(context, '/classifier');
       } else {

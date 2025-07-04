@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/provider/provider.dart';
+import 'package:flutter_application_1/service/greetings.dart';
 //import 'package:flutter_application_1/user_screen/profile_screen.dart';
 import 'package:flutter_application_1/waste_collector/pickup.dart';
 import 'package:flutter_application_1/waste_collector/profile_screen.dart';
+import 'package:provider/provider.dart';
 
 class CollectorMainScreen extends StatefulWidget {
   const CollectorMainScreen({super.key});
@@ -12,6 +15,12 @@ class CollectorMainScreen extends StatefulWidget {
 
 class _CollectorMainScreenState extends State<CollectorMainScreen> {
   int _currentIndex = 1;
+  @override
+  void initState() {
+    super.initState();
+    final userProvider = Provider.of<UserProvider>(context, listen: false);
+    userProvider.fetchUsername();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -88,25 +97,30 @@ class CollectorHomePage extends StatefulWidget {
 class _CollectorHomePageState extends State<CollectorHomePage> {
   @override
   Widget build(BuildContext context) {
+    final username = context.watch<UserProvider>().username;
+    final greeting = getGreeting();
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        automaticallyImplyLeading: false,
         elevation: 0,
         backgroundColor: Colors.white,
         title: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              'Good Morning',
+              greeting,
               style: TextStyle(
+                letterSpacing: 0.5,
                 fontSize: 14,
                 color: Colors.grey[600],
                 fontWeight: FontWeight.normal,
               ),
             ),
-            const Text(
-              'John Collector',
-              style: TextStyle(
+            Text(
+              " ${username ?? 'Guest'}",
+              //'John Collector',
+              style: const TextStyle(
                 fontSize: 18,
                 color: Colors.black87,
                 fontWeight: FontWeight.bold,

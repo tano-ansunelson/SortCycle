@@ -2,30 +2,75 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
+import 'package:geolocator/geolocator.dart';
 
-class SignUpScreen extends StatefulWidget {
+class CollectorSignup extends StatefulWidget {
   final String role;
-  const SignUpScreen({super.key, required this.role});
+  const CollectorSignup({super.key, required this.role});
 
   @override
-  State<SignUpScreen> createState() => _SignUpScreenState();
+  State<CollectorSignup> createState() => _CollectorSignup();
 }
 
-class _SignUpScreenState extends State<SignUpScreen> {
+class _CollectorSignup extends State<CollectorSignup> {
   final _formKey = GlobalKey<FormState>();
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final phoneController = TextEditingController();
+  final townController = TextEditingController();
+
   bool _obscurePassword = true;
   bool _isLoading = false;
+  Position? _currentPosition;
+  //String _locationStatus = 'Location not set';
 
   @override
   void dispose() {
     nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    phoneController.dispose();
+    townController.dispose();
     super.dispose();
   }
+
+  // Future<void> _getCurrentLocation() async {
+  //   setState(() {
+  //     _locationStatus = "Getting location...";
+  //   });
+
+  //   try {
+  //     LocationPermission permission = await Geolocator.checkPermission();
+  //     if (permission == LocationPermission.denied) {
+  //       permission = await Geolocator.requestPermission();
+  //       if (permission == LocationPermission.denied) {
+  //         throw Exception('Location permission denied');
+  //       }
+  //     }
+
+  //     if (permission == LocationPermission.deniedForever) {
+  //       throw Exception('Location permission permanently denied');
+  //     }
+
+  //     final position = await Geolocator.getCurrentPosition(
+  //       desiredAccuracy: LocationAccuracy.high,
+  //     );
+
+  //     setState(() {
+  //       _currentPosition = position;
+  //       _locationStatus =
+  //           "Location set: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
+  //     });
+  //   } catch (e) {
+  //     setState(() {
+  //       _locationStatus = "Failed to get location";
+  //     });
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
+  //     );
+  //   }
+  // }
 
   @override
   Widget build(BuildContext context) {
@@ -58,36 +103,17 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   // Name
                   TextFormField(
                     controller: nameController,
-                    decoration: InputDecoration(
-                      hintText: "Full Name",
-                      prefixIcon: const Icon(Icons.person),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
-                    validator: (value) {
-                      if (value == null || value.trim().isEmpty) {
-                        return 'Please enter your full name';
-                      }
-                      return null;
-                    },
+                    decoration: _inputDecoration("Full Name", Icons.person),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Please enter your full name'
+                        : null,
                   ),
                   const SizedBox(height: 20),
 
                   // Email
                   TextFormField(
                     controller: emailController,
-                    decoration: InputDecoration(
-                      hintText: "Email",
-                      prefixIcon: const Icon(Icons.email),
-                      filled: true,
-                      fillColor: Colors.white,
-                      border: OutlineInputBorder(
-                        borderRadius: BorderRadius.circular(20),
-                      ),
-                    ),
+                    decoration: _inputDecoration("Email", Icons.email),
                     validator: (value) {
                       if (value == null || value.isEmpty) {
                         return 'Please enter your email';
@@ -125,13 +151,52 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         borderRadius: BorderRadius.circular(20),
                       ),
                     ),
-                    validator: (value) {
-                      if (value == null || value.length < 6) {
-                        return 'Password must be at least 6 characters';
-                      }
-                      return null;
-                    },
+                    validator: (value) => value == null || value.length < 6
+                        ? 'Password must be at least 6 characters'
+                        : null,
                   ),
+                  const SizedBox(height: 20),
+
+                  // Town
+                  TextFormField(
+                    controller: townController,
+                    decoration: _inputDecoration(
+                      "Town/City",
+                      Icons.location_city,
+                    ),
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Please enter town/city'
+                        : null,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Phone
+                  TextFormField(
+                    controller: phoneController,
+                    decoration: _inputDecoration("Phone Number", Icons.phone),
+                    keyboardType: TextInputType.phone,
+                    validator: (value) => value == null || value.trim().isEmpty
+                        ? 'Please enter your phone number'
+                        : null,
+                  ),
+                  const SizedBox(height: 20),
+
+                  // Location Button
+                  // SizedBox(
+                  //   width: double.infinity,
+                  //   child: ElevatedButton.icon(
+                  //     icon: const Icon(Icons.location_on),
+                  //     label: Text(_locationStatus),
+                  //     onPressed: _getCurrentLocation,
+                  //     style: ElevatedButton.styleFrom(
+                  //       backgroundColor: Colors.teal,
+                  //       padding: const EdgeInsets.symmetric(vertical: 14),
+                  //       shape: RoundedRectangleBorder(
+                  //         borderRadius: BorderRadius.circular(20),
+                  //       ),
+                  //     ),
+                  //   ),
+                  // ),
                   const SizedBox(height: 30),
 
                   // Sign Up Button
@@ -156,7 +221,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                   ),
                   const SizedBox(height: 20),
 
-                  // Switch to Sign In
                   Row(
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
@@ -166,8 +230,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                       ),
                       TextButton(
                         onPressed: () {
-                          // Navigator.pushNamed(context, '/signin');
-                          // Without arguments
                           Navigator.pushNamed(context, AppRoutes.signIn);
                         },
                         child: const Text(
@@ -176,45 +238,6 @@ class _SignUpScreenState extends State<SignUpScreen> {
                         ),
                       ),
                     ],
-                  ),
-                  const SizedBox(height: 20),
-                  // Divider
-                  const Row(
-                    children: [
-                      Expanded(child: Divider(thickness: 1)),
-                      Padding(
-                        padding: EdgeInsets.symmetric(horizontal: 8.0),
-                        child: Text("OR"),
-                      ),
-                      Expanded(child: Divider(thickness: 1)),
-                    ],
-                  ),
-                  const SizedBox(height: 20),
-
-                  // ... rest of your UI remains unchanged
-                  // Google Sign-In Button
-                  SizedBox(
-                    width: double.infinity,
-                    child: OutlinedButton.icon(
-                      icon: Image.asset(
-                        'assests/7123025_logo_google_g_icon.png',
-                        height: 24,
-                        width: 24,
-                      ),
-                      label: const Text(
-                        "Continue with Google",
-                        style: TextStyle(fontSize: 16, color: Colors.black87),
-                      ),
-                      onPressed: () {},
-                      style: OutlinedButton.styleFrom(
-                        side: const BorderSide(color: Colors.grey),
-                        padding: const EdgeInsets.symmetric(vertical: 14),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        backgroundColor: Colors.white,
-                      ),
-                    ),
                   ),
                 ],
               ),
@@ -225,14 +248,31 @@ class _SignUpScreenState extends State<SignUpScreen> {
     );
   }
 
+  InputDecoration _inputDecoration(String hint, IconData icon) {
+    return InputDecoration(
+      hintText: hint,
+      prefixIcon: Icon(icon),
+      filled: true,
+      fillColor: Colors.white,
+      border: OutlineInputBorder(borderRadius: BorderRadius.circular(20)),
+    );
+  }
+
   void _handleSignUp() async {
     if (_formKey.currentState!.validate()) {
-      setState(() {
-        _isLoading = true;
-      });
+      // if (_currentPosition == null) {
+      //   ScaffoldMessenger.of(context).showSnackBar(
+      //     const SnackBar(
+      //       content: Text("Please set your location"),
+      //       backgroundColor: Colors.red,
+      //     ),
+      //   );
+      //   return;
+      // }
+
+      setState(() => _isLoading = true);
 
       try {
-        // Step 1: Create user with Firebase Auth
         final userCredential = await FirebaseAuth.instance
             .createUserWithEmailAndPassword(
               email: emailController.text.trim(),
@@ -241,38 +281,26 @@ class _SignUpScreenState extends State<SignUpScreen> {
 
         final uid = userCredential.user!.uid;
 
-        // Step 2: Save role + name to Firestore
-        await FirebaseFirestore.instance.collection('users').doc(uid).set({
+        await FirebaseFirestore.instance.collection('collectors').doc(uid).set({
           'name': nameController.text.trim(),
           'email': emailController.text.trim(),
-          'role': widget.role, // 👈 this is where role is saved
+          'role': widget.role,
+          'phone': phoneController.text.trim(),
+          'town': townController.text.trim(),
+          // 'latitude': _currentPosition!.latitude,
+          //'longitude': _currentPosition!.longitude,
           'createdAt': FieldValue.serverTimestamp(),
         });
 
-        setState(() {
-          _isLoading = false;
-        });
+        setState(() => _isLoading = false);
 
-        // Step 3: Navigate to home screen based on role
-        if (widget.role == 'collector') {
-          // Navigator.pushReplacementNamed(context, '/collector');
-          Navigator.pushNamed(
-            context,
-            AppRoutes.collectorHome,
-            arguments: {'role': 'collector'},
-          );
-        } else {
-          Navigator.pushNamed(
-            context,
-            AppRoutes.home,
-            arguments: {'role': 'User'},
-          );
-        }
+        Navigator.pushNamed(
+          context,
+          AppRoutes.collectorHome,
+          arguments: {'role': 'collector'},
+        );
       } on FirebaseAuthException catch (e) {
-        setState(() {
-          _isLoading = false;
-        });
-
+        setState(() => _isLoading = false);
         String errorMsg = 'An error occurred';
         if (e.code == 'email-already-in-use') {
           errorMsg = 'This email is already in use.';

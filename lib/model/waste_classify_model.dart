@@ -86,15 +86,6 @@ class MLService {
       // Create interpreter options for better compatibility
       final options = InterpreterOptions();
 
-      // Note: GPU delegates might not be available in all versions
-      // If you need GPU acceleration, uncomment and test:
-      // try {
-      //   options.addDelegate(GpuDelegate());
-      //   log.i('GPU delegate added');
-      // } catch (e) {
-      //   log.w('GPU delegate not available, using CPU: $e');
-      // }
-
       // Set thread count for CPU execution
       options.threads = 4;
 

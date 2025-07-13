@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
-import 'package:geolocator/geolocator.dart';
+// import 'package:geolocator/geolocator.dart';
 
 class CollectorSignup extends StatefulWidget {
   final String role;
@@ -22,7 +22,7 @@ class _CollectorSignup extends State<CollectorSignup> {
 
   bool _obscurePassword = true;
   bool _isLoading = false;
-  Position? _currentPosition;
+  //Position? _currentPosition;
   //String _locationStatus = 'Location not set';
 
   @override
@@ -165,7 +165,7 @@ class _CollectorSignup extends State<CollectorSignup> {
                       Icons.location_city,
                     ),
                     validator: (value) => value == null || value.trim().isEmpty
-                        ? 'Please enter town/city'
+                        ? 'Please enter town'
                         : null,
                   ),
                   const SizedBox(height: 20),

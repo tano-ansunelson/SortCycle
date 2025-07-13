@@ -4,10 +4,10 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_application_1/provider/provider.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
-import 'package:flutter_application_1/user_screen/request_pickup.dart';
+import 'package:flutter_application_1/user_screen/recent_screen.dart';
+import 'package:flutter_application_1/user_screen/waste_form.dart';
 import 'package:flutter_application_1/waste_collector/collector_signup.dart';
 import 'package:provider/provider.dart';
-
 import 'firebase_options.dart';
 //import 'routes/app_routes.dart';
 import 'service/welcome_screen.dart';
@@ -15,7 +15,7 @@ import 'user_screen/home_screen.dart';
 import 'user_screen/sign_in.dart';
 import 'user_screen/sign_up.dart';
 import 'user_screen/profile_screen.dart';
-import 'user_screen/recent_screen.dart';
+//import 'user_screen/recent_classification_tab.dart';
 import 'user_screen/stats_screen.dart';
 import 'user_screen/nearby_center_screen.dart';
 import 'service/role_selection.dart';
@@ -85,7 +85,7 @@ class MyApp extends StatelessWidget {
             return _createRoute(const ProfileScreen());
 
           case AppRoutes.recent:
-            return _createRoute(const RecentScreen());
+            return _createRoute(WasteForm());
 
           case AppRoutes.stats:
             return _createRoute(const StatsScreen());
@@ -97,12 +97,24 @@ class MyApp extends StatelessWidget {
             return _createRoute(const CollectorMainScreen());
 
           case AppRoutes.pickup:
-            return _createRoute(const PickupManagementPage());
+            final collectorId = args['collectorId'] as String?;
+            if (collectorId != null) {
+              return _createRoute(
+                PickupManagementPage(collectorId: collectorId),
+              );
+            } else {
+              return _createRoute(
+                const Scaffold(
+                  body: Center(child: Text('Collector ID is missing')),
+                ),
+              );
+            }
 
           case AppRoutes.collectorProfile:
             return _createRoute(const CollectorProfileScreen());
           case AppRoutes.requestpickup:
-            return _createRoute(const WastePickupForm());
+            final userId = args['userId'] as String?;
+            return _createRoute(WastePickupFormUpdated(userId: userId!));
 
           default:
             return _createRoute(

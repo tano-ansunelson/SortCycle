@@ -192,7 +192,7 @@ class _SignInScreenState extends State<SignInScreen> {
     });
 
     try {
-      // Step 1: Sign in with Firebase
+      // Step 1: Sign in with Firebase Auth
       final userCredential = await FirebaseAuth.instance
           .signInWithEmailAndPassword(
             email: emailController.text.trim(),
@@ -201,43 +201,55 @@ class _SignInScreenState extends State<SignInScreen> {
 
       final uid = userCredential.user!.uid;
 
-      // Step 2: Get the user document from Firestore
-      final snapshot = await FirebaseFirestore.instance
+      // Step 2: Try to get from 'collectors' collection first
+      final collectorSnapshot = await FirebaseFirestore.instance
+          .collection('collectors')
+          .doc(uid)
+          .get();
+
+      if (collectorSnapshot.exists) {
+        // Collector found
+        setState(() {
+          _isLoading = false;
+        });
+
+        Navigator.pushNamed(
+          context,
+          AppRoutes.collectorHome,
+          arguments: {'role': 'collector', 'collectorId': uid},
+        );
+        return;
+      }
+
+      // Step 3: Try to get from 'users' collection
+      final userSnapshot = await FirebaseFirestore.instance
           .collection('users')
           .doc(uid)
           .get();
 
-      final data = snapshot.data();
-      final role = data?['role'];
+      if (userSnapshot.exists) {
+        setState(() {
+          _isLoading = false;
+        });
 
-      setState(() {
-        _isLoading = false;
-      });
-
-      if (role == 'collector') {
-        // Navigate with arguments
-        Navigator.pushNamed(
-          context,
-          AppRoutes.collectorHome,
-          arguments: {'role': 'collector'},
-        );
-        //Navigator.pushReplacementNamed(context, '/collector');
-      } else if (role == 'User') {
-        // Navigate with arguments
         Navigator.pushNamed(
           context,
           AppRoutes.home,
-          arguments: {'role': 'User'},
+          arguments: {'role': 'User', 'userId': uid},
         );
-        //Navigator.pushReplacementNamed(context, '/classifier');
-      } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Role not found. Please contact support.'),
-            backgroundColor: Colors.red,
-          ),
-        );
+        return;
       }
+
+      // Neither found
+      setState(() {
+        _isLoading = false;
+      });
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User role not found. Please contact support.'),
+          backgroundColor: Colors.red,
+        ),
+      );
     } on FirebaseAuthException catch (e) {
       setState(() {
         _isLoading = false;

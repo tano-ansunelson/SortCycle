@@ -59,6 +59,7 @@ dependencies {
 
     // Also add the dependency for the TensorFlow Lite library and specify its version
     implementation("org.tensorflow:tensorflow-lite:2.16.1")
+    implementation("com.google.mlkit:object-detection:17.0.2")
 
 }
 

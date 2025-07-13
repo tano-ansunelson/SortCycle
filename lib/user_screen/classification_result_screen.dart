@@ -6,6 +6,7 @@ class ClassificationResultScreen extends StatelessWidget {
   final String category;
   final double confidence;
   final String recyclingInstructions;
+  final VoidCallback? onDone;
 
   const ClassificationResultScreen({
     super.key,
@@ -13,6 +14,7 @@ class ClassificationResultScreen extends StatelessWidget {
     required this.category,
     required this.confidence,
     required this.recyclingInstructions,
+    this.onDone,
   });
 
   Color _getCategoryColor(String category) {
@@ -104,7 +106,7 @@ class ClassificationResultScreen extends StatelessWidget {
                       color: Colors.white.withOpacity(0.2),
                       borderRadius: BorderRadius.circular(12),
                     ),
-                    child: Icon(
+                    child: const Icon(
                       Icons.check_circle,
                       color: Colors.white,
                       size: 24,
@@ -122,7 +124,9 @@ class ClassificationResultScreen extends StatelessWidget {
                     ),
                   ),
                   IconButton(
-                    onPressed: () => Navigator.of(context).pop(),
+                    onPressed: () {
+                      Navigator.of(context).pop();
+                    },
                     icon: const Icon(
                       Icons.close,
                       color: Colors.white,
@@ -334,7 +338,10 @@ class ClassificationResultScreen extends StatelessWidget {
                       children: [
                         Expanded(
                           child: OutlinedButton(
-                            onPressed: () => Navigator.of(context).pop(),
+                            onPressed: () {
+                              onDone?.call();
+                              Navigator.of(context).pop();
+                            },
                             style: OutlinedButton.styleFrom(
                               padding: const EdgeInsets.symmetric(vertical: 16),
                               side: BorderSide(color: categoryColor),
@@ -355,6 +362,7 @@ class ClassificationResultScreen extends StatelessWidget {
                         Expanded(
                           child: ElevatedButton(
                             onPressed: () {
+                              onDone?.call();
                               // Add to stats or save functionality
                               Navigator.of(context).pop();
                               // You can add navigation to stats screen here

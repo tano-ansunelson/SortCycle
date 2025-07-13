@@ -1,3 +1,5 @@
+//import 'package:flutter_application_1/user_screen/recent_screen.dart';
+
 abstract class AppRoutes {
   static const welcome = '/';
   static const signIn = '/signin';
@@ -13,4 +15,5 @@ abstract class AppRoutes {
   static const collectorProfile = '/collector-profile';
   static const requestpickup = '/requestpickup';
   static const String collectorSignup = '/collector_signup';
+  static const wasteform = '/wastform';
 }

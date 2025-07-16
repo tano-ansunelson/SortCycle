@@ -35,43 +35,6 @@ class _CollectorSignup extends State<CollectorSignup> {
     super.dispose();
   }
 
-  // Future<void> _getCurrentLocation() async {
-  //   setState(() {
-  //     _locationStatus = "Getting location...";
-  //   });
-
-  //   try {
-  //     LocationPermission permission = await Geolocator.checkPermission();
-  //     if (permission == LocationPermission.denied) {
-  //       permission = await Geolocator.requestPermission();
-  //       if (permission == LocationPermission.denied) {
-  //         throw Exception('Location permission denied');
-  //       }
-  //     }
-
-  //     if (permission == LocationPermission.deniedForever) {
-  //       throw Exception('Location permission permanently denied');
-  //     }
-
-  //     final position = await Geolocator.getCurrentPosition(
-  //       desiredAccuracy: LocationAccuracy.high,
-  //     );
-
-  //     setState(() {
-  //       _currentPosition = position;
-  //       _locationStatus =
-  //           "Location set: ${position.latitude.toStringAsFixed(4)}, ${position.longitude.toStringAsFixed(4)}";
-  //     });
-  //   } catch (e) {
-  //     setState(() {
-  //       _locationStatus = "Failed to get location";
-  //     });
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(content: Text(e.toString()), backgroundColor: Colors.red),
-  //     );
-  //   }
-  // }
-
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -160,10 +123,7 @@ class _CollectorSignup extends State<CollectorSignup> {
                   // Town
                   TextFormField(
                     controller: townController,
-                    decoration: _inputDecoration(
-                      "Town/City",
-                      Icons.location_city,
-                    ),
+                    decoration: _inputDecoration("Town", Icons.location_city),
                     validator: (value) => value == null || value.trim().isEmpty
                         ? 'Please enter town'
                         : null,
@@ -286,7 +246,7 @@ class _CollectorSignup extends State<CollectorSignup> {
           'email': emailController.text.trim(),
           'role': widget.role,
           'phone': phoneController.text.trim(),
-          'town': townController.text.trim(),
+          'town': townController.text.trim().toLowerCase(),
           // 'latitude': _currentPosition!.latitude,
           //'longitude': _currentPosition!.longitude,
           'createdAt': FieldValue.serverTimestamp(),

@@ -1,6 +1,8 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/provider/provider.dart';
+import 'package:flutter_application_1/routes/app_route.dart';
+import 'package:flutter_application_1/waste_collector/pending_summary.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 //import 'package:logger/web.dart';
@@ -18,12 +20,20 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
   @override
   void initState() {
     super.initState();
-    Provider.of<UserProvider>(context, listen: false).fetchUsername();
+    Future.microtask(
+      () => Provider.of<CollectorProvider>(
+        context,
+        listen: false,
+      ).fetchCollectorData(),
+    );
   }
 
   @override
   Widget build(BuildContext context) {
-    final username = context.watch<UserProvider>().username;
+    final collectorProvider = Provider.of<CollectorProvider>(context);
+    final collectorId = FirebaseAuth.instance.currentUser!.uid;
+
+    // final username = context.watch<UserProvider>().username;
     return Scaffold(
       backgroundColor: Colors.grey[50],
       body: SingleChildScrollView(
@@ -118,7 +128,7 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
                                 Row(
                                   children: [
                                     Text(
-                                      " ${username ?? 'Guest'}",
+                                      " ${collectorProvider.name ?? 'Guest'}",
 
                                       style: const TextStyle(
                                         color: Colors.white,
@@ -189,7 +199,8 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
                     children: [
                       Expanded(
                         child: _buildStatCard(
-                          '247',
+                          CollectorTotalPickupsText(collectorId: collectorId),
+
                           'Total Pickups',
                           Colors.green,
                         ),
@@ -197,7 +208,7 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: _buildStatCard(
-                          '98%',
+                          CompletionRateText(collectorId: collectorId),
                           'Completion Rate',
                           Colors.blue,
                         ),
@@ -208,16 +219,20 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
 
                   // Contact Information
                   _buildSectionCard('Contact Information', [
-                    _buildContactItem(Icons.phone, 'Phone', '+233 24 123 4567'),
+                    _buildContactItem(
+                      Icons.phone,
+                      'Phone',
+                      collectorProvider.phone ?? 'Loading...',
+                    ),
                     _buildContactItem(
                       Icons.email,
                       'Email',
-                      'john.doe@wasteapp.com',
+                      collectorProvider.email ?? 'Loading...',
                     ),
                     _buildContactItem(
                       Icons.location_on,
                       'Location',
-                      'Kumasi, Ashanti Region',
+                      collectorProvider.town ?? 'Loading...',
                     ),
                   ]),
                   const SizedBox(height: 16),
@@ -226,16 +241,17 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
 
                   // Settings Menu
                   _buildSectionCard('Settings', [
-                    _buildSettingsItem(
-                      Icons.notifications,
-                      'Notifications',
-                      () {},
-                    ),
-                    _buildSettingsItem(
-                      Icons.security,
-                      'Privacy & Security',
-                      () {},
-                    ),
+                    // _buildSettingsItem(
+                    //   Icons.notifications,
+                    //   'Notifications',
+                    //   () {},
+                    // ),
+                    _buildSettingsItem(Icons.security, 'Edit Profile', () {
+                      Navigator.pushNamed(
+                        context,
+                        AppRoutes.collectorProfileEditPage,
+                      );
+                    }),
                     _buildSettingsItem(Icons.help, 'Help & Support', () {}),
                     _buildSettingsItem(Icons.info, 'About App', () {}),
                   ]),
@@ -287,7 +303,7 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
     );
   }
 
-  Widget _buildStatCard(String value, String label, Color color) {
+  Widget _buildStatCard(Widget valueWidget, String label, Color color) {
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -304,14 +320,7 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
       ),
       child: Column(
         children: [
-          Text(
-            value,
-            style: TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: color,
-            ),
-          ),
+          valueWidget,
           const SizedBox(height: 4),
           Text(
             label,
@@ -478,7 +487,7 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
         // Navigate to login - adjust route name as needed
         Navigator.pushNamedAndRemoveUntil(
           context,
-          '/', // Change this to your actual login route
+          '/signin', // Change this to your actual login route
           (route) => false,
         );
       }

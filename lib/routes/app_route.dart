@@ -1,5 +1,7 @@
 //import 'package:flutter_application_1/user_screen/recent_screen.dart';
 
+//import 'package:flutter_application_1/waste_collector/editing_page.dart';
+
 abstract class AppRoutes {
   static const welcome = '/';
   static const signIn = '/signin';
@@ -16,4 +18,7 @@ abstract class AppRoutes {
   static const requestpickup = '/requestpickup';
   static const String collectorSignup = '/collector_signup';
   static const wasteform = '/wastform';
+  static const collectorProfileEditPage = '/collectorprofile-editing';
+  static const userProfileEditPage = '/userprofile-editing';
+  static const aboutus = '/about';
 }

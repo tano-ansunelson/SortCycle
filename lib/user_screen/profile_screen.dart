@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/provider/provider.dart';
+import 'package:flutter_application_1/routes/app_route.dart';
 //import  'package:flutter_application_1/user_screen/classification_result_screen.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
@@ -30,18 +31,15 @@ class _ProfileScreenState extends State<ProfileScreen>
       CurvedAnimation(parent: _animationController, curve: Curves.easeInOut),
     );
     _animationController.forward();
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    userProvider.fetchUsername();
-  }
-
-  @override
-  void dispose() {
-    _animationController.dispose();
-    super.dispose();
+    Future.microtask(() async {
+      final provider = Provider.of<UserProvider>(context, listen: false);
+      await provider.fetchUserData();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    //final UserProvider = Provider.of<UserProvider>(context);
     final user = FirebaseAuth.instance.currentUser;
     final username = context.watch<UserProvider>().username;
     return Scaffold(
@@ -152,7 +150,8 @@ class _ProfileScreenState extends State<ProfileScreen>
           ),
           const SizedBox(height: 16),
           Text(
-            " ${username ?? 'Eco Warrior'}",
+            " ${username ?? 'Guest'}",
+
             style: const TextStyle(
               fontSize: 24,
               fontWeight: FontWeight.bold,
@@ -246,6 +245,7 @@ class _ProfileScreenState extends State<ProfileScreen>
             icon: Icons.person_outline,
             title: 'Edit Profile',
             onTap: () {
+              Navigator.pushNamed(context, AppRoutes.userProfileEditPage);
               // Call this function when your model completes classification
 
               // TODO: Navigate to edit profile
@@ -254,8 +254,9 @@ class _ProfileScreenState extends State<ProfileScreen>
           const SizedBox(height: 12),
           _buildMenuTile(
             icon: Icons.help_outline,
-            title: 'Help & Support',
+            title: 'About Us',
             onTap: () {
+              Navigator.pushNamed(context, AppRoutes.aboutus);
               // TODO: Navigate to help
             },
           ),
@@ -394,7 +395,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         // Navigate to login - adjust route name as needed
         Navigator.pushNamedAndRemoveUntil(
           context,
-          '/', // Change this to your actual login route
+          '/signin', // Change this to your actual login route
           (route) => false,
         );
       }

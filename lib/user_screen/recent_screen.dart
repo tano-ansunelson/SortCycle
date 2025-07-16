@@ -17,30 +17,35 @@ class WasteForm extends StatelessWidget {
     return DefaultTabController(
       length: 2,
       child: Scaffold(
-        body: SafeArea(
-          child: Column(
-            children: [
-              Container(
-                color: const Color(0xFF2E7D32),
-                child: const TabBar(
-                  tabs: [
-                    Tab(text: 'New Request', icon: Icon(Icons.add)),
-                    Tab(text: 'My Requests', icon: Icon(Icons.list)),
-                  ],
-                  indicatorColor: Color.fromARGB(255, 243, 245, 243),
-                  labelColor: Color.fromARGB(255, 240, 242, 240),
-                  unselectedLabelColor: Color.fromARGB(255, 5, 5, 5),
+        body: RefreshIndicator(
+          onRefresh: () async {
+            await Future.delayed(const Duration(seconds: 1));
+          },
+          child: SafeArea(
+            child: Column(
+              children: [
+                Container(
+                  color: const Color(0xFF2E7D32),
+                  child: const TabBar(
+                    tabs: [
+                      Tab(text: 'New Request', icon: Icon(Icons.add)),
+                      Tab(text: 'My Requests', icon: Icon(Icons.list)),
+                    ],
+                    indicatorColor: Color.fromARGB(255, 243, 245, 243),
+                    labelColor: Color.fromARGB(255, 240, 242, 240),
+                    unselectedLabelColor: Color.fromARGB(255, 5, 5, 5),
+                  ),
                 ),
-              ),
-              Expanded(
-                child: TabBarView(
-                  children: [
-                    WastePickupFormUpdated(userId: currentUserId),
-                    UserRequestsScreen(userId: currentUserId),
-                  ],
+                Expanded(
+                  child: TabBarView(
+                    children: [
+                      WastePickupFormUpdated(userId: currentUserId),
+                      UserRequestsScreen(userId: currentUserId),
+                    ],
+                  ),
                 ),
-              ),
-            ],
+              ],
+            ),
           ),
         ),
       ),

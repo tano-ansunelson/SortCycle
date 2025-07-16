@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/provider/provider.dart';
 import 'package:flutter_application_1/service/greetings.dart';
+import 'package:flutter_application_1/waste_collector/pending_summary.dart';
 //import 'package:flutter_application_1/user_screen/profile_screen.dart';
 import 'package:flutter_application_1/waste_collector/pickup.dart';
 import 'package:flutter_application_1/waste_collector/profile_screen.dart';
@@ -19,8 +20,12 @@ class _CollectorMainScreenState extends State<CollectorMainScreen> {
   @override
   void initState() {
     super.initState();
-    final userProvider = Provider.of<UserProvider>(context, listen: false);
-    userProvider.fetchUsername();
+    Future.microtask(
+      () => Provider.of<CollectorProvider>(
+        context,
+        listen: false,
+      ).fetchCollectorData(),
+    );
   }
 
   @override
@@ -98,9 +103,12 @@ class CollectorHomePage extends StatefulWidget {
 }
 
 class _CollectorHomePageState extends State<CollectorHomePage> {
+  final collectorId = FirebaseAuth.instance.currentUser!.uid;
+
   @override
   Widget build(BuildContext context) {
-    final username = context.watch<UserProvider>().username;
+    final collectorName = context.watch<CollectorProvider>().name;
+    //final username = context.watch<UserProvider>().username;
     final greeting = getGreeting();
     return Scaffold(
       backgroundColor: Colors.grey[50],
@@ -121,7 +129,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
               ),
             ),
             Text(
-              " ${username ?? 'Guest'}",
+              " ${collectorName ?? 'Guest'}",
               //'John Collector',
               style: const TextStyle(
                 fontSize: 18,
@@ -180,27 +188,22 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               // Summary Cards Row
-              Row(
-                children: [
-                  Expanded(
-                    child: _buildSummaryCard(
-                      title: 'Today\'s Pickups',
-                      count: '8',
-                      icon: Icons.local_shipping,
-                      color: Colors.blue,
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: _buildSummaryCard(
-                      title: 'Pending',
-                      count: '5',
-                      icon: Icons.pending_actions,
-                      color: Colors.orange,
-                    ),
-                  ),
-                ],
-              ),
+              SummaryCardsRow(collectorId: collectorId),
+
+              // Row(
+              //   children: [
+              //     Expanded(
+              //       child: _buildSummaryCard(
+              //         title: 'Today\'s Pickups',
+              //         count: '8',
+              //         icon: Icons.local_shipping,
+              //         color: Colors.blue,
+              //       ),
+              //     ),
+              //     const SizedBox(width: 12),
+              //     const Expanded(child: PendingSummaryCard()),
+              //   ],
+              // ),
               const SizedBox(height: 16),
 
               // Earnings Card
@@ -239,51 +242,51 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
     );
   }
 
-  Widget _buildSummaryCard({
-    required String title,
-    required String count,
-    required IconData icon,
-    required Color color,
-  }) {
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(12),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.grey.withOpacity(0.1),
-            spreadRadius: 1,
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: color.withOpacity(0.1),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Icon(icon, color: color, size: 24),
-          ),
-          const SizedBox(height: 12),
-          Text(
-            count,
-            style: const TextStyle(
-              fontSize: 24,
-              fontWeight: FontWeight.bold,
-              color: Colors.black87,
-            ),
-          ),
-          Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-        ],
-      ),
-    );
-  }
+  // Widget _buildSummaryCard({
+  //   required String title,
+  //   required String count,
+  //   required IconData icon,
+  //   required Color color,
+  // }) {
+  //   return Container(
+  //     padding: const EdgeInsets.all(16),
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       borderRadius: BorderRadius.circular(12),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: Colors.grey.withOpacity(0.1),
+  //           spreadRadius: 1,
+  //           blurRadius: 4,
+  //           offset: const Offset(0, 2),
+  //         ),
+  //       ],
+  //     ),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Container(
+  //           padding: const EdgeInsets.all(8),
+  //           decoration: BoxDecoration(
+  //             color: color.withOpacity(0.1),
+  //             borderRadius: BorderRadius.circular(8),
+  //           ),
+  //           child: Icon(icon, color: color, size: 24),
+  //         ),
+  //         const SizedBox(height: 12),
+  //         Text(
+  //           count,
+  //           style: const TextStyle(
+  //             fontSize: 24,
+  //             fontWeight: FontWeight.bold,
+  //             color: Colors.black87,
+  //           ),
+  //         ),
+  //         Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildEarningsCard() {
     return Container(

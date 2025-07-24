@@ -1,9 +1,18 @@
 import 'package:flutter/material.dart';
 
-class AboutPage extends StatelessWidget {
+class AboutPage extends StatefulWidget {
   const AboutPage({super.key});
 
-  // App configuration constants
+  @override
+  State<AboutPage> createState() => _AboutPageState();
+}
+
+class _AboutPageState extends State<AboutPage> with TickerProviderStateMixin {
+  late AnimationController _headerAnimationController;
+  late AnimationController _contentAnimationController;
+  late Animation<double> _headerAnimation;
+  late Animation<double> _contentAnimation;
+
   static const String _appName = 'SortCycle';
   static const String _appTagline =
       'Waste Classification & Environmental Awareness';
@@ -11,287 +20,493 @@ class AboutPage extends StatelessWidget {
   static const String _copyrightYear = '2025';
   static const String _teamName = 'SortCycle Team';
 
-  // Content data
   static const String _appDescription =
       'SortCycle is an intelligent waste classification app that helps users sort waste into six categories: plastic, metal, glass, cardboard, paper, and trash. The app uses machine learning to identify waste items and provide helpful information about how to recycle them properly.';
 
   static const String _missionStatement =
       'SortCycle aims to raise environmental awareness and promote responsible waste disposal through technology. Every correct classification and recycling action helps build a cleaner and more sustainable future.';
 
-  static const List<String> _features = [
-    'Classify waste instantly using your camera or gallery.',
-    'Receive tailored recycling tips.',
-    'Understand the environmental impact of each item.',
-    'Request and track pickups from local collectors.',
-    'View stats about your recycling activity.',
+  static const List<FeatureItem> _features = [
+    FeatureItem(
+      icon: Icons.camera_alt,
+      title: 'Smart Classification',
+      description: 'Classify waste instantly using your camera or gallery.',
+    ),
+    FeatureItem(
+      icon: Icons.tips_and_updates,
+      title: 'Recycling Tips',
+      description: 'Receive tailored recycling tips for each item.',
+    ),
+    FeatureItem(
+      icon: Icons.eco,
+      title: 'Environmental Impact',
+      description: 'Understand the environmental impact of each item.',
+    ),
+    FeatureItem(
+      icon: Icons.local_shipping,
+      title: 'Pickup Tracking',
+      description: 'Request and track pickups from local collectors.',
+    ),
+    FeatureItem(
+      icon: Icons.analytics,
+      title: 'Activity Stats',
+      description: 'View detailed stats about your recycling activity.',
+    ),
   ];
 
-  // Theme constants
-  static const double _iconSize = 80.0;
-  static const double _standardSpacing = 16.0;
-  static const double _largeSpacing = 24.0;
-  static const double _smallSpacing = 8.0;
-  static const double _tinySpacing = 4.0;
+  @override
+  void initState() {
+    super.initState();
+    _headerAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1000),
+      vsync: this,
+    );
+    _contentAnimationController = AnimationController(
+      duration: const Duration(milliseconds: 1200),
+      vsync: this,
+    );
+
+    _headerAnimation = CurvedAnimation(
+      parent: _headerAnimationController,
+      curve: Curves.easeOutBack,
+    );
+    _contentAnimation = CurvedAnimation(
+      parent: _contentAnimationController,
+      curve: Curves.easeOutCubic,
+    );
+
+    _headerAnimationController.forward();
+    Future.delayed(const Duration(milliseconds: 300), () {
+      _contentAnimationController.forward();
+    });
+  }
+
+  @override
+  void dispose() {
+    _headerAnimationController.dispose();
+    _contentAnimationController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final primaryColor = Colors.green.shade700;
-
     return Scaffold(
-      appBar: _buildAppBar(primaryColor),
-      body: _buildBody(theme, primaryColor),
+      body: Container(
+        decoration: const BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topCenter,
+            end: Alignment.bottomCenter,
+            colors: [Color(0xFF2E7D32), Color(0xFF388E3C), Color(0xFF4CAF50)],
+          ),
+        ),
+        child: SafeArea(
+          child: Column(
+            children: [
+              _buildCustomAppBar(),
+              Expanded(child: _buildBody()),
+            ],
+          ),
+        ),
+      ),
     );
   }
 
-  PreferredSizeWidget _buildAppBar(Color primaryColor) {
-    return AppBar(
-      title: const Text('About $_appName'),
-      backgroundColor: primaryColor,
-      elevation: 2,
-      foregroundColor: Colors.white,
-    );
-  }
-
-  Widget _buildBody(ThemeData theme, Color primaryColor) {
-    return SingleChildScrollView(
-      padding: const EdgeInsets.all(_standardSpacing),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildCustomAppBar() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      child: Row(
         children: [
-          _buildAppHeader(theme, primaryColor),
-          const SizedBox(height: _largeSpacing),
-          _buildSection(
-            title: 'What is $_appName?',
-            content: const _AppDescriptionWidget(description: _appDescription),
-            theme: theme,
-          ),
-          const SizedBox(height: _standardSpacing),
-          _buildSection(
-            title: 'Features:',
-            content: const _FeaturesList(features: _features),
-            theme: theme,
-          ),
-          const SizedBox(height: _standardSpacing),
-          _buildSection(
-            title: 'Our Mission',
-            content: const _AppDescriptionWidget(
-              description: _missionStatement,
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
             ),
-            theme: theme,
+            child: IconButton(
+              icon: const Icon(Icons.arrow_back, color: Colors.white),
+              onPressed: () => Navigator.pop(context),
+            ),
           ),
-          const SizedBox(height: _largeSpacing),
-          _buildFooter(),
+          const SizedBox(width: 16),
+          const Text(
+            'About SortCycle',
+            style: TextStyle(
+              color: Colors.white,
+              fontSize: 24,
+              fontWeight: FontWeight.bold,
+            ),
+          ),
         ],
       ),
     );
   }
 
-  Widget _buildAppHeader(ThemeData theme, Color primaryColor) {
-    return _AppHeaderWidget(
-      appName: _appName,
-      tagline: _appTagline,
-      primaryColor: primaryColor,
-      theme: theme,
+  Widget _buildBody() {
+    return Container(
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(30),
+          topRight: Radius.circular(30),
+        ),
+      ),
+      child: SingleChildScrollView(
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          children: [
+            AnimatedBuilder(
+              animation: _headerAnimation,
+              builder: (context, child) {
+                return Transform.scale(
+                  scale: _headerAnimation.value,
+                  child: Opacity(
+                    opacity: _headerAnimation.value.clamp(0.0, 1.0),
+                    child: _buildAppHeader(),
+                  ),
+                );
+              },
+            ),
+            const SizedBox(height: 40),
+            AnimatedBuilder(
+              animation: _contentAnimation,
+              builder: (context, child) {
+                return Transform.translate(
+                  offset: Offset(0, 50 * (1 - _contentAnimation.value)),
+                  child: Opacity(
+                    opacity: _contentAnimation.value.clamp(0.0, 1.0),
+                    child: Column(
+                      children: [
+                        _buildWhatIsSection(),
+                        const SizedBox(height: 32),
+                        _buildFeaturesSection(),
+                        const SizedBox(height: 32),
+                        _buildMissionSection(),
+                        const SizedBox(height: 40),
+                        _buildFooter(),
+                      ],
+                    ),
+                  ),
+                );
+              },
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildAppHeader() {
+    return Container(
+      padding: const EdgeInsets.all(32),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.green.shade50, Colors.green.shade100],
+        ),
+        borderRadius: BorderRadius.circular(24),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.green.withOpacity(0.3),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.green.shade600, Colors.green.shade700],
+              ),
+              shape: BoxShape.circle,
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.green.withOpacity(0.4),
+                  blurRadius: 20,
+                  offset: const Offset(0, 5),
+                ),
+              ],
+            ),
+            child: const Icon(Icons.recycling, size: 60, color: Colors.white),
+          ),
+          const SizedBox(height: 20),
+          ShaderMask(
+            shaderCallback: (bounds) => LinearGradient(
+              colors: [Colors.green.shade700, Colors.green.shade900],
+            ).createShader(bounds),
+            child: Text(
+              _appName,
+              style: const TextStyle(
+                fontSize: 32,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            _appTagline,
+            textAlign: TextAlign.center,
+            style: TextStyle(
+              fontSize: 16,
+              color: Colors.green.shade700,
+              fontWeight: FontWeight.w500,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWhatIsSection() {
+    return _buildSection(
+      title: 'What is $_appName?',
+      icon: Icons.help_outline,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.blue.shade50, Colors.blue.shade100],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.blue.shade200, width: 1),
+        ),
+        child: Text(
+          _appDescription,
+          style: TextStyle(
+            fontSize: 16,
+            height: 1.6,
+            color: Colors.grey.shade700,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFeaturesSection() {
+    return _buildSection(
+      title: 'Amazing Features',
+      icon: Icons.star,
+      child: Column(
+        children: _features.asMap().entries.map((entry) {
+          final index = entry.key;
+          final feature = entry.value;
+          return Container(
+            margin: const EdgeInsets.only(bottom: 16),
+            child: TweenAnimationBuilder<double>(
+              duration: Duration(milliseconds: 600 + (index * 100)),
+              tween: Tween(begin: 0, end: 1),
+              builder: (context, value, child) {
+                return Transform.translate(
+                  offset: Offset(30 * (1 - value), 0),
+                  child: Opacity(
+                    opacity: value.clamp(0.0, 1.0),
+                    child: _buildFeatureCard(feature),
+                  ),
+                );
+              },
+            ),
+          );
+        }).toList(),
+      ),
+    );
+  }
+
+  Widget _buildFeatureCard(FeatureItem feature) {
+    return Container(
+      padding: const EdgeInsets.all(20),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(16),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withOpacity(0.1),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+        border: Border.all(color: Colors.grey.shade100, width: 1),
+      ),
+      child: Row(
+        children: [
+          Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              gradient: LinearGradient(
+                begin: Alignment.topLeft,
+                end: Alignment.bottomRight,
+                colors: [Colors.green.shade400, Colors.green.shade600],
+              ),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(feature.icon, color: Colors.white, size: 24),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  feature.title,
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  feature.description,
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey.shade600,
+                    height: 1.4,
+                  ),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildMissionSection() {
+    return _buildSection(
+      title: 'Our Mission',
+      icon: Icons.flag,
+      child: Container(
+        padding: const EdgeInsets.all(24),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            begin: Alignment.topLeft,
+            end: Alignment.bottomRight,
+            colors: [Colors.green.shade50, Colors.green.shade100],
+          ),
+          borderRadius: BorderRadius.circular(20),
+          border: Border.all(color: Colors.green.shade200, width: 1),
+        ),
+        child: Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.green.shade600,
+                shape: BoxShape.circle,
+              ),
+              child: const Icon(Icons.eco, color: Colors.white, size: 32),
+            ),
+            const SizedBox(width: 20),
+            Expanded(
+              child: Text(
+                _missionStatement,
+                style: TextStyle(
+                  fontSize: 16,
+                  height: 1.6,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
   Widget _buildSection({
     required String title,
-    required Widget content,
-    required ThemeData theme,
+    required IconData icon,
+    required Widget child,
   }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _SectionTitle(title: title, theme: theme),
-        const SizedBox(height: _smallSpacing),
-        content,
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: Colors.green.shade100,
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, color: Colors.green.shade700, size: 20),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              title,
+              style: const TextStyle(
+                fontSize: 24,
+                fontWeight: FontWeight.bold,
+                color: Colors.black87,
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 20),
+        child,
       ],
     );
   }
 
   Widget _buildFooter() {
-    return const _AppFooterWidget(
-      version: _appVersion,
-      copyrightYear: _copyrightYear,
-      teamName: _teamName,
-    );
-  }
-}
-
-// Extracted widget for app header
-class _AppHeaderWidget extends StatelessWidget {
-  final String appName;
-  final String tagline;
-  final Color primaryColor;
-  final ThemeData theme;
-
-  const _AppHeaderWidget({
-    required this.appName,
-    required this.tagline,
-    required this.primaryColor,
-    required this.theme,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.grey.shade50, Colors.grey.shade100],
+        ),
+        borderRadius: BorderRadius.circular(20),
+      ),
       child: Column(
         children: [
-          Icon(Icons.recycling, size: AboutPage._iconSize, color: primaryColor),
-          const SizedBox(height: 12),
-          Text(
-            appName,
-            style: theme.textTheme.headlineMedium?.copyWith(
-              fontWeight: FontWeight.bold,
-              color: primaryColor,
-            ),
-          ),
-          const SizedBox(height: AboutPage._tinySpacing),
-          Text(
-            tagline,
-            textAlign: TextAlign.center,
-            style: theme.textTheme.bodyLarge?.copyWith(color: Colors.grey[600]),
-          ),
-        ],
-      ),
-    );
-  }
-}
-
-// Extracted widget for section titles
-class _SectionTitle extends StatelessWidget {
-  final String title;
-  final ThemeData theme;
-
-  const _SectionTitle({required this.title, required this.theme});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      title,
-      style: theme.textTheme.headlineSmall?.copyWith(
-        fontWeight: FontWeight.bold,
-        color: Colors.grey[800],
-      ),
-    );
-  }
-}
-
-// Extracted widget for app description
-class _AppDescriptionWidget extends StatelessWidget {
-  final String description;
-
-  const _AppDescriptionWidget({required this.description});
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      description,
-      style: Theme.of(
-        context,
-      ).textTheme.bodyLarge?.copyWith(height: 1.5, color: Colors.grey[700]),
-    );
-  }
-}
-
-// Extracted widget for features list
-class _FeaturesList extends StatelessWidget {
-  final List<String> features;
-
-  const _FeaturesList({required this.features});
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: features.map((feature) => BulletPoint(text: feature)).toList(),
-    );
-  }
-}
-
-// Extracted widget for app footer
-class _AppFooterWidget extends StatelessWidget {
-  final String version;
-  final String copyrightYear;
-  final String teamName;
-
-  const _AppFooterWidget({
-    required this.version,
-    required this.copyrightYear,
-    required this.teamName,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final footerStyle = theme.textTheme.bodyMedium?.copyWith(
-      color: Colors.grey[600],
-    );
-
-    return Column(
-      children: [
-        Text(
-          'Version $version',
-          textAlign: TextAlign.center,
-          style: footerStyle,
-        ),
-        const SizedBox(height: AboutPage._smallSpacing),
-        Text(
-          '© $copyrightYear $teamName',
-          textAlign: TextAlign.center,
-          style: footerStyle,
-        ),
-      ],
-    );
-  }
-}
-
-// Improved BulletPoint widget
-class BulletPoint extends StatelessWidget {
-  final String text;
-  final Color? bulletColor;
-  final double bulletSize;
-  final double spacing;
-
-  const BulletPoint({
-    super.key,
-    required this.text,
-    this.bulletColor,
-    this.bulletSize = 16.0,
-    this.spacing = 4.0,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    final theme = Theme.of(context);
-    final effectiveBulletColor = bulletColor ?? Colors.green.shade700;
-
-    return Padding(
-      padding: EdgeInsets.symmetric(vertical: spacing),
-      child: Row(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
           Container(
-            margin: const EdgeInsets.only(top: 6, right: 8),
-            width: 6,
-            height: 6,
+            padding: const EdgeInsets.all(12),
             decoration: BoxDecoration(
-              color: effectiveBulletColor,
+              color: Colors.grey.shade600,
               shape: BoxShape.circle,
             ),
-          ),
-          Expanded(
-            child: Text(
-              text,
-              style: theme.textTheme.bodyLarge?.copyWith(
-                height: 1.4,
-                color: Colors.grey[700],
-              ),
+            child: const Icon(
+              Icons.info_outline,
+              color: Colors.white,
+              size: 24,
             ),
+          ),
+          const SizedBox(height: 16),
+          Text(
+            'Version $_appVersion',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade700,
+            ),
+          ),
+          const SizedBox(height: 8),
+          Text(
+            '© $_copyrightYear $_teamName',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
         ],
       ),
     );
   }
+}
+
+class FeatureItem {
+  final IconData icon;
+  final String title;
+  final String description;
+
+  const FeatureItem({
+    required this.icon,
+    required this.title,
+    required this.description,
+  });
 }

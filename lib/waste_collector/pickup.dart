@@ -1,11 +1,18 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_1/chat_page/chat_page.dart';
+import 'package:flutter_application_1/chat_page/main_page.dart';
 import 'package:intl/intl.dart';
 
 class PickupManagementPage extends StatefulWidget {
   final String collectorId;
+  final String collectorName;
 
-  const PickupManagementPage({super.key, required this.collectorId});
+  const PickupManagementPage({
+    super.key,
+    required this.collectorId,
+    required this.collectorName,
+  });
 
   @override
   State<PickupManagementPage> createState() => _PickupManagementPageState();
@@ -18,7 +25,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(length: 3, vsync: this);
   }
 
   @override
@@ -47,12 +54,22 @@ class _PickupManagementPageState extends State<PickupManagementPage>
           tabs: const [
             Tab(icon: Icon(Icons.inbox), text: 'Incoming Requests'),
             Tab(icon: Icon(Icons.local_shipping), text: 'Your Pickups'),
+            Tab(icon: Icon(Icons.chat), text: 'Chat'),
           ],
         ),
       ),
       body: TabBarView(
         controller: _tabController,
-        children: [_buildIncomingRequestsTab(), _buildYourPickupsTab()],
+        children: [
+          _buildIncomingRequestsTab(),
+          _buildYourPickupsTab(),
+          // const ChatPage(
+          //   collectorName: 'collectorName',
+          //   collectorId: 'collectorId',
+          //   requestId: 'requestId',
+          // ),
+          const ChatListPage(),
+        ],
       ),
     );
   }
@@ -336,6 +353,33 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               ),
               const SizedBox(width: 12),
               Expanded(
+                child: ElevatedButton.icon(
+                  onPressed: () {
+                    Navigator.push(
+                      context,
+                      MaterialPageRoute(
+                        builder: (_) => ChatPage(
+                          collectorId: widget.collectorId,
+                          requestId: requestId,
+                          collectorName:
+                              request['collectorName'] ?? 'Collector',
+                          userName: request['userName'] ?? 'User',
+                        ),
+                      ),
+                    );
+                  },
+                  icon: const Icon(Icons.navigation, size: 18),
+                  label: const Text('Chat'),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.blue,
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
                 child: ElevatedButton(
                   onPressed: () {
                     _showAcceptDialog(requestId);
@@ -497,13 +541,17 @@ class _PickupManagementPageState extends State<PickupManagementPage>
           const SizedBox(height: 16),
 
           // Action Buttons
-          _buildActionButtons(requestId, status),
+          _buildActionButtons(requestId, status, request),
         ],
       ),
     );
   }
 
-  Widget _buildActionButtons(String requestId, String status) {
+  Widget _buildActionButtons(
+    String requestId,
+    String status,
+    Map<String, dynamic> request,
+  ) {
     switch (status.toLowerCase()) {
       case 'accepted':
         return Row(
@@ -522,44 +570,99 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               ),
             ),
             const SizedBox(width: 12),
-            // Expanded(
-            //   child: ElevatedButton.icon(
-            //     onPressed: () => _navigateToLocation(requestId),
-            //     icon: const Icon(Icons.navigation, size: 18),
-            //     label: const Text('Navigate'),
-            //     style: ElevatedButton.styleFrom(
-            //       backgroundColor: Colors.blue,
-            //       shape: RoundedRectangleBorder(
-            //         borderRadius: BorderRadius.circular(8),
-            //       ),
-            //     ),
-            //   ),
-            // ),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatPage(
+                        collectorId: widget.collectorId,
+                        requestId: requestId,
+                        collectorName: request['collectorName'] ?? 'Collector',
+                        userName: request['userName'] ?? 'User',
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.navigation, size: 18),
+                label: const Text('Chat'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.blue,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
           ],
         );
 
       case 'in_progress':
         return Row(
           children: [
-            ElevatedButton.icon(
-              onPressed: () => _showCompleteDialog(requestId),
-              icon: const Icon(Icons.check, size: 18),
-              label: const Text('Complete Pickup'),
-              style: ElevatedButton.styleFrom(
-                backgroundColor: Colors.green,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(8),
+            Flexible(
+              fit: FlexFit.tight,
+              child: ElevatedButton.icon(
+                onPressed: () => _showCompleteDialog(requestId),
+                icon: const Icon(Icons.check, size: 18),
+                label: const Text('Complete'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
                 ),
               ),
             ),
-            const SizedBox(width: 12),
-            Expanded(
+            const SizedBox(width: 8),
+            Flexible(
+              fit: FlexFit.tight,
               child: ElevatedButton.icon(
                 onPressed: () => _navigateToLocation(requestId),
                 icon: const Icon(Icons.navigation, size: 18),
                 label: const Text('Navigate'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: Colors.blue,
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 12,
+                  ),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(width: 8),
+            Flexible(
+              fit: FlexFit.tight,
+              child: ElevatedButton.icon(
+                onPressed: () {
+                  Navigator.push(
+                    context,
+                    MaterialPageRoute(
+                      builder: (_) => ChatPage(
+                        collectorId: widget.collectorId,
+                        requestId: requestId,
+                        collectorName: request['collectorName'] ?? 'Collector',
+                        userName: request['userName'] ?? 'User',
+                      ),
+                    ),
+                  );
+                },
+                icon: const Icon(Icons.chat, size: 18),
+                label: const Text('Chat'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: const Color.fromARGB(255, 91, 3, 244),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 4,
+                    vertical: 12,
+                  ),
                   shape: RoundedRectangleBorder(
                     borderRadius: BorderRadius.circular(8),
                   ),

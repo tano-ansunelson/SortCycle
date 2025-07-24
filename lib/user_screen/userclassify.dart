@@ -1,28 +1,23 @@
 import 'dart:io';
+
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_application_1/model/waste_classify_model.dart';
 import 'package:flutter_application_1/user_screen/classification_result_screen.dart';
 import 'package:flutter_application_1/user_screen/homecontent.dart';
-import 'package:flutter_application_1/user_screen/recent_classification_tab.dart';
-import 'package:flutter_application_1/user_screen/recent_screen.dart';
-//import 'package:flutter_application_1/user_screen/waste_form.dart';
-import 'package:flutter_application_1/user_screen/stats_screen.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:logger/web.dart';
-import 'package:lucide_icons/lucide_icons.dart';
 
-class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+class Classifywaste extends StatefulWidget {
+  const Classifywaste({super.key});
 
   @override
-  State<HomeScreen> createState() => _HomeScreenState();
+  State<Classifywaste> createState() => _ClassifywasteState();
 }
 
 final MLService _mlService = MLService();
 
-class _HomeScreenState extends State<HomeScreen> {
-  int myIndex = 2;
+class _ClassifywasteState extends State<Classifywaste> {
   File? image;
 
   final log = Logger();
@@ -102,11 +97,8 @@ class _HomeScreenState extends State<HomeScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> screens = [
-      WasteForm(),
-      const StatsScreen(),
-
-      HomeContent(
+    return Scaffold(
+      body: HomeContent(
         image: image,
         pickImageCallback: pickImage,
         onSubmit: () async {
@@ -115,67 +107,6 @@ class _HomeScreenState extends State<HomeScreen> {
           }
         },
       ),
-      const RecentClassificationsTab(),
-    ];
-    return Scaffold(
-      backgroundColor: const Color(0xFFF8FBF9),
-
-      body: screens[myIndex],
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: Colors.white,
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.05),
-              blurRadius: 10,
-              offset: const Offset(0, -2),
-            ),
-          ],
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          selectedItemColor: const Color(0xFF2E7D32),
-          unselectedItemColor: Colors.grey.shade600,
-          currentIndex: myIndex,
-          elevation: 0,
-          type: BottomNavigationBarType.fixed,
-          selectedLabelStyle: const TextStyle(fontWeight: FontWeight.w600),
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.local_shipping_outlined),
-              activeIcon: Icon(Icons.local_shipping),
-              label: 'Pickup',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(LucideIcons.barChart2),
-              label: 'Stats',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home_outlined),
-              activeIcon: Icon(Icons.home),
-              label: 'Home',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(LucideIcons.history),
-              label: 'Recent',
-            ),
-          ],
-          onTap: (index) {
-            setState(() {
-              myIndex = index;
-            });
-          },
-        ),
-      ),
-      // Floating action button for location
-      // floatingActionButton: FloatingActionButton(
-      //   onPressed: () {
-      //     Navigator.pushNamed(context, '/recycling-centers');
-      //   },
-      //   tooltip: 'Location',
-      //   backgroundColor: Colors.green,
-      //   child: const Icon(Icons.location_on_outlined),
-      // ),
     );
   }
 }

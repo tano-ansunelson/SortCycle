@@ -2,25 +2,26 @@ import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_application_1/chat_page/chat_page.dart';
+import 'package:flutter_application_1/chat_page/main_page.dart';
 import 'package:flutter_application_1/provider/provider.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:flutter_application_1/user_screen/about_screen.dart';
 import 'package:flutter_application_1/user_screen/edit_profile.dart';
-import 'package:flutter_application_1/user_screen/recent_screen.dart';
+//import 'package:flutter_application_1/user_screen/recent_screen.dart';
+import 'package:flutter_application_1/user_screen/sign_in_screen.dart';
+import 'package:flutter_application_1/user_screen/userclassify.dart';
 import 'package:flutter_application_1/user_screen/waste_form.dart';
+import 'package:flutter_application_1/waste_collector/collector_about.dart';
 import 'package:flutter_application_1/waste_collector/collector_signup.dart';
 import 'package:flutter_application_1/waste_collector/editing_page.dart';
 import 'package:provider/provider.dart';
 import 'firebase_options.dart';
-//import 'routes/app_routes.dart';
 import 'service/welcome_screen.dart';
-import 'user_screen/home_screen.dart';
-import 'user_screen/sign_in.dart';
+import 'user_screen/bottombar.dart';
 import 'user_screen/sign_up.dart';
 import 'user_screen/profile_screen.dart';
-//import 'user_screen/recent_classification_tab.dart';
-import 'user_screen/stats_screen.dart';
-import 'user_screen/nearby_center_screen.dart';
+//import 'user_screen/stats_screen.dart';
 import 'service/role_selection.dart';
 import 'waste_collector/collector_homepage.dart';
 import 'waste_collector/pickup.dart';
@@ -49,13 +50,25 @@ void main() async {
   );
 }
 
-class MyApp extends StatelessWidget {
+class MyApp extends StatefulWidget {
   const MyApp({super.key});
 
   @override
-  Widget build(BuildContext context) {
-    final user = FirebaseAuth.instance.currentUser;
+  State<MyApp> createState() => _MyAppState();
+}
 
+class _MyAppState extends State<MyApp> {
+  late Widget _initialScreen;
+
+  @override
+  void initState() {
+    super.initState();
+    final user = FirebaseAuth.instance.currentUser;
+    _initialScreen = user != null ? const HomeScreen() : const WelcomeScreen();
+  }
+
+  @override
+  Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
       title: 'Waste Classifier',
@@ -63,50 +76,53 @@ class MyApp extends StatelessWidget {
         colorScheme: ColorScheme.fromSeed(seedColor: Colors.deepPurple),
         useMaterial3: true,
       ),
-      initialRoute: user != null ? AppRoutes.home : AppRoutes.welcome,
+      home: _initialScreen,
       onGenerateRoute: (settings) {
         final args = settings.arguments as Map<String, dynamic>? ?? {};
 
         switch (settings.name) {
           case AppRoutes.welcome:
             return _createRoute(const WelcomeScreen());
-
           case AppRoutes.signIn:
             return _createRoute(const SignInScreen());
-
           case AppRoutes.signUp:
             final role = args['role'] ?? 'user';
             return _createRoute(SignUpScreen(role: role));
           case AppRoutes.collectorSignup:
             final role = args['role'] ?? 'collector';
-            return _createRoute(CollectorSignup(role: role));
 
+            return _createRoute(CollectorSignup(role: role));
           case AppRoutes.roleSelection:
             return _createRoute(const RoleSelectionScreen());
-
           case AppRoutes.home:
             return _createRoute(const HomeScreen());
 
           case AppRoutes.profile:
             return _createRoute(const ProfileScreen());
+          case AppRoutes.wastepickupformupdated:
+            // print('Navigating to WastePickupFormUpdated');
+            final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+            return _createRoute(WastePickupFormUpdated(userId: userId));
 
-          case AppRoutes.recent:
-            return _createRoute(WasteForm());
-
-          case AppRoutes.stats:
-            return _createRoute(const StatsScreen());
-
-          case AppRoutes.recyclingCenters:
-            return _createRoute(const NearbyCentersScreen());
-
+          case AppRoutes.chatpage:
+            final args = settings.arguments as Map<String, dynamic>;
+            return _createRoute(
+              ChatPage(
+                collectorName: args['collectorName'],
+                collectorId: args['collectorId'],
+                requestId: args['requestId'],
+              ),
+            );
           case AppRoutes.collectorHome:
             return _createRoute(const CollectorMainScreen());
-
           case AppRoutes.pickup:
             final collectorId = args['collectorId'] as String?;
             if (collectorId != null) {
               return _createRoute(
-                PickupManagementPage(collectorId: collectorId),
+                PickupManagementPage(
+                  collectorId: collectorId,
+                  collectorName: '',
+                ),
               );
             } else {
               return _createRoute(
@@ -115,7 +131,6 @@ class MyApp extends StatelessWidget {
                 ),
               );
             }
-
           case AppRoutes.collectorProfile:
             return _createRoute(const CollectorProfileScreen());
           case AppRoutes.collectorProfileEditPage:
@@ -124,10 +139,16 @@ class MyApp extends StatelessWidget {
             return _createRoute(const UserProfileEditPage());
           case AppRoutes.aboutus:
             return _createRoute(const AboutPage());
-          case AppRoutes.requestpickup:
-            final userId = args['userId'] as String?;
-            return _createRoute(WastePickupFormUpdated(userId: userId!));
+          case AppRoutes.chatlistpage:
+            return _createRoute(const ChatListPage());
+          case AppRoutes.collectorabout:
+            return _createRoute(const CollectorAboutPage());
+          case AppRoutes.classifywaste:
+            return _createRoute(const Classifywaste());
 
+          // case AppRoutes.requestpickup:
+          //   final userId = args['userId'] as String?;
+          //   return _createRoute(WastePickupFormUpdated(userId: userId!));
           default:
             return _createRoute(
               Scaffold(
@@ -140,7 +161,6 @@ class MyApp extends StatelessWidget {
     );
   }
 
-  // Custom page transition
   static PageRouteBuilder _createRoute(Widget page) {
     return PageRouteBuilder(
       pageBuilder: (context, animation, secondaryAnimation) => page,
@@ -153,7 +173,6 @@ class MyApp extends StatelessWidget {
           begin: begin,
           end: end,
         ).chain(CurveTween(curve: curve));
-
         return SlideTransition(position: animation.drive(tween), child: child);
       },
       transitionDuration: const Duration(milliseconds: 300),

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:flutter_application_1/chat_page/chat_page.dart';
 import 'package:intl/intl.dart';
 
 class UserRequestsScreen extends StatefulWidget {
@@ -18,7 +19,13 @@ class _UserRequestsScreenState extends State<UserRequestsScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF8FFFE),
-
+      appBar: AppBar(
+        centerTitle: true,
+        automaticallyImplyLeading: false,
+        title: const Text('My Pickups'),
+        backgroundColor: const Color(0xFF2E7D32),
+        foregroundColor: Colors.white,
+      ),
       body: StreamBuilder<QuerySnapshot>(
         stream: _firestore
             .collection('pickup_requests')
@@ -281,6 +288,7 @@ class RequestCard extends StatelessWidget {
             const SizedBox(height: 12),
 
             // Action Buttons
+            // Action Buttons
             Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
@@ -299,6 +307,27 @@ class RequestCard extends StatelessWidget {
                   onPressed: () => _showRequestDetails(context),
                   child: const Text('View Details'),
                 ),
+
+                const SizedBox(width: 8),
+
+                if (collectorId != null)
+                  TextButton(
+                    onPressed: () {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (_) => ChatPage(
+                            collectorId: collectorId,
+                            collectorName:
+                                requestData['collectorName'] ?? 'Collector',
+                            requestId: requestId,
+                            userName: requestData['userName'] ?? 'User',
+                          ),
+                        ),
+                      );
+                    },
+                    child: const Text('Chat'),
+                  ),
               ],
             ),
           ],

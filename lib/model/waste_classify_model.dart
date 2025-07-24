@@ -8,34 +8,6 @@ import 'package:image/image.dart' as img;
 import 'package:flutter/material.dart';
 import 'dart:math' as math;
 
-//import 'package:image/image.dart' as img;
-//java
-//CustomModelDownloadConditions conditions = new CustomModelDownloadConditions.Builder()
-//    .requireWifi()
-//  .build();
-//FirebaseModelDownloader.getInstance()
-//  .getModel("waste_classification", DownloadType.LOCAL_MODEL, conditions)
-// .addOnSuccessListener(new OnSuccessListener<CustomModel>() {
-// @Override
-//public void onSuccess(CustomModel model) {
-// Download complete. Depending on your app, you could enable
-// the ML feature, or switch from the local model to the remote
-// model, etc.
-//    }
-//  });
-
-//kotlin
-
-//  val conditions = CustomModelDownloadConditions.Builder()
-//  .requireWifi()
-//   .build()
-//FirebaseModelDownloader.getInstance()
-//   .getModel("waste_classification", DownloadType.LOCAL_MODEL, conditions)
-//   .addOnCompleteListener {
-// Download complete. Depending on your app, you could enable the ML
-// feature, or switch from the local model to the remote model, etc.
-//   }
-
 // ml_service.dart
 
 final log = Logger();
@@ -458,30 +430,3 @@ class HomeScreenIntegration {
     _mlService.dispose();
   }
 }
-
-// Usage in your home screen:
-/*
-class _HomeScreenState extends State<HomeScreen> {
-  final HomeScreenIntegration _integration = HomeScreenIntegration();
-
-  Future<void> _pickAndClassifyImage(ImageSource source) async {
-    try {
-      final XFile? image = await ImagePicker().pickImage(source: source);
-      
-      if (image != null) {
-        await _integration.classifyAndShowResult(context, image.path);
-      }
-    } catch (e) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Error: $e')),
-      );
-    }
-  }
-
-  @override
-  void dispose() {
-    _integration.dispose();
-    super.dispose();
-  }
-}
-*/

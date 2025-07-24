@@ -1,6 +1,8 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/provider/provider.dart';
+//import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:flutter_application_1/service/greetings.dart';
 import 'package:flutter_application_1/waste_collector/pending_summary.dart';
 //import 'package:flutter_application_1/user_screen/profile_screen.dart';
@@ -36,7 +38,7 @@ class _CollectorMainScreenState extends State<CollectorMainScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          PickupManagementPage(collectorId: collectorId!),
+          PickupManagementPage(collectorId: collectorId!, collectorName: ''),
           const CollectorHomePage(),
           const CollectorProfileScreen(),
         ],
@@ -109,23 +111,23 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
   Widget build(BuildContext context) {
     final collectorName = context.watch<CollectorProvider>().name;
     //final username = context.watch<UserProvider>().username;
-    final greeting = getGreeting();
+    //final greeting = getGreeting();
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
         automaticallyImplyLeading: false,
         elevation: 0,
         backgroundColor: Colors.white,
-        title: Column(
+        title: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             Text(
-              greeting,
+              'Hi,',
               style: TextStyle(
-                letterSpacing: 0.5,
+                //letterSpacing: 0.5,
                 fontSize: 14,
                 color: Colors.grey[600],
-                fontWeight: FontWeight.normal,
+                fontWeight: FontWeight.bold,
               ),
             ),
             Text(
@@ -233,7 +235,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                 ),
               ),
               const SizedBox(height: 12),
-              _buildRecentPickupsList(),
+              _buildRecentPickupsList(collectorId),
               const SizedBox(height: 80), // Extra space for bottom nav
             ],
           ),
@@ -386,9 +388,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           title: 'View Requests',
           icon: Icons.inbox,
           color: Colors.blue,
-          onTap: () {
-            // Navigate to pickup requests
-          },
+          onTap: () {},
         ),
         _buildQuickActionItem(
           title: 'Start Route',
@@ -403,6 +403,8 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           icon: Icons.history,
           color: Colors.purple,
           onTap: () {
+            // _buildIncomingRequestsTab(),
+            // _buildYourPickupsTab();
             // View pickup history
           },
         ),
@@ -466,124 +468,130 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
     );
   }
 
-  Widget _buildRecentPickupsList() {
-    final recentPickups = [
-      {
-        'id': '#P001',
-        'address': '123 Main St, Kumasi',
-        'time': '2 hours ago',
-        'status': 'Completed',
-        'items': 3,
-        'earning': 'GH₵ 45',
-      },
-      {
-        'id': '#P002',
-        'address': '456 Oak Ave, Kumasi',
-        'time': '4 hours ago',
-        'status': 'Completed',
-        'items': 2,
-        'earning': 'GH₵ 30',
-      },
-      {
-        'id': '#P003',
-        'address': '789 Pine Rd, Kumasi',
-        'time': '6 hours ago',
-        'status': 'Completed',
-        'items': 5,
-        'earning': 'GH₵ 75',
-      },
-    ];
+  Widget _buildRecentPickupsList(String collectorId) {
+    //final now = Timestamp.now();
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('pickup_requests')
+          .where('collectorId', isEqualTo: collectorId)
+          .where('status', isEqualTo: 'completed')
+          .limit(4)
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
 
-    return ListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      itemCount: recentPickups.length,
-      itemBuilder: (context, index) {
-        final pickup = recentPickups[index];
-        return Container(
-          margin: const EdgeInsets.only(bottom: 12),
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.grey.withOpacity(0.1),
-                spreadRadius: 1,
-                blurRadius: 4,
-                offset: const Offset(0, 2),
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Center(child: Text("No recent pickups found."));
+        }
+
+        final recentPickups = snapshot.data!.docs;
+
+        return ListView.builder(
+          shrinkWrap: true,
+          physics: const NeverScrollableScrollPhysics(),
+          itemCount: recentPickups.length,
+          itemBuilder: (context, index) {
+            final pickup = recentPickups[index].data() as Map<String, dynamic>;
+            final timestamp = pickup['pickupDate'] as Timestamp?;
+            final pickupTime = timestamp?.toDate();
+            final formattedTime = pickupTime != null
+                ? timeAgo(pickupTime)
+                : 'Unknown time';
+
+            return Container(
+              margin: const EdgeInsets.only(bottom: 12),
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.white,
+                borderRadius: BorderRadius.circular(12),
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.grey.withOpacity(0.1),
+                    spreadRadius: 1,
+                    blurRadius: 4,
+                    offset: const Offset(0, 2),
+                  ),
+                ],
               ),
-            ],
-          ),
-          child: Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(8),
-                decoration: BoxDecoration(
-                  color: Colors.green.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: const Icon(
-                  Icons.check_circle,
-                  color: Colors.green,
-                  size: 20,
-                ),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Row(
+              child: Row(
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: Colors.green.withOpacity(0.1),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: const Icon(
+                      Icons.check_circle,
+                      color: Colors.green,
+                      size: 20,
+                    ),
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
+                        Row(
+                          children: [
+                            Text(
+                              '#${recentPickups[index].id}',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.black87,
+                              ),
+                            ),
+                            const Spacer(),
+                            Text(
+                              pickup['earning'] != null
+                                  ? 'GH₵ ${pickup['earning']}'
+                                  : '',
+                              style: const TextStyle(
+                                fontWeight: FontWeight.bold,
+                                color: Colors.green,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 4),
                         Text(
-                          '${pickup['id']}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.black87,
+                          pickup['userTown'] ?? 'Unknown location',
+                          style: TextStyle(
+                            color: Colors.grey[600],
+                            fontSize: 13,
                           ),
                         ),
-                        const Spacer(),
-                        Text(
-                          '${pickup['earning']}',
-                          style: const TextStyle(
-                            fontWeight: FontWeight.bold,
-                            color: Colors.green,
-                            fontSize: 14,
-                          ),
+                        const SizedBox(height: 4),
+                        Row(
+                          children: [
+                            Text(
+                              '${(pickup['wasteCategories'] is List ? pickup['wasteCategories'].length : 0)} items',
+
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 12,
+                              ),
+                            ),
+                            const SizedBox(width: 16),
+                            Text(
+                              formattedTime,
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 12,
+                              ),
+                            ),
+                          ],
                         ),
                       ],
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '${pickup['address']}',
-                      style: TextStyle(color: Colors.grey[600], fontSize: 13),
-                    ),
-                    const SizedBox(height: 4),
-                    Row(
-                      children: [
-                        Text(
-                          '${pickup['items']} items',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 12,
-                          ),
-                        ),
-                        const SizedBox(width: 16),
-                        Text(
-                          '${pickup['time']}',
-                          style: TextStyle(
-                            color: Colors.grey[500],
-                            fontSize: 12,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
-            ],
-          ),
+            );
+          },
         );
       },
     );

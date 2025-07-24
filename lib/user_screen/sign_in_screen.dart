@@ -1,12 +1,16 @@
-// login_screen.dart
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/routes/app_route.dart';
 
-class LoginScreen extends StatefulWidget {
+class SignInScreen extends StatefulWidget {
+  const SignInScreen({super.key});
+
   @override
-  _LoginScreenState createState() => _LoginScreenState();
+  State<SignInScreen> createState() => _SignInScreenState();
 }
 
-class _LoginScreenState extends State<LoginScreen>
+class _SignInScreenState extends State<SignInScreen>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
   final _emailController = TextEditingController();
@@ -105,7 +109,7 @@ class _LoginScreenState extends State<LoginScreen>
             ),
             const SizedBox(height: 20),
             const Text(
-              'EcoRecycle',
+              'SortRecycle',
               style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
@@ -142,8 +146,8 @@ class _LoginScreenState extends State<LoginScreen>
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(20),
-          boxShadow: [
-            const BoxShadow(
+          boxShadow: const [
+            BoxShadow(
               color: Colors.black12,
               blurRadius: 20,
               offset: Offset(0, 10),
@@ -207,9 +211,12 @@ class _LoginScreenState extends State<LoginScreen>
         if (value == null || value.isEmpty) {
           return 'Please enter your email';
         }
-        if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+        if (!value.contains('@')) {
           return 'Please enter a valid email';
         }
+        // if (!RegExp(r'^[\w-\.]+@([\w-]+\.)+[\w-]{2,4}$').hasMatch(value)) {
+        //   return 'Please enter a valid email';
+        // }
         return null;
       },
     );
@@ -278,7 +285,7 @@ class _LoginScreenState extends State<LoginScreen>
     return Container(
       height: 55,
       child: ElevatedButton(
-        onPressed: _isLoading ? null : _handleLogin,
+        onPressed: _isLoading ? null : _handleSignIn,
         style: ElevatedButton.styleFrom(
           backgroundColor: const Color(0xFF4CAF50),
           foregroundColor: Colors.white,
@@ -300,9 +307,9 @@ class _LoginScreenState extends State<LoginScreen>
   Widget _buildSocialLogin() {
     return FadeTransition(
       opacity: _fadeAnimation,
-      child: Column(
+      child: const Column(
         children: [
-          const Row(
+          Row(
             children: [
               Expanded(child: Divider(color: Colors.white54)),
               Padding(
@@ -315,43 +322,43 @@ class _LoginScreenState extends State<LoginScreen>
               Expanded(child: Divider(color: Colors.white54)),
             ],
           ),
-          const SizedBox(height: 20),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-            children: [
-              _buildSocialButton(Icons.g_mobiledata, 'Google'),
-              _buildSocialButton(Icons.facebook, 'Facebook'),
-              _buildSocialButton(Icons.apple, 'Apple'),
-            ],
-          ),
+          SizedBox(height: 20),
+          // Row(
+          //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          //   children: [
+          //     _buildSocialButton(Icons.g_mobiledata, 'Google'),
+          //     // _buildSocialButton(Icons.facebook, 'Facebook'),
+          //     // _buildSocialButton(Icons.apple, 'Apple'),
+          //   ],
+          // ),
         ],
       ),
     );
   }
 
-  Widget _buildSocialButton(IconData icon, String label) {
-    return Container(
-      width: 60,
-      height: 60,
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(15),
-        boxShadow: [
-          const BoxShadow(
-            color: Colors.black12,
-            blurRadius: 10,
-            offset: Offset(0, 5),
-          ),
-        ],
-      ),
-      child: IconButton(
-        onPressed: () {
-          // Handle social login
-        },
-        icon: Icon(icon, size: 30, color: Colors.grey[700]),
-      ),
-    );
-  }
+  // Widget _buildSocialButton(IconData icon, String label) {
+  //   return Container(
+  //     width: 60,
+  //     height: 60,
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       borderRadius: BorderRadius.circular(15),
+  //       boxShadow: const [
+  //         BoxShadow(
+  //           color: Colors.black12,
+  //           blurRadius: 10,
+  //           offset: Offset(0, 5),
+  //         ),
+  //       ],
+  //     ),
+  //     child: IconButton(
+  //       onPressed: () {
+  //         // Handle social login
+  //       },
+  //       icon: Icon(icon, size: 30, color: Colors.grey[700]),
+  //     ),
+  //   );
+  // }
 
   Widget _buildSignUpLink() {
     return FadeTransition(
@@ -364,7 +371,9 @@ class _LoginScreenState extends State<LoginScreen>
             style: TextStyle(color: Colors.white70),
           ),
           TextButton(
-            onPressed: () {},
+            onPressed: () {
+              Navigator.pushNamed(context, AppRoutes.signUp);
+            },
             child: const Text(
               'Sign Up',
               style: TextStyle(
@@ -379,25 +388,86 @@ class _LoginScreenState extends State<LoginScreen>
     );
   }
 
-  void _handleLogin() async {
-    if (_formKey.currentState!.validate()) {
+  void _handleSignIn() async {
+    setState(() {
+      _isLoading = true;
+    });
+
+    try {
+      // Step 1: Sign in with Firebase Auth
+      final userCredential = await FirebaseAuth.instance
+          .signInWithEmailAndPassword(
+            email: _emailController.text.trim(),
+            password: _passwordController.text.trim(),
+          );
+
+      final uid = userCredential.user!.uid;
+
+      // Step 2: Try to get from 'collectors' collection first
+      final collectorSnapshot = await FirebaseFirestore.instance
+          .collection('collectors')
+          .doc(uid)
+          .get();
+
+      if (collectorSnapshot.exists) {
+        // Collector found
+        setState(() {
+          _isLoading = false;
+        });
+
+        Navigator.pushNamed(
+          context,
+          AppRoutes.collectorHome,
+          arguments: {'role': 'collector', 'collectorId': uid},
+        );
+        return;
+      }
+
+      // Step 3: Try to get from 'users' collection
+      final userSnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(uid)
+          .get();
+
+      if (userSnapshot.exists) {
+        setState(() {
+          _isLoading = false;
+        });
+
+        Navigator.pushNamed(
+          context,
+          AppRoutes.home,
+          arguments: {'role': 'User', 'userId': uid},
+        );
+        return;
+      }
+
+      // Neither found
       setState(() {
-        _isLoading = true;
+        _isLoading = false;
       });
-
-      // Simulate API call
-      await Future.delayed(const Duration(seconds: 2));
-
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('User role not found. Please contact support.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    } on FirebaseAuthException catch (e) {
       setState(() {
         _isLoading = false;
       });
 
-      // Navigate to home screen or show success message
+      String errorMsg = 'An error occurred';
+      if (e.code == 'user-not-found') {
+        errorMsg = 'No user found for that email.';
+      } else if (e.code == 'wrong-password') {
+        errorMsg = 'Incorrect password.';
+      } else {
+        errorMsg = e.message ?? errorMsg;
+      }
+
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login successful!'),
-          backgroundColor: Color(0xFF4CAF50),
-        ),
+        SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
       );
     }
   }

@@ -17,8 +17,13 @@ abstract class AppRoutes {
   static const collectorProfile = '/collector-profile';
   static const requestpickup = '/requestpickup';
   static const String collectorSignup = '/collector_signup';
-  static const wasteform = '/wastform';
+  static const wastepickupformupdated = '/wastepickupformupdated';
   static const collectorProfileEditPage = '/collectorprofile-editing';
   static const userProfileEditPage = '/userprofile-editing';
   static const aboutus = '/about';
+  static const collectorabout = '/collectorabout';
+  static const chatpage = '/chatpage';
+  static const homecontent = '/homecontent';
+  static const chatlistpage = '/chatlistpage';
+  static const classifywaste = '/classifywaste';
 }

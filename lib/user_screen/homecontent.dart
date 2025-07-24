@@ -22,8 +22,8 @@ class HomeContent extends StatelessWidget {
 
     return Scaffold(
       appBar: AppBar(
-        automaticallyImplyLeading: false,
-        title: const Text('EcoClassify'),
+        //automaticallyImplyLeading: false,
+        title: const Text('SortCyle'),
         backgroundColor: const Color(0xFF2E7D32),
         elevation: 0,
         iconTheme: const IconThemeData(color: Colors.white),

@@ -253,7 +253,9 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
                       );
                     }),
                     _buildSettingsItem(Icons.help, 'Help & Support', () {}),
-                    _buildSettingsItem(Icons.info, 'About App', () {}),
+                    _buildSettingsItem(Icons.info, 'About App', () {
+                      Navigator.pushNamed(context, AppRoutes.collectorabout);
+                    }),
                   ]),
                   const SizedBox(height: 24),
 

@@ -3,6 +3,7 @@ import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_application_1/model/waste_classify_model.dart';
+import 'package:flutter_application_1/service/recycling_inst.dart';
 import 'package:flutter_application_1/user_screen/classification_result_screen.dart';
 import 'package:flutter_application_1/user_screen/homecontent.dart';
 import 'package:image_picker/image_picker.dart';

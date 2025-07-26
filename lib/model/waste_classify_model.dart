@@ -1,6 +1,7 @@
 import 'dart:io';
 // import 'dart:typed_data';
 import 'package:firebase_ml_model_downloader/firebase_ml_model_downloader.dart';
+import 'package:flutter_application_1/service/recycling_inst.dart';
 import 'package:flutter_application_1/user_screen/classification_result_screen.dart';
 import 'package:logger/logger.dart';
 import 'package:tflite_flutter/tflite_flutter.dart';

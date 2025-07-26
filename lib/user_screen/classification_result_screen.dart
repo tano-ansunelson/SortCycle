@@ -1,7 +1,12 @@
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
+import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
 import 'dart:io';
 
-class ClassificationResultScreen extends StatelessWidget {
+import 'package:uuid/uuid.dart';
+
+class ClassificationResultScreen extends StatefulWidget {
   final String? imagePath;
   final String category;
   final double confidence;
@@ -17,6 +22,13 @@ class ClassificationResultScreen extends StatelessWidget {
     this.onDone,
   });
 
+  @override
+  State<ClassificationResultScreen> createState() =>
+      _ClassificationResultScreenState();
+}
+
+class _ClassificationResultScreenState
+    extends State<ClassificationResultScreen> {
   Color _getCategoryColor(String category) {
     switch (category.toLowerCase()) {
       case 'plastic':
@@ -61,9 +73,9 @@ class ClassificationResultScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final categoryColor = _getCategoryColor(category);
-    final categoryIcon = _getCategoryIcon(category);
-
+    final categoryColor = _getCategoryColor(widget.category);
+    final categoryIcon = _getCategoryIcon(widget.category);
+    bool isSaving = false;
     return Dialog(
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(10),
@@ -155,11 +167,11 @@ class ClassificationResultScreen extends StatelessWidget {
                           width: 2,
                         ),
                       ),
-                      child: imagePath != null
+                      child: widget.imagePath != null
                           ? ClipRRect(
                               borderRadius: BorderRadius.circular(14),
                               child: Image.file(
-                                File(imagePath!),
+                                File(widget.imagePath!),
                                 fit: BoxFit.cover,
                                 errorBuilder: (context, error, stackTrace) {
                                   return _buildPlaceholderImage(
@@ -208,7 +220,7 @@ class ClassificationResultScreen extends StatelessWidget {
                                 crossAxisAlignment: CrossAxisAlignment.start,
                                 children: [
                                   Text(
-                                    category.toUpperCase(),
+                                    widget.category.toUpperCase(),
                                     style: TextStyle(
                                       fontSize: 24,
                                       fontWeight: FontWeight.bold,
@@ -242,7 +254,7 @@ class ClassificationResultScreen extends StatelessWidget {
                                 ),
                               ),
                               Text(
-                                "${(confidence * 100).toStringAsFixed(1)}%",
+                                "${(widget.confidence * 100).toStringAsFixed(1)}%",
                                 style: TextStyle(
                                   fontSize: 18,
                                   fontWeight: FontWeight.bold,
@@ -263,7 +275,7 @@ class ClassificationResultScreen extends StatelessWidget {
                             ),
                             child: FractionallySizedBox(
                               alignment: Alignment.centerLeft,
-                              widthFactor: confidence,
+                              widthFactor: widget.confidence,
                               child: Container(
                                 decoration: BoxDecoration(
                                   color: categoryColor,
@@ -320,7 +332,7 @@ class ClassificationResultScreen extends StatelessWidget {
                           ),
                           const SizedBox(height: 16),
                           Text(
-                            recyclingInstructions,
+                            widget.recyclingInstructions,
                             style: TextStyle(
                               fontSize: 14,
                               height: 1.5,
@@ -339,7 +351,7 @@ class ClassificationResultScreen extends StatelessWidget {
                         Expanded(
                           child: OutlinedButton(
                             onPressed: () {
-                              onDone?.call();
+                              widget.onDone?.call();
                               Navigator.of(context).pop();
                             },
                             style: OutlinedButton.styleFrom(
@@ -361,12 +373,16 @@ class ClassificationResultScreen extends StatelessWidget {
                         const SizedBox(width: 12),
                         Expanded(
                           child: ElevatedButton(
-                            onPressed: () {
-                              onDone?.call();
-                              // Add to stats or save functionality
-                              Navigator.of(context).pop();
-                              // You can add navigation to stats screen here
-                            },
+                            onPressed: isSaving
+                                ? null
+                                : () async {
+                                    setState(() => isSaving = true);
+                                    await _saveResultToFirestore(context);
+                                    setState(() => isSaving = false);
+
+                                    widget.onDone?.call();
+                                    Navigator.of(context).pop();
+                                  },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: categoryColor,
                               padding: const EdgeInsets.symmetric(vertical: 16),
@@ -374,13 +390,24 @@ class ClassificationResultScreen extends StatelessWidget {
                                 borderRadius: BorderRadius.circular(12),
                               ),
                             ),
-                            child: const Text(
-                              "Save Result",
-                              style: TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.w600,
-                              ),
-                            ),
+                            child: isSaving
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      strokeWidth: 2,
+                                      valueColor: AlwaysStoppedAnimation<Color>(
+                                        Colors.white,
+                                      ),
+                                    ),
+                                  )
+                                : const Text(
+                                    "Save Result",
+                                    style: TextStyle(
+                                      color: Colors.white,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
                           ),
                         ),
                       ],
@@ -416,6 +443,47 @@ class ClassificationResultScreen extends StatelessWidget {
       ),
     );
   }
+
+  Future<void> _saveResultToFirestore(BuildContext context) async {
+    final user = FirebaseAuth.instance.currentUser;
+    if (user == null || widget.imagePath == null) return;
+
+    final uuid = Uuid().v4();
+
+    try {
+      // Upload image to Firebase Storage
+      final ref = FirebaseStorage.instance
+          .ref()
+          .child('classification_images')
+          .child('${uuid}.jpg');
+
+      await ref.putFile(File(widget.imagePath!));
+      final imageUrl = await ref.getDownloadURL();
+
+      // Save result to Firestore
+      final result = {
+        'imageUrl': imageUrl,
+        'label': widget.category,
+        'confidence': widget.confidence,
+        'timestamp': FieldValue.serverTimestamp(),
+      };
+
+      await FirebaseFirestore.instance
+          .collection('users')
+          .doc(user.uid)
+          .collection('classification_results')
+          .doc(uuid)
+          .set(result);
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('Classification saved successfully')),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text('Error saving result: $e')));
+    }
+  }
 }
 
 // Helper function to show the dialog
@@ -438,62 +506,62 @@ void showClassificationResult(
   );
 }
 
-// Example usage and sample recycling instructions
-class RecyclingInstructions {
-  static const Map<String, String> instructions = {
-    'plastic': '''
-1. Clean the plastic item thoroughly to remove any food residue or labels.
-2. Check the recycling number on the bottom (1-7) to determine recyclability.
-3. Remove caps and lids if they're made of different plastic types.
-4. Place in your recycling bin or take to a plastic recycling center.
-5. Avoid putting plastic bags in curbside recycling - take them to grocery store collection points.
-''',
-    'paper': '''
-1. Remove any plastic wrapping, tape, or staples from the paper.
-2. Ensure the paper is clean and dry - no food stains or grease.
-3. Flatten cardboard boxes and paper items to save space.
-4. Place in your paper recycling bin or bundle together.
-5. Avoid recycling wax-coated paper, tissues, or paper towels.
-''',
-    'glass': '''
-1. Rinse the glass container to remove any food or liquid residue.
-2. Remove metal lids and caps (recycle these separately).
-3. Leave labels on - they'll be removed during the recycling process.
-4. Place in your glass recycling bin or take to a glass recycling center.
-5. Separate by color if your local facility requires it (clear, brown, green).
-''',
-    'metal': '''
-1. Clean the metal item to remove any food residue or labels.
-2. Remove any non-metal components like plastic handles or rubber seals.
-3. Crush aluminum cans to save space, but don't crush steel cans.
-4. Place in your metal recycling bin or take to a scrap metal dealer.
-5. Separate ferrous (magnetic) and non-ferrous metals if required.
-''',
-    'cardboard': '''
-1. Break down boxes and flatten them to save space.
-2. Remove any plastic tape, labels, or packing materials.
-3. Ensure cardboard is clean and dry - no grease or food stains.
-4. Place in your cardboard recycling bin or bundle together.
-5. Avoid recycling wax-coated or laminated cardboard.
-''',
-    'organic': '''
-1. Separate organic waste from other materials immediately.
-2. Place in a compost bin or organic waste collection container.
-3. Keep away from meat, dairy, and oily foods unless your facility accepts them.
-4. Turn compost regularly if composting at home.
-5. Consider starting a home compost system for garden benefits.
-''',
-    'trash': '''
-This item cannot be recycled through standard programs. Consider these options:
-1. Check if it can be repaired or repurposed instead of discarding.
-2. Look for specialized recycling programs for this type of material.
-3. Dispose of it properly in your regular trash bin.
-4. Consider donating if the item is still usable.
-5. Research local hazardous waste disposal if it contains harmful materials.
-''',
-  };
+// // Example usage and sample recycling instructions
+// class RecyclingInstructions {
+//   static const Map<String, String> instructions = {
+//     'plastic': '''
+// 1. Clean the plastic item thoroughly to remove any food residue or labels.
+// 2. Check the recycling number on the bottom (1-7) to determine recyclability.
+// 3. Remove caps and lids if they're made of different plastic types.
+// 4. Place in your recycling bin or take to a plastic recycling center.
+// 5. Avoid putting plastic bags in curbside recycling - take them to grocery store collection points.
+// ''',
+//     'paper': '''
+// 1. Remove any plastic wrapping, tape, or staples from the paper.
+// 2. Ensure the paper is clean and dry - no food stains or grease.
+// 3. Flatten cardboard boxes and paper items to save space.
+// 4. Place in your paper recycling bin or bundle together.
+// 5. Avoid recycling wax-coated paper, tissues, or paper towels.
+// ''',
+//     'glass': '''
+// 1. Rinse the glass container to remove any food or liquid residue.
+// 2. Remove metal lids and caps (recycle these separately).
+// 3. Leave labels on - they'll be removed during the recycling process.
+// 4. Place in your glass recycling bin or take to a glass recycling center.
+// 5. Separate by color if your local facility requires it (clear, brown, green).
+// ''',
+//     'metal': '''
+// 1. Clean the metal item to remove any food residue or labels.
+// 2. Remove any non-metal components like plastic handles or rubber seals.
+// 3. Crush aluminum cans to save space, but don't crush steel cans.
+// 4. Place in your metal recycling bin or take to a scrap metal dealer.
+// 5. Separate ferrous (magnetic) and non-ferrous metals if required.
+// ''',
+//     'cardboard': '''
+// 1. Break down boxes and flatten them to save space.
+// 2. Remove any plastic tape, labels, or packing materials.
+// 3. Ensure cardboard is clean and dry - no grease or food stains.
+// 4. Place in your cardboard recycling bin or bundle together.
+// 5. Avoid recycling wax-coated or laminated cardboard.
+// ''',
+//     'organic': '''
+// 1. Separate organic waste from other materials immediately.
+// 2. Place in a compost bin or organic waste collection container.
+// 3. Keep away from meat, dairy, and oily foods unless your facility accepts them.
+// 4. Turn compost regularly if composting at home.
+// 5. Consider starting a home compost system for garden benefits.
+// ''',
+//     'trash': '''
+// This item cannot be recycled through standard programs. Consider these options:
+// 1. Check if it can be repaired or repurposed instead of discarding.
+// 2. Look for specialized recycling programs for this type of material.
+// 3. Dispose of it properly in your regular trash bin.
+// 4. Consider donating if the item is still usable.
+// 5. Research local hazardous waste disposal if it contains harmful materials.
+// ''',
+//   };
 
-  static String getInstructions(String category) {
-    return instructions[category.toLowerCase()] ?? instructions['trash']!;
-  }
-}
+//   static String getInstructions(String category) {
+//     return instructions[category.toLowerCase()] ?? instructions['trash']!;
+//   }
+// }

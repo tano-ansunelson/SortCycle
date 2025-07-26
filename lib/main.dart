@@ -3,7 +3,7 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_application_1/chat_page/chat_page.dart';
-import 'package:flutter_application_1/chat_page/main_page.dart';
+import 'package:flutter_application_1/chat_page/chatlist_page.dart';
 import 'package:flutter_application_1/provider/provider.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:flutter_application_1/user_screen/about_screen.dart';

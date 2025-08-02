@@ -27,4 +27,6 @@ abstract class AppRoutes {
   static const chatlistpage = '/chatlistpage';
   static const classifywaste = '/classifywaste';
   static const leaderboard = '/leaderboard';
+  static const additem = '/additem';
+  static const markethomescreen = '/markethomescreen';
 }

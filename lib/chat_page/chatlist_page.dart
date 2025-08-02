@@ -78,6 +78,7 @@ class ChatListPage extends StatelessWidget {
                   final otherName = isCollector
                       ? chat['userName'] ?? 'User'
                       : chat['collectorName'] ?? 'Collector';
+                  // ignore: unused_local_variable
                   final otherId = isCollector
                       ? chat['userId']
                       : chat['collectorId'];

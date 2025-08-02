@@ -238,9 +238,9 @@ class _AboutPageState extends State<AboutPage> with TickerProviderStateMixin {
             shaderCallback: (bounds) => LinearGradient(
               colors: [Colors.green.shade700, Colors.green.shade900],
             ).createShader(bounds),
-            child: Text(
+            child: const Text(
               _appName,
-              style: const TextStyle(
+              style: TextStyle(
                 fontSize: 32,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,

@@ -4,6 +4,8 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_application_1/chat_page/chat_page.dart';
 import 'package:flutter_application_1/chat_page/chatlist_page.dart';
+import 'package:flutter_application_1/ecomarketplace/add_items.dart';
+import 'package:flutter_application_1/ecomarketplace/homescreen.dart';
 import 'package:flutter_application_1/provider/provider.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:flutter_application_1/service/component/leaderboard.dart';
@@ -32,8 +34,10 @@ import 'package:firebase_app_check/firebase_app_check.dart';
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
+  // Activate App Check with debug provider
   await FirebaseAppCheck.instance.activate(
     androidProvider: AndroidProvider.debug,
+    //webRecaptchaSiteKey: 'your-web-key-if-any', // optional for web
   );
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
@@ -148,6 +152,8 @@ class _MyAppState extends State<MyApp> {
             return _createRoute(const UserProfileEditPage());
           case AppRoutes.aboutus:
             return _createRoute(const AboutPage());
+          case AppRoutes.markethomescreen:
+            return _createRoute(const MarketHomeScreen());
           case AppRoutes.chatlistpage:
             return _createRoute(const ChatListPage());
           case AppRoutes.collectorabout:

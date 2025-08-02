@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_application_1/ecomarketplace/homescreen.dart';
 import 'package:flutter_application_1/user_screen/new_homepage.dart';
 import 'package:flutter_application_1/user_screen/recent_classification_tab.dart';
 //import 'package:flutter_application_1/user_screen/waste_form.dart';
@@ -118,6 +119,7 @@ class _HomeScreenState extends State<HomeScreen> {
       //   },
       // ),
       const HomePage(),
+      const MarketHomeScreen(),
       const RecentClassificationsTab(),
     ];
     return Scaffold(
@@ -157,6 +159,11 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.home_outlined),
               activeIcon: Icon(Icons.home),
               label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.shopping_bag),
+              //activeIcon: Icon(Icons.),
+              label: 'Market',
             ),
             BottomNavigationBarItem(
               icon: Icon(LucideIcons.history),

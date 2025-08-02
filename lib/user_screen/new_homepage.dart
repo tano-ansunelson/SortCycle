@@ -491,7 +491,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               'Classify multiple items',
               Icons.photo_library_rounded,
               [const Color(0xFFD32F2F), const Color(0xFFF44336)],
-              '/bulk-upload',
+              // '/bulk-upload',
+              AppRoutes.markethomescreen,
               // AppRoutes.wastepickupformupdated,
             ),
             _buildActionCard(

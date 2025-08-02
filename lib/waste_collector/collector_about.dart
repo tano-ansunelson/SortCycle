@@ -132,7 +132,7 @@ class _CollectorAboutPageState extends State<CollectorAboutPage>
           gradient: LinearGradient(
             begin: Alignment.topCenter,
             end: Alignment.bottomCenter,
-            colors: [Color(0xFF1565C0), Color(0xFF1976D2), Color(0xFF2196F3)],
+            colors: [Color(0xFF2E7D32), Color(0xFF388E3C), Color(0xFF4CAF50)],
           ),
         ),
         child: SafeArea(

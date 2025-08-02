@@ -6,6 +6,7 @@ import 'package:flutter_application_1/chat_page/chat_page.dart';
 import 'package:flutter_application_1/chat_page/chatlist_page.dart';
 import 'package:flutter_application_1/provider/provider.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
+import 'package:flutter_application_1/service/component/leaderboard.dart';
 import 'package:flutter_application_1/user_screen/about_screen.dart';
 import 'package:flutter_application_1/user_screen/edit_profile.dart';
 //import 'package:flutter_application_1/user_screen/recent_screen.dart';
@@ -26,11 +27,14 @@ import 'service/role_selection.dart';
 import 'waste_collector/collector_homepage.dart';
 import 'waste_collector/pickup.dart';
 import 'waste_collector/profile_screen.dart';
+import 'package:firebase_app_check/firebase_app_check.dart';
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-
+  await FirebaseAppCheck.instance.activate(
+    androidProvider: AndroidProvider.debug,
+  );
   SystemChrome.setEnabledSystemUIMode(SystemUiMode.edgeToEdge);
   SystemChrome.setSystemUIOverlayStyle(
     const SystemUiOverlayStyle(
@@ -44,6 +48,9 @@ void main() async {
       providers: [
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => CollectorProvider()),
+        ChangeNotifierProvider(
+          create: (_) => SortScoreProvider()..fetchSortScore(),
+        ),
       ],
       child: const MyApp(),
     ),
@@ -96,6 +103,8 @@ class _MyAppState extends State<MyApp> {
             return _createRoute(const RoleSelectionScreen());
           case AppRoutes.home:
             return _createRoute(const HomeScreen());
+          case AppRoutes.leaderboard:
+            return _createRoute(const LeaderboardScreen());
 
           case AppRoutes.profile:
             return _createRoute(const ProfileScreen());

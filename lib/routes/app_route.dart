@@ -26,4 +26,5 @@ abstract class AppRoutes {
   static const homecontent = '/homecontent';
   static const chatlistpage = '/chatlistpage';
   static const classifywaste = '/classifywaste';
+  static const leaderboard = '/leaderboard';
 }

@@ -1,6 +1,10 @@
 // import 'package:flutter/material.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/provider/provider.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
+import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});
@@ -17,6 +21,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   // ignore: unused_field
   int _currentChallengeIndex = 0;
+  //int? _sortScore;
+
   final List<Map<String, dynamic>> _dailyChallenges = [
     {
       'title': 'Classify 5 items today',
@@ -34,6 +40,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   void initState() {
     super.initState();
+    // _fetchSortScore();
     _slideController = AnimationController(
       duration: const Duration(milliseconds: 800),
       vsync: this,
@@ -57,6 +64,36 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _fadeController.forward();
   }
 
+  // void _fetchSortScore() async {
+  //   final userId = FirebaseAuth.instance.currentUser?.uid;
+  //   if (userId == null) return;
+
+  //   try {
+  //     final doc = await FirebaseFirestore.instance
+  //         .collection('users')
+  //         .doc(userId)
+  //         .get();
+
+  //     if (doc.exists) {
+  //       final data = doc.data();
+  //       if (data != null) {
+  //         final score = data['sortScore'];
+  //         if (score != null && score is int) {
+  //           setState(() {
+  //             _sortScore = score;
+  //           });
+  //         } else {
+  //           setState(() {
+  //             _sortScore = 0; // fallback
+  //           });
+  //         }
+  //       }
+  //     }
+  //   } catch (e) {
+  //     debugPrint('Error fetching sortScore: $e');
+  //   }
+  // }
+
   @override
   void dispose() {
     _slideController.dispose();
@@ -66,6 +103,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
   @override
   Widget build(BuildContext context) {
+    final sortScore = context.watch<SortScoreProvider>().sortScore;
+
     return Scaffold(
       body: CustomScrollView(
         slivers: [
@@ -217,7 +256,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // EcoScore Dashboard Card
-                      _buildEcoScoreCard(),
+                      _buildEcoScoreCard(sortScore),
                       const SizedBox(height: 24),
 
                       // Quick Actions with AR Scanner
@@ -229,8 +268,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       //const SizedBox(height: 24),
 
                       // Community Leaderboard
-                      //_buildCommunitySection(),
-                      //const SizedBox(height: 24),
+                      _buildCommunitySection(),
+                      const SizedBox(height: 24),
 
                       // Smart Recommendations
                       _buildSmartRecommendations(),
@@ -288,7 +327,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildEcoScoreCard() {
+  Widget _buildEcoScoreCard(int sortScore) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -316,7 +355,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   const Text(
-                    'Your EcoScore',
+                    'Your SortScore',
                     style: TextStyle(
                       color: Colors.white70,
                       fontSize: 16,
@@ -326,9 +365,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   const SizedBox(height: 4),
                   Row(
                     children: [
-                      const Text(
-                        '1,247',
-                        style: TextStyle(
+                      Text(
+                        sortScore.toString(),
+
+                        // '1,247',
+                        style: const TextStyle(
                           color: Colors.white,
                           fontSize: 32,
                           fontWeight: FontWeight.bold,
@@ -344,14 +385,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           color: Colors.green.shade400,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        child: const Text(
-                          '+127',
-                          style: TextStyle(
-                            color: Colors.white,
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                          ),
-                        ),
+                        // child: const Text(
+                        //   '+127',
+                        //   style: TextStyle(
+                        //     color: Colors.white,
+                        //     fontSize: 12,
+                        //     fontWeight: FontWeight.bold,
+                        //   ),
+                        // ),
                       ),
                     ],
                   ),
@@ -374,8 +415,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           const SizedBox(height: 20),
           Row(
             children: [
-              _buildScoreMetric('Level', '12', Icons.trending_up_rounded),
-              const SizedBox(width: 24),
+              //_buildScoreMetric('Level', '12', Icons.trending_up_rounded),
+              //const SizedBox(width: 24),
               _buildScoreMetric('Rank', '#89', Icons.leaderboard_rounded),
               const SizedBox(width: 24),
               _buildScoreMetric(
@@ -466,7 +507,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               'Redeem EcoPoints',
               Icons.redeem_rounded,
               [const Color(0xFFFF8F00), const Color(0xFFFFC107)],
-              '/rewards',
+              AppRoutes.leaderboard,
             ),
           ],
         ),

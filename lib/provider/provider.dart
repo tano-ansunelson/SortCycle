@@ -56,3 +56,50 @@ class CollectorProvider with ChangeNotifier {
     }
   }
 }
+
+class SortScoreProvider with ChangeNotifier {
+  int _sortScore = 0;
+
+  int get sortScore => _sortScore;
+
+  Future<void> fetchSortScore() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+
+      final data = doc.data();
+      if (data != null && data['sortScore'] is int) {
+        _sortScore = data['sortScore'];
+        notifyListeners();
+      }
+    } catch (e) {
+      debugPrint("Failed to fetch sortScore: $e");
+    }
+  }
+
+  Future<void> addPoints(int points) async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    final userRef = FirebaseFirestore.instance.collection('users').doc(userId);
+
+    try {
+      await FirebaseFirestore.instance.runTransaction((transaction) async {
+        final snapshot = await transaction.get(userRef);
+        final currentScore = (snapshot.data()?['sortScore'] ?? 0) as int;
+        final newScore = currentScore + points;
+
+        transaction.update(userRef, {'sortScore': newScore});
+        _sortScore = newScore;
+        notifyListeners();
+      });
+    } catch (e) {
+      debugPrint("Error updating sortScore: $e");
+    }
+  }
+}

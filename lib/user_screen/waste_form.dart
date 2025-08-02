@@ -232,6 +232,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
 
       QuerySnapshot collectorsSnapshot = await FirebaseFirestore.instance
           .collection('collectors')
+          .where('isActive', isEqualTo: true)
           .where('town', isEqualTo: userTown)
           .get();
 

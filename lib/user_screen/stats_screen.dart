@@ -52,11 +52,17 @@ class _StatsScreenState extends State<StatsScreen>
       "description": "Boxes, packaging materials",
       "impact": "Reduces methane emissions",
     },
-    "Organic": {
-      "color": const Color(0xFF8BC34A),
-      "icon": Icons.eco_rounded,
-      "description": "Food waste, compostables",
-      "impact": "Creates nutrient-rich soil",
+    // "Organic": {
+    //   "color": const Color(0xFF8BC34A),
+    //   "icon": Icons.eco_rounded,
+    //   "description": "Food waste, compostables",
+    //   "impact": "Creates nutrient-rich soil",
+    // },
+    "Trash": {
+      "color": const Color(0xFFE57373),
+      "icon": Icons.delete_rounded,
+      "description": "Non-recyclable items",
+      "impact": "Consider reducing consumption",
     },
   };
 
@@ -191,10 +197,10 @@ class _StatsScreenState extends State<StatsScreen>
       return 'Metal';
     } else if (lowerLabel.contains('cardboard') || lowerLabel.contains('box')) {
       return 'Cardboard';
-    } else if (lowerLabel.contains('organic') ||
+    } else if (lowerLabel.contains('trash') ||
         lowerLabel.contains('food') ||
         lowerLabel.contains('compost')) {
-      return 'Organic';
+      return 'Trash';
     }
 
     return 'Trash'; // Default fallback

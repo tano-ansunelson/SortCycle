@@ -2,6 +2,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_storage/firebase_storage.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/provider/provider.dart';
+import 'package:flutter_application_1/service/sortscore.dart';
+import 'package:provider/provider.dart';
 import 'dart:io';
 
 import 'package:uuid/uuid.dart';
@@ -377,11 +380,100 @@ class _ClassificationResultScreenState
                                 ? null
                                 : () async {
                                     setState(() => isSaving = true);
-                                    await _saveResultToFirestore(context);
-                                    setState(() => isSaving = false);
+                                    ///////////////////////////////////////////////////  // commenting here
+                                    try {
+                                      showDialog(
+                                        context: context,
+                                        barrierDismissible: false,
+                                        builder: (_) => const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      );
+                                      // Save the result to Firestore
+                                      await _saveResultToFirestore(context);
 
-                                    widget.onDone?.call();
-                                    Navigator.of(context).pop();
+                                      // 🔥 Update the sortScore for the user
+                                      await updateSortScore(widget.category);
+                                      await context
+                                          .read<SortScoreProvider>()
+                                          .addPoints(
+                                            getPointsForCategory(
+                                              widget.category,
+                                            ),
+                                          );
+
+                                      // Show success feedback
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.check_circle,
+                                                  color: Colors.white,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'Result saved successfully! +${getPointsForCategory(widget.category)} points',
+                                                ),
+                                              ],
+                                            ),
+                                            backgroundColor: Colors.green,
+                                            duration: const Duration(
+                                              seconds: 2,
+                                            ),
+                                          ),
+                                        );
+                                      }
+
+                                      // Call onDone callback and navigate
+                                      widget.onDone?.call();
+                                      if (mounted) {
+                                        Navigator.of(context).pop(true);
+                                      }
+                                    } catch (error) {
+                                      // Handle errors gracefully
+                                      if (mounted) {
+                                        ScaffoldMessenger.of(
+                                          context,
+                                        ).showSnackBar(
+                                          SnackBar(
+                                            content: Row(
+                                              children: [
+                                                const Icon(
+                                                  Icons.error,
+                                                  color: Colors.white,
+                                                ),
+                                                const SizedBox(width: 8),
+                                                Text(
+                                                  'Failed to save: ${error.toString()}',
+                                                ),
+                                              ],
+                                            ),
+                                            backgroundColor: Colors.red,
+                                            duration: const Duration(
+                                              seconds: 3,
+                                            ),
+                                            action: SnackBarAction(
+                                              label: 'Retry',
+                                              textColor: Colors.white,
+                                              onPressed: () {
+                                                // Retry the operation
+                                                if (mounted) {
+                                                  // Trigger the same onPressed logic
+                                                }
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      }
+                                    } finally {
+                                      if (mounted) {
+                                        setState(() => isSaving = false);
+                                      }
+                                    }
                                   },
                             style: ElevatedButton.styleFrom(
                               backgroundColor: categoryColor,
@@ -389,6 +481,9 @@ class _ClassificationResultScreenState
                               shape: RoundedRectangleBorder(
                                 borderRadius: BorderRadius.circular(12),
                               ),
+                              elevation: isSaving
+                                  ? 0
+                                  : 2, // Reduce elevation when saving
                             ),
                             child: isSaving
                                 ? const SizedBox(
@@ -401,12 +496,23 @@ class _ClassificationResultScreenState
                                       ),
                                     ),
                                   )
-                                : const Text(
-                                    "Save Result",
-                                    style: TextStyle(
-                                      color: Colors.white,
-                                      fontWeight: FontWeight.w600,
-                                    ),
+                                : const Row(
+                                    mainAxisAlignment: MainAxisAlignment.center,
+                                    children: [
+                                      Icon(
+                                        Icons.save,
+                                        color: Colors.white,
+                                        size: 20,
+                                      ),
+                                      SizedBox(width: 8),
+                                      Text(
+                                        "Save Result",
+                                        style: TextStyle(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w600,
+                                        ),
+                                      ),
+                                    ],
                                   ),
                           ),
                         ),
@@ -448,7 +554,7 @@ class _ClassificationResultScreenState
     final user = FirebaseAuth.instance.currentUser;
     if (user == null || widget.imagePath == null) return;
 
-    final uuid = Uuid().v4();
+    final uuid = const Uuid().v4();
 
     try {
       // Upload image to Firebase Storage

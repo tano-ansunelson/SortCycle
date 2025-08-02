@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/chat_page/chat_page.dart';
 import 'package:flutter_application_1/chat_page/chatlist_page.dart';
+import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:intl/intl.dart';
 
 class PickupManagementPage extends StatefulWidget {
@@ -25,7 +26,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
   }
 
   @override
@@ -54,7 +55,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
           tabs: const [
             Tab(icon: Icon(Icons.inbox), text: 'Incoming Requests'),
             Tab(icon: Icon(Icons.local_shipping), text: 'Your Pickups'),
-            Tab(icon: Icon(Icons.chat), text: 'Chat'),
+            //Tab(icon: Icon(Icons.chat), text: 'Chat'),
           ],
         ),
       ),
@@ -63,13 +64,44 @@ class _PickupManagementPageState extends State<PickupManagementPage>
         children: [
           _buildIncomingRequestsTab(),
           _buildYourPickupsTab(),
-          // const ChatPage(
-          //   collectorName: 'collectorName',
-          //   collectorId: 'collectorId',
-          //   requestId: 'requestId',
-          // ),
-          const ChatListPage(),
+
+          //const ChatListPage(),
         ],
+      ),
+      // Floating Action Button for Quick Scan
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF26A69A), Color(0xFF42A5F5)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF26A69A).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.chatlistpage),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          label: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.chat, color: Colors.white),
+              SizedBox(width: 3),
+              Text(
+                'Chat',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -368,7 +400,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                       ),
                     );
                   },
-                  icon: const Icon(Icons.navigation, size: 18),
+                  icon: const Icon(Icons.chat, size: 18),
                   label: const Text('Chat'),
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
@@ -384,6 +416,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                   onPressed: () {
                     _showAcceptDialog(requestId);
                   },
+
                   style: ElevatedButton.styleFrom(
                     backgroundColor: Colors.blue,
                     shape: RoundedRectangleBorder(

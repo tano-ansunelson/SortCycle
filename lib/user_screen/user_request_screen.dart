@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/chat_page/chat_page.dart';
+import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:intl/intl.dart';
 
 class UserRequestsScreen extends StatefulWidget {
@@ -48,6 +49,25 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
             letterSpacing: 0.5,
           ),
         ),
+        actions: [
+          Container(
+            margin: const EdgeInsets.only(right: 16),
+            decoration: BoxDecoration(
+              color: Colors.white.withOpacity(0.2),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: IconButton(
+              onPressed: () {
+                Navigator.pushNamed(context, AppRoutes.profile);
+              },
+              icon: const Icon(
+                Icons.person_outline_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ),
+        ],
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
         elevation: 0,

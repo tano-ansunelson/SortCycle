@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/provider/provider.dart';
+import 'package:flutter_application_1/routes/app_route.dart';
 //import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:flutter_application_1/service/greetings.dart';
 import 'package:flutter_application_1/waste_collector/pending_summary.dart';
@@ -106,6 +107,67 @@ class CollectorHomePage extends StatefulWidget {
 
 class _CollectorHomePageState extends State<CollectorHomePage> {
   final collectorId = FirebaseAuth.instance.currentUser!.uid;
+  bool isActive = false;
+
+  @override
+  void initState() {
+    _loadActiveStatus();
+    super.initState();
+  }
+
+  Future<void> _loadActiveStatus() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('collectors')
+          .doc(collectorId)
+          .get();
+
+      if (doc.exists) {
+        setState(() {
+          isActive = doc.data()?['isActive'] ?? false;
+        });
+      }
+    } catch (e) {
+      print('Error loading active status: $e');
+    }
+  }
+
+  Future<void> _updateActiveStatus(bool value) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('collectors')
+          .doc(collectorId)
+          .update({
+            'isActive': value,
+            'lastActiveUpdate': FieldValue.serverTimestamp(),
+          });
+
+      setState(() {
+        isActive = value;
+      });
+
+      // Show feedback to user
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(
+            value
+                ? 'You are now active and available for pickups'
+                : 'You are now inactive',
+          ),
+          backgroundColor: value ? Colors.green : Colors.orange,
+          duration: const Duration(seconds: 2),
+        ),
+      );
+    } catch (e) {
+      print('Error updating active status: $e');
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Failed to update status. Please try again.'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -124,7 +186,6 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
             Text(
               'Hi,',
               style: TextStyle(
-                //letterSpacing: 0.5,
                 fontSize: 14,
                 color: Colors.grey[600],
                 fontWeight: FontWeight.bold,
@@ -132,7 +193,6 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
             ),
             Text(
               " ${collectorName ?? 'Guest'}",
-              //'John Collector',
               style: const TextStyle(
                 fontSize: 18,
                 color: Colors.black87,
@@ -142,6 +202,50 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           ],
         ),
         actions: [
+          // Active Status Switch
+          Container(
+            margin: const EdgeInsets.only(right: 8),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      isActive ? 'Active' : 'Inactive',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isActive ? Colors.green : Colors.grey[600],
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Container(
+                      width: 8,
+                      height: 8,
+                      decoration: BoxDecoration(
+                        color: isActive ? Colors.green : Colors.grey[400],
+                        shape: BoxShape.circle,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(width: 8),
+                Transform.scale(
+                  scale: 0.8,
+                  child: Switch(
+                    value: isActive,
+                    onChanged: _updateActiveStatus,
+                    activeColor: Colors.green,
+                    activeTrackColor: Colors.green.withOpacity(0.3),
+                    inactiveThumbColor: Colors.grey[400],
+                    inactiveTrackColor: Colors.grey[300],
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Notification Icon
           Stack(
             children: [
               IconButton(
@@ -237,6 +341,41 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
               const SizedBox(height: 12),
               _buildRecentPickupsList(collectorId),
               const SizedBox(height: 80), // Extra space for bottom nav
+            ],
+          ),
+        ),
+      ),
+      // Floating Action Button for Quick Scan
+      floatingActionButton: Container(
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(16),
+          gradient: const LinearGradient(
+            colors: [Color(0xFF26A69A), Color(0xFF42A5F5)],
+          ),
+          boxShadow: [
+            BoxShadow(
+              color: const Color(0xFF26A69A).withOpacity(0.3),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+        ),
+        child: FloatingActionButton.extended(
+          onPressed: () => Navigator.pushNamed(context, AppRoutes.chatlistpage),
+          backgroundColor: Colors.transparent,
+          elevation: 0,
+          label: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Icon(Icons.chat, color: Colors.white),
+              SizedBox(width: 3),
+              Text(
+                'Chat',
+                style: TextStyle(
+                  color: Colors.white,
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
             ],
           ),
         ),

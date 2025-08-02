@@ -223,7 +223,7 @@ class _RecentClassificationsTab extends State<RecentClassificationsTab>
             ),
             child: IconButton(
               onPressed: () {
-                Navigator.pushNamed(context, '/profile');
+                Navigator.pushNamed(context, AppRoutes.profile);
               },
               icon: const Icon(
                 Icons.person_outline_rounded,

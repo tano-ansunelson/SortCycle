@@ -102,4 +102,31 @@ class SortScoreProvider with ChangeNotifier {
       debugPrint("Error updating sortScore: $e");
     }
   }
+
+  int _rank = 0;
+  int get rank => _rank;
+
+  Future<void> fetchUserRank() async {
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId == null) return;
+
+    try {
+      final querySnapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .orderBy('sortScore', descending: true)
+          .get();
+
+      int currentIndex = 0;
+      for (var doc in querySnapshot.docs) {
+        currentIndex++;
+        if (doc.id == userId) {
+          _rank = currentIndex;
+          notifyListeners();
+          break;
+        }
+      }
+    } catch (e) {
+      debugPrint("Error fetching rank: $e");
+    }
+  }
 }

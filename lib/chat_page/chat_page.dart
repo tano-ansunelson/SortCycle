@@ -381,10 +381,10 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
       ),
       actions: [
         IconButton(
-          icon: const Icon(Icons.videocam),
+          icon: const Icon(Icons.call),
           onPressed: () {
             ScaffoldMessenger.of(context).showSnackBar(
-              const SnackBar(content: Text('Video call feature coming soon!')),
+              const SnackBar(content: Text('calling feature coming soon!')),
             );
           },
         ),

@@ -58,10 +58,10 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
                   child: Column(
                     children: [
                       // Header with settings
-                      Row(
+                      const Row(
                         mainAxisAlignment: MainAxisAlignment.spaceBetween,
                         children: [
-                          const Text(
+                          Text(
                             'Profile',
                             style: TextStyle(
                               color: Colors.white,
@@ -69,13 +69,13 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
                               fontWeight: FontWeight.bold,
                             ),
                           ),
-                          IconButton(
-                            onPressed: () {},
-                            icon: const Icon(
-                              Icons.settings,
-                              color: Colors.white,
-                            ),
-                          ),
+                          // IconButton(
+                          //   onPressed: () {},
+                          //   icon: const Icon(
+                          //     Icons.settings,
+                          //     color: Colors.white,
+                          //   ),
+                          // ),
                         ],
                       ),
                       const SizedBox(height: 20),
@@ -136,14 +136,14 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
                                         fontWeight: FontWeight.bold,
                                       ),
                                     ),
-                                    IconButton(
-                                      onPressed: () {},
-                                      icon: const Icon(
-                                        Icons.edit,
-                                        size: 16,
-                                        color: Colors.white70,
-                                      ),
-                                    ),
+                                    // IconButton(
+                                    //   onPressed: () {},
+                                    //   icon: const Icon(
+                                    //     Icons.edit,
+                                    //     size: 16,
+                                    //     color: Colors.white70,
+                                    //   ),
+                                    // ),
                                   ],
                                 ),
                                 const Text(

@@ -374,147 +374,154 @@ class _ClassificationResultScreenState
                           ),
                         ),
                         const SizedBox(width: 12),
-                        Expanded(
-                          child: ElevatedButton(
-                            onPressed: isSaving
-                                ? null
-                                : () async {
-                                    setState(() => isSaving = true);
-                                    ///////////////////////////////////////////////////  // commenting here
-                                    try {
-                                      showDialog(
-                                        context: context,
-                                        barrierDismissible: false,
-                                        builder: (_) => const Center(
-                                          child: CircularProgressIndicator(),
+                        ElevatedButton(
+                          onPressed: isSaving
+                              ? null
+                              : () async {
+                                  setState(() => isSaving = true);
+
+                                  try {
+                                    showDialog(
+                                      context: context,
+                                      barrierDismissible: false,
+                                      builder: (_) => const Center(
+                                        child: CircularProgressIndicator(),
+                                      ),
+                                    );
+
+                                    // Save the result to Firestore
+                                    await _saveResultToFirestore(context);
+
+                                    // 🔥 Update the sortScore for the user
+                                    await updateSortScore(widget.category);
+                                    await context
+                                        .read<SortScoreProvider>()
+                                        .addPoints(
+                                          getPointsForCategory(widget.category),
+                                        );
+
+                                    // Close the loading dialog first
+                                    if (mounted) {
+                                      Navigator.of(
+                                        context,
+                                      ).pop(); // This closes the loading dialog
+                                    }
+
+                                    // Show success feedback
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.check_circle,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Result saved successfully! +${getPointsForCategory(widget.category)} points',
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.green,
+                                          duration: const Duration(seconds: 2),
                                         ),
                                       );
-                                      // Save the result to Firestore
-                                      await _saveResultToFirestore(context);
-
-                                      // 🔥 Update the sortScore for the user
-                                      await updateSortScore(widget.category);
-                                      await context
-                                          .read<SortScoreProvider>()
-                                          .addPoints(
-                                            getPointsForCategory(
-                                              widget.category,
-                                            ),
-                                          );
-
-                                      // Show success feedback
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.check_circle,
-                                                  color: Colors.white,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  'Result saved successfully! +${getPointsForCategory(widget.category)} points',
-                                                ),
-                                              ],
-                                            ),
-                                            backgroundColor: Colors.green,
-                                            duration: const Duration(
-                                              seconds: 2,
-                                            ),
-                                          ),
-                                        );
-                                      }
-
-                                      // Call onDone callback and navigate
-                                      widget.onDone?.call();
-                                      if (mounted) {
-                                        Navigator.of(context).pop(true);
-                                      }
-                                    } catch (error) {
-                                      // Handle errors gracefully
-                                      if (mounted) {
-                                        ScaffoldMessenger.of(
-                                          context,
-                                        ).showSnackBar(
-                                          SnackBar(
-                                            content: Row(
-                                              children: [
-                                                const Icon(
-                                                  Icons.error,
-                                                  color: Colors.white,
-                                                ),
-                                                const SizedBox(width: 8),
-                                                Text(
-                                                  'Failed to save: ${error.toString()}',
-                                                ),
-                                              ],
-                                            ),
-                                            backgroundColor: Colors.red,
-                                            duration: const Duration(
-                                              seconds: 3,
-                                            ),
-                                            action: SnackBarAction(
-                                              label: 'Retry',
-                                              textColor: Colors.white,
-                                              onPressed: () {
-                                                // Retry the operation
-                                                if (mounted) {
-                                                  // Trigger the same onPressed logic
-                                                }
-                                              },
-                                            ),
-                                          ),
-                                        );
-                                      }
-                                    } finally {
-                                      if (mounted) {
-                                        setState(() => isSaving = false);
-                                      }
                                     }
-                                  },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: categoryColor,
-                              padding: const EdgeInsets.symmetric(vertical: 16),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              elevation: isSaving
-                                  ? 0
-                                  : 2, // Reduce elevation when saving
+
+                                    // Call onDone callback and navigate
+                                    widget.onDone?.call();
+                                    if (mounted) {
+                                      Navigator.of(
+                                        context,
+                                      ).pop(); // This closes the main dialog
+                                    }
+                                  } catch (error) {
+                                    // Close the loading dialog on error too
+                                    if (mounted) {
+                                      Navigator.of(
+                                        context,
+                                      ).pop(); // Close loading dialog
+                                    }
+
+                                    // Handle errors gracefully
+                                    if (mounted) {
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Row(
+                                            children: [
+                                              const Icon(
+                                                Icons.error,
+                                                color: Colors.white,
+                                              ),
+                                              const SizedBox(width: 8),
+                                              Text(
+                                                'Failed to save: ${error.toString()}',
+                                              ),
+                                            ],
+                                          ),
+                                          backgroundColor: Colors.red,
+                                          duration: const Duration(seconds: 3),
+                                          action: SnackBarAction(
+                                            label: 'Retry',
+                                            textColor: Colors.white,
+                                            onPressed: () {
+                                              // Retry the operation
+                                              if (mounted) {
+                                                // Trigger the same onPressed logic
+                                              }
+                                            },
+                                          ),
+                                        ),
+                                      );
+                                    }
+                                  } finally {
+                                    if (mounted) {
+                                      setState(() => isSaving = false);
+                                    }
+                                  }
+                                },
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: categoryColor,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
                             ),
-                            child: isSaving
-                                ? const SizedBox(
-                                    width: 20,
-                                    height: 20,
-                                    child: CircularProgressIndicator(
-                                      strokeWidth: 2,
-                                      valueColor: AlwaysStoppedAnimation<Color>(
-                                        Colors.white,
+                            elevation: isSaving ? 0 : 2,
+                          ),
+                          child: isSaving
+                              ? const SizedBox(
+                                  width: 20,
+                                  height: 20,
+                                  child: CircularProgressIndicator(
+                                    strokeWidth: 2,
+                                    valueColor: AlwaysStoppedAnimation<Color>(
+                                      Colors.white,
+                                    ),
+                                  ),
+                                )
+                              : const Row(
+                                  mainAxisAlignment: MainAxisAlignment.center,
+                                  children: [
+                                    Icon(
+                                      Icons.save,
+                                      color: Colors.white,
+                                      size: 20,
+                                    ),
+                                    SizedBox(width: 8),
+                                    Text(
+                                      "Save Result",
+                                      style: TextStyle(
+                                        color: Colors.white,
+                                        fontWeight: FontWeight.w600,
                                       ),
                                     ),
-                                  )
-                                : const Row(
-                                    mainAxisAlignment: MainAxisAlignment.center,
-                                    children: [
-                                      Icon(
-                                        Icons.save,
-                                        color: Colors.white,
-                                        size: 20,
-                                      ),
-                                      SizedBox(width: 8),
-                                      Text(
-                                        "Save Result",
-                                        style: TextStyle(
-                                          color: Colors.white,
-                                          fontWeight: FontWeight.w600,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                          ),
+                                  ],
+                                ),
                         ),
                       ],
                     ),

@@ -488,25 +488,25 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                   ],
                 ),
               ),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      'This Month',
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                    Text(
-                      'GH₵ 4,890',
-                      style: TextStyle(
-                        color: Colors.white,
-                        fontSize: 16,
-                        fontWeight: FontWeight.w600,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
+              // Expanded(
+              //   child: Column(
+              //     crossAxisAlignment: CrossAxisAlignment.start,
+              //     children: [
+              //       Text(
+              //         'This Month',
+              //         style: TextStyle(color: Colors.white70, fontSize: 12),
+              //       ),
+              //       Text(
+              //         'GH₵ 4,890',
+              //         style: TextStyle(
+              //           color: Colors.white,
+              //           fontSize: 16,
+              //           fontWeight: FontWeight.w600,
+              //         ),
+              //       ),
+              //     ],
+              //   ),
+              // ),
             ],
           ),
         ],
@@ -527,24 +527,41 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           title: 'View Requests',
           icon: Icons.inbox,
           color: Colors.blue,
-          onTap: () {},
+          onTap: () {
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => PickupManagementPage(
+                  collectorId: collectorId,
+                  collectorName: '',
+                ),
+              ),
+            );
+          },
         ),
         _buildQuickActionItem(
           title: 'Start Route',
           icon: Icons.navigation,
           color: Colors.green,
           onTap: () {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.collectormapscreen,
+              arguments: {
+                'collectorId': FirebaseAuth.instance.currentUser?.uid,
+              },
+            );
+
             // Start navigation route
           },
         ),
         _buildQuickActionItem(
-          title: 'History',
+          title: 'EcoMarket',
           icon: Icons.history,
           color: Colors.purple,
           onTap: () {
             // _buildIncomingRequestsTab(),
-            // _buildYourPickupsTab();
-            // View pickup history
+            Navigator.pushNamed(context, AppRoutes.markethomescreen);
           },
         ),
         _buildQuickActionItem(
@@ -552,6 +569,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           icon: Icons.settings,
           color: Colors.grey,
           onTap: () {
+            Navigator.pushNamed(context, AppRoutes.collectorProfile);
             // Navigate to settings
           },
         ),
@@ -676,12 +694,20 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                         Row(
                           children: [
                             Text(
-                              '#${recentPickups[index].id}',
+                              pickup['userName'] ?? 'Unknown user',
                               style: const TextStyle(
                                 fontWeight: FontWeight.bold,
                                 color: Colors.black87,
                               ),
                             ),
+
+                            // Text(
+                            //   '#${recentPickups[index].id}',
+                            //   style: const TextStyle(
+                            //     fontWeight: FontWeight.bold,
+                            //     color: Colors.black87,
+                            //   ),
+                            // ),
                             const Spacer(),
                             Text(
                               pickup['earning'] != null

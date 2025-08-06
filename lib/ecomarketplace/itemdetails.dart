@@ -1,13 +1,9 @@
-// ==========================================
-// item_detail_screen.dart
-// ==========================================
+// item_detail_screen.dart (UPDATED WITH SELLER FALLBACK LOGIC)
 
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/ecomarketplace/buyerform.dart';
-// ignore: unused_import
-import 'package:url_launcher/url_launcher.dart';
 
 class ItemDetailScreen extends StatefulWidget {
   final String itemId;
@@ -35,23 +31,43 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     _checkIfFavorite();
   }
 
+  // 🔁 Updated here to try users first, then collectors
   Future<void> _loadOwnerData() async {
+    final ownerId = widget.itemData['ownerId'];
+    if (ownerId == null) {
+      print('Missing ownerId');
+      setState(() => isLoadingOwner = false);
+      return;
+    }
+
     try {
-      final ownerDoc = await FirebaseFirestore.instance
+      // Try users collection
+      DocumentSnapshot<Map<String, dynamic>> ownerDoc = await FirebaseFirestore
+          .instance
           .collection('users')
-          .doc(widget.itemData['ownerId'])
+          .doc(ownerId)
           .get();
+
+      if (!ownerDoc.exists) {
+        // Try collectors if user not found
+        ownerDoc = await FirebaseFirestore.instance
+            .collection('collectors')
+            .doc(ownerId)
+            .get();
+      }
 
       if (ownerDoc.exists) {
         setState(() {
           ownerData = ownerDoc.data();
           isLoadingOwner = false;
         });
+      } else {
+        print('Owner not found in both collections');
+        setState(() => isLoadingOwner = false);
       }
     } catch (e) {
-      setState(() {
-        isLoadingOwner = false;
-      });
+      print('Error loading owner data: $e');
+      setState(() => isLoadingOwner = false);
     }
   }
 
@@ -69,7 +85,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         isFavorite = favoriteDoc.exists;
       });
     } catch (e) {
-      // Handle error silently
+      print('Error checking favorite status: $e');
     }
   }
 
@@ -84,9 +100,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
       if (isFavorite) {
         await favoriteRef.delete();
-        setState(() {
-          isFavorite = false;
-        });
+        setState(() => isFavorite = false);
         _showSnackBar('Removed from favorites', Colors.orange);
       } else {
         await favoriteRef.set({
@@ -94,72 +108,12 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
           'itemId': widget.itemId,
           'createdAt': Timestamp.now(),
         });
-        setState(() {
-          isFavorite = true;
-        });
+        setState(() => isFavorite = true);
         _showSnackBar('Added to favorites', Colors.green);
       }
     } catch (e) {
       _showSnackBar('Failed to update favorites', Colors.red);
     }
-  }
-
-  Future<void> _initiateChat() async {
-    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
-    final ownerId = widget.itemData['ownerId'];
-
-    if (currentUserId == null) {
-      _showSnackBar('Please log in to chat', Colors.red);
-      return;
-    }
-
-    if (currentUserId == ownerId) {
-      _showSnackBar('You cannot chat with yourself', Colors.orange);
-      return;
-    }
-
-    try {
-      // Create or get existing chat
-      final chatId = _generateChatId(currentUserId, ownerId);
-
-      // Check if chat already exists
-      final chatDoc = await FirebaseFirestore.instance
-          .collection('chats')
-          .doc(chatId)
-          .get();
-
-      if (!chatDoc.exists) {
-        // Create new chat
-        await FirebaseFirestore.instance.collection('chats').doc(chatId).set({
-          'participants': [currentUserId, ownerId],
-          'itemId': widget.itemId,
-          'itemName': widget.itemData['name'],
-          'itemImageUrl': widget.itemData['imageUrl'],
-          'lastMessage': '',
-          'lastMessageTime': Timestamp.now(),
-          'createdAt': Timestamp.now(),
-        });
-      }
-
-      // Navigate to chat screen
-      // Navigator.push(
-      //   context,
-      //   MaterialPageRoute(
-      //     builder: (context) => ChatScreen(
-      //       chatId: chatId,
-      //       itemData: widget.itemData,
-      //       ownerData: ownerData,
-      //     ),
-      //   ),
-      // );
-    } catch (e) {
-      _showSnackBar('Failed to start chat', Colors.red);
-    }
-  }
-
-  String _generateChatId(String userId1, String userId2) {
-    final sortedIds = [userId1, userId2]..sort();
-    return '${sortedIds[0]}_${sortedIds[1]}_${widget.itemId}';
   }
 
   Future<void> _buyItem() async {
@@ -181,7 +135,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       return;
     }
 
-    // Navigate to buyer form
     final result = await Navigator.push(
       context,
       MaterialPageRoute(
@@ -194,8 +147,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
     );
 
     if (result == true) {
-      // Purchase was successful, automatically start chat
-      await _initiateChat();
+      _showSnackBar('Purchase completed successfully!', Colors.green);
     }
   }
 
@@ -211,15 +163,14 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final isOwner =
-        FirebaseAuth.instance.currentUser?.uid == widget.itemData['ownerId'];
+    final currentUser = FirebaseAuth.instance.currentUser;
+    final isOwner = currentUser?.uid == widget.itemData['ownerId'];
     final isAvailable = widget.itemData['status'] == 'available';
 
     return Scaffold(
       backgroundColor: Colors.white,
       body: CustomScrollView(
         slivers: [
-          // App bar with image
           SliverAppBar(
             expandedHeight: 300,
             pinned: true,
@@ -235,16 +186,10 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                     errorBuilder: (context, error, stackTrace) {
                       return Container(
                         color: Colors.grey[300],
-                        child: const Icon(
-                          Icons.image_not_supported,
-                          size: 50,
-                          color: Colors.grey,
-                        ),
+                        child: const Icon(Icons.image_not_supported, size: 50),
                       );
                     },
                   ),
-
-                  // Gradient overlay
                   const DecoratedBox(
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
@@ -254,8 +199,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                       ),
                     ),
                   ),
-
-                  // Status badge
                   Positioned(
                     top: 100,
                     right: 16,
@@ -299,9 +242,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
-                  // Title and price
                   Row(
-                    crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Expanded(
                         child: Text(
@@ -329,8 +270,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   ),
 
                   const SizedBox(height: 16),
-
-                  // Category and condition
                   Row(
                     children: [
                       _buildInfoChip(
@@ -348,8 +287,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   ),
 
                   const SizedBox(height: 16),
-
-                  // Location
                   Row(
                     children: [
                       Icon(
@@ -366,8 +303,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   ),
 
                   const SizedBox(height: 24),
-
-                  // Description
                   const Text(
                     'Description',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -383,8 +318,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   ),
 
                   const SizedBox(height: 24),
-
-                  // Seller info
                   const Text(
                     'Seller',
                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
@@ -392,57 +325,18 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
                   const SizedBox(height: 12),
 
                   if (isLoadingOwner)
-                    const Center(child: CircularProgressIndicator())
+                    const Center(
+                      child: Padding(
+                        padding: EdgeInsets.all(20),
+                        child: CircularProgressIndicator(),
+                      ),
+                    )
+                  else if (ownerData == null)
+                    _buildSellerUnavailable()
                   else
-                    Container(
-                      padding: const EdgeInsets.all(16),
-                      decoration: BoxDecoration(
-                        color: Colors.grey[50],
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(color: Colors.grey[200]!),
-                      ),
-                      child: Row(
-                        children: [
-                          CircleAvatar(
-                            radius: 25,
-                            backgroundColor: Colors.green,
-                            child: Text(
-                              (ownerData?['name'] ?? 'U')[0].toUpperCase(),
-                              style: const TextStyle(
-                                color: Colors.white,
-                                fontWeight: FontWeight.bold,
-                                fontSize: 18,
-                              ),
-                            ),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                Text(
-                                  ownerData?['name'] ?? 'Unknown Seller',
-                                  style: const TextStyle(
-                                    fontWeight: FontWeight.bold,
-                                    fontSize: 16,
-                                  ),
-                                ),
-                                const SizedBox(height: 4),
-                                Text(
-                                  'Member since ${_formatDate(ownerData?['createdAt'])}',
-                                  style: TextStyle(
-                                    color: Colors.grey[600],
-                                    fontSize: 14,
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
+                    _buildSellerCard(),
 
-                  const SizedBox(height: 100), // Space for bottom buttons
+                  const SizedBox(height: 100),
                 ],
               ),
             ),
@@ -450,7 +344,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         ],
       ),
 
-      // Bottom action buttons
       bottomNavigationBar: isOwner
           ? null
           : Container(
@@ -458,65 +351,117 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
               decoration: BoxDecoration(
                 color: Colors.white,
                 boxShadow: [
-                  BoxShadow(
-                    color: Colors.grey.withOpacity(0.2),
-                    blurRadius: 8,
-                    offset: const Offset(0, -2),
-                  ),
+                  BoxShadow(color: Colors.grey.withOpacity(0.2), blurRadius: 8),
                 ],
               ),
-              child: Row(
-                children: [
-                  // Chat button
-                  Expanded(
-                    child: OutlinedButton.icon(
-                      onPressed: _initiateChat,
-                      icon: const Icon(Icons.chat_bubble_outline),
-                      label: const Text('Chat with Seller'),
-                      style: OutlinedButton.styleFrom(
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        side: const BorderSide(color: Colors.green),
-                        foregroundColor: Colors.green,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
+              child: ElevatedButton.icon(
+                onPressed: isAvailable ? _buyItem : null,
+                icon: Icon(
+                  widget.itemData['price'] == 0
+                      ? Icons.volunteer_activism
+                      : Icons.shopping_cart,
+                ),
+                label: Text(
+                  isAvailable
+                      ? (widget.itemData['price'] == 0
+                            ? 'Claim Item'
+                            : 'Buy Now')
+                      : 'Not Available',
+                ),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: isAvailable ? Colors.green : Colors.grey,
+                  foregroundColor: Colors.white,
+                  padding: const EdgeInsets.symmetric(vertical: 16),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(12),
                   ),
-
-                  const SizedBox(width: 12),
-
-                  // Buy button
-                  Expanded(
-                    child: ElevatedButton.icon(
-                      onPressed: isAvailable ? _buyItem : null,
-                      icon: Icon(
-                        widget.itemData['price'] == 0
-                            ? Icons.volunteer_activism
-                            : Icons.shopping_cart,
-                      ),
-                      label: Text(
-                        isAvailable
-                            ? (widget.itemData['price'] == 0
-                                  ? 'Claim Item'
-                                  : 'Buy Now')
-                            : 'Not Available',
-                      ),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: isAvailable
-                            ? Colors.green
-                            : Colors.grey,
-                        foregroundColor: Colors.white,
-                        padding: const EdgeInsets.symmetric(vertical: 16),
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
+    );
+  }
+
+  Widget _buildSellerUnavailable() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: const Row(
+        children: [
+          CircleAvatar(
+            radius: 25,
+            backgroundColor: Colors.grey,
+            child: Icon(Icons.person, color: Colors.white),
+          ),
+          SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Seller information unavailable',
+                  style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16),
+                ),
+                SizedBox(height: 4),
+                Text(
+                  'Unable to load seller details',
+                  style: TextStyle(color: Colors.grey, fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSellerCard() {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.grey[50],
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.grey[200]!),
+      ),
+      child: Row(
+        children: [
+          CircleAvatar(
+            radius: 25,
+            backgroundColor: Colors.green,
+            child: Text(
+              (ownerData?['name'] ?? 'U')[0].toUpperCase(),
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+                fontSize: 18,
+              ),
+            ),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  ownerData?['name'] ?? 'Unknown Seller',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                const SizedBox(height: 4),
+                Text(
+                  'Member since ${_formatDate(ownerData?['createdAt'])}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 14),
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 
@@ -555,9 +500,7 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
         return Colors.green;
       case 'like new':
         return Colors.blue;
-      case 'good':
-        return Colors.orange;
-      case 'fair':
+      case 'used':
         return Colors.red;
       case 'free':
         return Colors.purple;
@@ -594,7 +537,6 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
 
   String _formatDate(dynamic timestamp) {
     if (timestamp == null) return 'Recently';
-
     try {
       final date = (timestamp as Timestamp).toDate();
       final now = DateTime.now();
@@ -609,8 +551,610 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       } else {
         return 'Recently';
       }
-    } catch (e) {
+    } catch (_) {
       return 'Recently';
     }
   }
 }
+
+// // ==========================================
+// // item_detail_screen.dart (FIXED VERSION - No Chat)
+// // ==========================================
+
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:firebase_auth/firebase_auth.dart';
+// import 'package:flutter/material.dart';
+// import 'package:flutter_application_1/ecomarketplace/buyerform.dart';
+// // ignore: unused_import
+// import 'package:url_launcher/url_launcher.dart';
+
+// class ItemDetailScreen extends StatefulWidget {
+//   final String itemId;
+//   final Map<String, dynamic> itemData;
+
+//   const ItemDetailScreen({
+//     super.key,
+//     required this.itemId,
+//     required this.itemData,
+//   });
+
+//   @override
+//   State<ItemDetailScreen> createState() => _ItemDetailScreenState();
+// }
+
+// class _ItemDetailScreenState extends State<ItemDetailScreen> {
+//   Map<String, dynamic>? ownerData;
+//   bool isLoadingOwner = true;
+//   bool isFavorite = false;
+
+//   @override
+//   void initState() {
+//     super.initState();
+//     _loadOwnerData();
+//     _checkIfFavorite();
+//   }
+
+//   Future<void> _loadOwnerData() async {
+//     try {
+//       // Add debug print
+//       print('Loading owner data for ownerId: ${widget.itemData['ownerId']}');
+
+//       final ownerDoc = await FirebaseFirestore.instance
+//           .collection('users')
+//           .doc(widget.itemData['ownerId'])
+//           .get();
+
+//       if (ownerDoc.exists) {
+//         print('Owner data found: ${ownerDoc.data()}');
+//         setState(() {
+//           ownerData = ownerDoc.data();
+//           isLoadingOwner = false;
+//         });
+//       } else {
+//         print('Owner document does not exist');
+//         setState(() {
+//           isLoadingOwner = false;
+//         });
+//       }
+//     } catch (e) {
+//       print('Error loading owner data: $e');
+//       setState(() {
+//         isLoadingOwner = false;
+//       });
+//     }
+//   }
+
+//   Future<void> _checkIfFavorite() async {
+//     final userId = FirebaseAuth.instance.currentUser?.uid;
+//     if (userId == null) return;
+
+//     try {
+//       final favoriteDoc = await FirebaseFirestore.instance
+//           .collection('favorites')
+//           .doc('${userId}_${widget.itemId}')
+//           .get();
+
+//       setState(() {
+//         isFavorite = favoriteDoc.exists;
+//       });
+//     } catch (e) {
+//       print('Error checking favorite status: $e');
+//     }
+//   }
+
+//   Future<void> _toggleFavorite() async {
+//     final userId = FirebaseAuth.instance.currentUser?.uid;
+//     if (userId == null) return;
+
+//     try {
+//       final favoriteRef = FirebaseFirestore.instance
+//           .collection('favorites')
+//           .doc('${userId}_${widget.itemId}');
+
+//       if (isFavorite) {
+//         await favoriteRef.delete();
+//         setState(() {
+//           isFavorite = false;
+//         });
+//         _showSnackBar('Removed from favorites', Colors.orange);
+//       } else {
+//         await favoriteRef.set({
+//           'userId': userId,
+//           'itemId': widget.itemId,
+//           'createdAt': Timestamp.now(),
+//         });
+//         setState(() {
+//           isFavorite = true;
+//         });
+//         _showSnackBar('Added to favorites', Colors.green);
+//       }
+//     } catch (e) {
+//       _showSnackBar('Failed to update favorites', Colors.red);
+//     }
+//   }
+
+//   Future<void> _buyItem() async {
+//     final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+//     final ownerId = widget.itemData['ownerId'];
+
+//     print(
+//       'Buy item pressed - currentUserId: $currentUserId, ownerId: $ownerId',
+//     );
+
+//     if (currentUserId == null) {
+//       _showSnackBar('Please log in to buy items', Colors.red);
+//       return;
+//     }
+
+//     if (currentUserId == ownerId) {
+//       _showSnackBar('You cannot buy your own item', Colors.orange);
+//       return;
+//     }
+
+//     if (widget.itemData['status'] != 'available') {
+//       _showSnackBar('This item is no longer available', Colors.red);
+//       return;
+//     }
+
+//     // Navigate to buyer form
+//     final result = await Navigator.push(
+//       context,
+//       MaterialPageRoute(
+//         builder: (context) => BuyerFormScreen(
+//           itemData: widget.itemData,
+//           itemId: widget.itemId,
+//           sellerId: ownerId,
+//         ),
+//       ),
+//     );
+
+//     if (result == true) {
+//       // Purchase was successful
+//       _showSnackBar('Purchase completed successfully!', Colors.green);
+//     }
+//   }
+
+//   void _showSnackBar(String message, Color color) {
+//     ScaffoldMessenger.of(context).showSnackBar(
+//       SnackBar(
+//         content: Text(message),
+//         backgroundColor: color,
+//         behavior: SnackBarBehavior.floating,
+//       ),
+//     );
+//   }
+
+//   @override
+//   Widget build(BuildContext context) {
+//     final currentUser = FirebaseAuth.instance.currentUser;
+//     final isOwner = currentUser?.uid == widget.itemData['ownerId'];
+//     final isAvailable = widget.itemData['status'] == 'available';
+
+//     // Debug prints
+//     print(
+//       'Build method - isOwner: $isOwner, currentUserId: ${currentUser?.uid}, ownerId: ${widget.itemData['ownerId']}',
+//     );
+//     print(
+//       'Item status: ${widget.itemData['status']}, isAvailable: $isAvailable',
+//     );
+
+//     return Scaffold(
+//       backgroundColor: Colors.white,
+//       body: CustomScrollView(
+//         slivers: [
+//           // App bar with image
+//           SliverAppBar(
+//             expandedHeight: 300,
+//             pinned: true,
+//             backgroundColor: Colors.white,
+//             foregroundColor: Colors.black87,
+//             flexibleSpace: FlexibleSpaceBar(
+//               background: Stack(
+//                 fit: StackFit.expand,
+//                 children: [
+//                   Image.network(
+//                     widget.itemData['imageUrl'] ?? '',
+//                     fit: BoxFit.cover,
+//                     errorBuilder: (context, error, stackTrace) {
+//                       return Container(
+//                         color: Colors.grey[300],
+//                         child: const Icon(
+//                           Icons.image_not_supported,
+//                           size: 50,
+//                           color: Colors.grey,
+//                         ),
+//                       );
+//                     },
+//                   ),
+
+//                   // Gradient overlay
+//                   const DecoratedBox(
+//                     decoration: BoxDecoration(
+//                       gradient: LinearGradient(
+//                         begin: Alignment.topCenter,
+//                         end: Alignment.bottomCenter,
+//                         colors: [Colors.transparent, Colors.black26],
+//                       ),
+//                     ),
+//                   ),
+
+//                   // Status badge
+//                   Positioned(
+//                     top: 100,
+//                     right: 16,
+//                     child: Container(
+//                       padding: const EdgeInsets.symmetric(
+//                         horizontal: 8,
+//                         vertical: 4,
+//                       ),
+//                       decoration: BoxDecoration(
+//                         color: _getStatusColor(widget.itemData['status']),
+//                         borderRadius: BorderRadius.circular(12),
+//                       ),
+//                       child: Text(
+//                         _getStatusText(widget.itemData['status']),
+//                         style: const TextStyle(
+//                           color: Colors.white,
+//                           fontSize: 12,
+//                           fontWeight: FontWeight.bold,
+//                         ),
+//                       ),
+//                     ),
+//                   ),
+//                 ],
+//               ),
+//             ),
+//             actions: [
+//               IconButton(
+//                 onPressed: _toggleFavorite,
+//                 icon: Icon(
+//                   isFavorite ? Icons.favorite : Icons.favorite_border,
+//                   color: isFavorite ? Colors.red : Colors.grey[600],
+//                 ),
+//               ),
+//             ],
+//           ),
+
+//           // Content
+//           SliverToBoxAdapter(
+//             child: Padding(
+//               padding: const EdgeInsets.all(20),
+//               child: Column(
+//                 crossAxisAlignment: CrossAxisAlignment.start,
+//                 children: [
+//                   // Title and price
+//                   Row(
+//                     crossAxisAlignment: CrossAxisAlignment.start,
+//                     children: [
+//                       Expanded(
+//                         child: Text(
+//                           widget.itemData['name'] ?? '',
+//                           style: const TextStyle(
+//                             fontSize: 24,
+//                             fontWeight: FontWeight.bold,
+//                           ),
+//                         ),
+//                       ),
+//                       const SizedBox(width: 16),
+//                       Text(
+//                         widget.itemData['price'] == 0
+//                             ? 'FREE'
+//                             : 'GHS ${widget.itemData['price']}',
+//                         style: TextStyle(
+//                           fontSize: 24,
+//                           fontWeight: FontWeight.bold,
+//                           color: widget.itemData['price'] == 0
+//                               ? Colors.green
+//                               : Colors.blue[700],
+//                         ),
+//                       ),
+//                     ],
+//                   ),
+
+//                   const SizedBox(height: 16),
+
+//                   // Category and condition
+//                   Row(
+//                     children: [
+//                       _buildInfoChip(
+//                         icon: Icons.category,
+//                         label: widget.itemData['category'] ?? '',
+//                         color: Colors.blue,
+//                       ),
+//                       const SizedBox(width: 12),
+//                       _buildInfoChip(
+//                         icon: Icons.star,
+//                         label: widget.itemData['condition'] ?? '',
+//                         color: _getConditionColor(widget.itemData['condition']),
+//                       ),
+//                     ],
+//                   ),
+
+//                   const SizedBox(height: 16),
+
+//                   // Location
+//                   Row(
+//                     children: [
+//                       Icon(
+//                         Icons.location_on,
+//                         color: Colors.grey[600],
+//                         size: 20,
+//                       ),
+//                       const SizedBox(width: 8),
+//                       Text(
+//                         widget.itemData['location'] ?? '',
+//                         style: TextStyle(fontSize: 16, color: Colors.grey[700]),
+//                       ),
+//                     ],
+//                   ),
+
+//                   const SizedBox(height: 24),
+
+//                   // Description
+//                   const Text(
+//                     'Description',
+//                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+//                   ),
+//                   const SizedBox(height: 8),
+//                   Text(
+//                     widget.itemData['description'] ?? '',
+//                     style: TextStyle(
+//                       fontSize: 16,
+//                       color: Colors.grey[700],
+//                       height: 1.5,
+//                     ),
+//                   ),
+
+//                   const SizedBox(height: 24),
+
+//                   // Seller info
+//                   const Text(
+//                     'Seller',
+//                     style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold),
+//                   ),
+//                   const SizedBox(height: 12),
+
+//                   if (isLoadingOwner)
+//                     const Center(
+//                       child: Padding(
+//                         padding: EdgeInsets.all(20),
+//                         child: CircularProgressIndicator(),
+//                       ),
+//                     )
+//                   else if (ownerData == null)
+//                     Container(
+//                       padding: const EdgeInsets.all(16),
+//                       decoration: BoxDecoration(
+//                         color: Colors.grey[50],
+//                         borderRadius: BorderRadius.circular(12),
+//                         border: Border.all(color: Colors.grey[200]!),
+//                       ),
+//                       child: const Row(
+//                         children: [
+//                           CircleAvatar(
+//                             radius: 25,
+//                             backgroundColor: Colors.grey,
+//                             child: Icon(Icons.person, color: Colors.white),
+//                           ),
+//                           SizedBox(width: 16),
+//                           Expanded(
+//                             child: Column(
+//                               crossAxisAlignment: CrossAxisAlignment.start,
+//                               children: [
+//                                 Text(
+//                                   'Seller information unavailable',
+//                                   style: TextStyle(
+//                                     fontWeight: FontWeight.bold,
+//                                     fontSize: 16,
+//                                   ),
+//                                 ),
+//                                 SizedBox(height: 4),
+//                                 Text(
+//                                   'Unable to load seller details',
+//                                   style: TextStyle(
+//                                     color: Colors.grey,
+//                                     fontSize: 14,
+//                                   ),
+//                                 ),
+//                               ],
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     )
+//                   else
+//                     Container(
+//                       padding: const EdgeInsets.all(16),
+//                       decoration: BoxDecoration(
+//                         color: Colors.grey[50],
+//                         borderRadius: BorderRadius.circular(12),
+//                         border: Border.all(color: Colors.grey[200]!),
+//                       ),
+//                       child: Row(
+//                         children: [
+//                           CircleAvatar(
+//                             radius: 25,
+//                             backgroundColor: Colors.green,
+//                             child: Text(
+//                               (ownerData?['name'] ?? 'U')[0].toUpperCase(),
+//                               style: const TextStyle(
+//                                 color: Colors.white,
+//                                 fontWeight: FontWeight.bold,
+//                                 fontSize: 18,
+//                               ),
+//                             ),
+//                           ),
+//                           const SizedBox(width: 16),
+//                           Expanded(
+//                             child: Column(
+//                               crossAxisAlignment: CrossAxisAlignment.start,
+//                               children: [
+//                                 Text(
+//                                   ownerData?['name'] ?? 'Unknown Seller',
+//                                   style: const TextStyle(
+//                                     fontWeight: FontWeight.bold,
+//                                     fontSize: 16,
+//                                   ),
+//                                 ),
+//                                 const SizedBox(height: 4),
+//                                 Text(
+//                                   'Member since ${_formatDate(ownerData?['createdAt'])}',
+//                                   style: TextStyle(
+//                                     color: Colors.grey[600],
+//                                     fontSize: 14,
+//                                   ),
+//                                 ),
+//                               ],
+//                             ),
+//                           ),
+//                         ],
+//                       ),
+//                     ),
+
+//                   const SizedBox(height: 100), // Space for bottom button
+//                 ],
+//               ),
+//             ),
+//           ),
+//         ],
+//       ),
+
+//       // Bottom action button
+//       bottomNavigationBar: isOwner
+//           ? null
+//           : Container(
+//               padding: const EdgeInsets.all(16),
+//               decoration: BoxDecoration(
+//                 color: Colors.white,
+//                 boxShadow: [
+//                   BoxShadow(
+//                     color: Colors.grey.withOpacity(0.2),
+//                     blurRadius: 8,
+//                     offset: const Offset(0, -2),
+//                   ),
+//                 ],
+//               ),
+//               child: SizedBox(
+//                 width: double.infinity,
+//                 child: ElevatedButton.icon(
+//                   onPressed: isAvailable ? _buyItem : null,
+//                   icon: Icon(
+//                     widget.itemData['price'] == 0
+//                         ? Icons.volunteer_activism
+//                         : Icons.shopping_cart,
+//                   ),
+//                   label: Text(
+//                     isAvailable
+//                         ? (widget.itemData['price'] == 0
+//                               ? 'Claim Item'
+//                               : 'Buy Now')
+//                         : 'Not Available',
+//                   ),
+//                   style: ElevatedButton.styleFrom(
+//                     backgroundColor: isAvailable ? Colors.green : Colors.grey,
+//                     foregroundColor: Colors.white,
+//                     padding: const EdgeInsets.symmetric(vertical: 16),
+//                     shape: RoundedRectangleBorder(
+//                       borderRadius: BorderRadius.circular(12),
+//                     ),
+//                   ),
+//                 ),
+//               ),
+//             ),
+//     );
+//   }
+
+//   Widget _buildInfoChip({
+//     required IconData icon,
+//     required String label,
+//     required Color color,
+//   }) {
+//     return Container(
+//       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+//       decoration: BoxDecoration(
+//         color: color.withOpacity(0.1),
+//         borderRadius: BorderRadius.circular(20),
+//       ),
+//       child: Row(
+//         mainAxisSize: MainAxisSize.min,
+//         children: [
+//           Icon(icon, size: 16, color: color),
+//           const SizedBox(width: 6),
+//           Text(
+//             label,
+//             style: TextStyle(
+//               color: color,
+//               fontWeight: FontWeight.w500,
+//               fontSize: 14,
+//             ),
+//           ),
+//         ],
+//       ),
+//     );
+//   }
+
+//   Color _getConditionColor(String? condition) {
+//     switch (condition?.toLowerCase()) {
+//       case 'new':
+//         return Colors.green;
+//       case 'like new':
+//         return Colors.blue;
+//       // case 'good':
+//       //   return Colors.orange;
+//       case 'used':
+//         return Colors.red;
+//       case 'free':
+//         return Colors.purple;
+//       default:
+//         return Colors.grey;
+//     }
+//   }
+
+//   Color _getStatusColor(String? status) {
+//     switch (status?.toLowerCase()) {
+//       case 'available':
+//         return Colors.green;
+//       case 'sold':
+//         return Colors.orange;
+//       case 'reserved':
+//         return Colors.blue;
+//       default:
+//         return Colors.grey;
+//     }
+//   }
+
+//   String _getStatusText(String? status) {
+//     switch (status?.toLowerCase()) {
+//       case 'available':
+//         return 'Available';
+//       case 'sold':
+//         return 'Sold';
+//       case 'reserved':
+//         return 'Reserved';
+//       default:
+//         return 'Unknown';
+//     }
+//   }
+
+//   String _formatDate(dynamic timestamp) {
+//     if (timestamp == null) return 'Recently';
+
+//     try {
+//       final date = (timestamp as Timestamp).toDate();
+//       final now = DateTime.now();
+//       final difference = now.difference(date);
+
+//       if (difference.inDays > 365) {
+//         return '${(difference.inDays / 365).floor()} year${difference.inDays > 730 ? 's' : ''} ago';
+//       } else if (difference.inDays > 30) {
+//         return '${(difference.inDays / 30).floor()} month${difference.inDays > 60 ? 's' : ''} ago';
+//       } else if (difference.inDays > 0) {
+//         return '${difference.inDays} day${difference.inDays > 1 ? 's' : ''} ago';
+//       } else {
+//         return 'Recently';
+//       }
+//     } catch (e) {
+//       return 'Recently';
+//     }
+//   }
+// }

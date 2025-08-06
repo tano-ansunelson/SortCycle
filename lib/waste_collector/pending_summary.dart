@@ -31,7 +31,7 @@ class PendingSummaryCard extends StatelessWidget {
       stream: FirebaseFirestore.instance
           .collection('pickup_requests')
           .where('collectorId', isEqualTo: collectorId)
-          .where('status', whereIn: ['pending', 'in_progress'])
+          .where('status', whereIn: ['pending', 'in_progress', 'accepted'])
           .snapshots(),
       builder: (context, snapshot) {
         String count = '...';
@@ -51,94 +51,6 @@ class PendingSummaryCard extends StatelessWidget {
     );
   }
 }
-
-// class TodayPickupSummaryCard extends StatelessWidget {
-//   final String collectorId;
-
-//   const TodayPickupSummaryCard({super.key, required this.collectorId});
-
-//   @override
-//   Widget build(BuildContext context) {
-//     final now = DateTime.now();
-//     final startOfDay = DateTime(now.year, now.month, now.day);
-//     final endOfDay = startOfDay.add(const Duration(days: 1));
-
-//     return StreamBuilder<QuerySnapshot>(
-//       stream: FirebaseFirestore.instance
-//           .collection('pickup_requests')
-//           .where('collectorId', isEqualTo: collectorId)
-//           .where('status', isEqualTo: 'completed')
-//           .where(
-//             'updatedAt',
-//             isGreaterThanOrEqualTo: Timestamp.fromDate(startOfDay),
-//           )
-//           .where('updatedAt', isLessThan: Timestamp.fromDate(endOfDay))
-//           .snapshots(),
-//       builder: (context, snapshot) {
-//         String count = '...';
-//         if (snapshot.hasError) {
-//           count = 'Err';
-//         } else if (snapshot.hasData) {
-//           count = snapshot.data!.docs.length.toString();
-//         }
-
-//         return _buildSummaryCard(
-//           title: 'Today\'s Pickups',
-//           count: count,
-//           icon: Icons.local_shipping,
-//           color: Colors.blue,
-//         );
-//       },
-//     );
-//   }
-// }
-
-// // ✅ REUSABLE CARD WIDGET
-// Widget _buildSummaryCard({
-//   required String title,
-//   required String count,
-//   required IconData icon,
-//   required Color color,
-// }) {
-//   return Container(
-//     padding: const EdgeInsets.all(16),
-//     decoration: BoxDecoration(
-//       color: Colors.white,
-//       borderRadius: BorderRadius.circular(12),
-//       boxShadow: [
-//         BoxShadow(
-//           color: Colors.grey.withOpacity(0.1),
-//           spreadRadius: 1,
-//           blurRadius: 4,
-//           offset: const Offset(0, 2),
-//         ),
-//       ],
-//     ),
-//     child: Column(
-//       crossAxisAlignment: CrossAxisAlignment.start,
-//       children: [
-//         Container(
-//           padding: const EdgeInsets.all(8),
-//           decoration: BoxDecoration(
-//             color: color.withOpacity(0.1),
-//             borderRadius: BorderRadius.circular(8),
-//           ),
-//           child: Icon(icon, color: color, size: 24),
-//         ),
-//         const SizedBox(height: 12),
-//         Text(
-//           count,
-//           style: const TextStyle(
-//             fontSize: 24,
-//             fontWeight: FontWeight.bold,
-//             color: Colors.black87,
-//           ),
-//         ),
-//         Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-//       ],
-//     ),
-//   );
-// }
 
 class CollectorTotalPickupsText extends StatelessWidget {
   final String collectorId;

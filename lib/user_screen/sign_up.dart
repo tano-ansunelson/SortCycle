@@ -394,70 +394,6 @@ class _SignUpScreenState extends State<SignUpScreen>
     );
   }
 
-  //   void _handleSignUp() async {
-  //     if (_formKey.currentState!.validate()) {
-  //       setState(() {
-  //         _isLoading = true;
-  //       });
-
-  //       try {
-  //         // Step 1: Create user with Firebase Auth
-  //         final userCredential = await FirebaseAuth.instance
-  //             .createUserWithEmailAndPassword(
-  //               email: emailController.text.trim(),
-  //               password: passwordController.text.trim(),
-  //             );
-
-  //         final uid = userCredential.user!.uid;
-
-  //         // Step 2: Save role + name to Firestore
-  //         await FirebaseFirestore.instance.collection('users').doc(uid).set({
-  //           'name': nameController.text.trim(),
-  //           'email': emailController.text.trim(),
-  //           'role': widget.role, // 👈 this is where role is saved
-  //           'createdAt': FieldValue.serverTimestamp(),
-  //           'sortScore': 0,
-  //         });
-
-  //         setState(() {
-  //           _isLoading = false;
-  //         });
-
-  //         // Step 3: Navigate to home screen based on role
-  //         if (widget.role == 'collector') {
-  //           Navigator.pushNamed(
-  //             context,
-  //             AppRoutes.collectorHome,
-  //             arguments: {'role': 'collector'},
-  //           );
-  //         } else {
-  //           Navigator.pushNamed(
-  //             context,
-  //             AppRoutes.home,
-  //             arguments: {'role': 'User'},
-  //           );
-  //         }
-  //       } on FirebaseAuthException catch (e) {
-  //         setState(() {
-  //           _isLoading = false;
-  //         });
-
-  //         String errorMsg = 'An error occurred';
-  //         if (e.code == 'email-already-in-use') {
-  //           errorMsg = 'This email is already in use.';
-  //         } else if (e.code == 'weak-password') {
-  //           errorMsg = 'Password should be at least 6 characters.';
-  //         } else {
-  //           errorMsg = e.message ?? errorMsg;
-  //         }
-
-  //         ScaffoldMessenger.of(context).showSnackBar(
-  //           SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
-  //         );
-  //       }
-  //     }
-  //   }
-
   void _handleSignUp() async {
     if (_formKey.currentState!.validate()) {
       setState(() {
@@ -472,19 +408,13 @@ class _SignUpScreenState extends State<SignUpScreen>
               password: passwordController.text.trim(),
             );
 
-        final user = userCredential.user!;
-        final uid = user.uid;
+        final uid = userCredential.user!.uid;
 
-        // Step 2: Send verification email
-        if (!user.emailVerified) {
-          await user.sendEmailVerification();
-        }
-
-        // Step 3: Save role + name to Firestore
+        // Step 2: Save role + name to Firestore
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
           'name': nameController.text.trim(),
           'email': emailController.text.trim(),
-          'role': widget.role,
+          'role': widget.role, // 👈 this is where role is saved
           'createdAt': FieldValue.serverTimestamp(),
           'sortScore': 0,
         });
@@ -493,13 +423,20 @@ class _SignUpScreenState extends State<SignUpScreen>
           _isLoading = false;
         });
 
-        // Step 4: Navigate to verify email screen instead of home
-        Navigator.pushReplacement(
-          context,
-          MaterialPageRoute(
-            builder: (_) => const VerifyEmailScreen(role: 'User'),
-          ),
-        );
+        // Step 3: Navigate to home screen based on role
+        if (widget.role == 'collector') {
+          Navigator.pushNamed(
+            context,
+            AppRoutes.collectorHome,
+            arguments: {'role': 'collector'},
+          );
+        } else {
+          Navigator.pushNamed(
+            context,
+            AppRoutes.home,
+            arguments: {'role': 'User'},
+          );
+        }
       } on FirebaseAuthException catch (e) {
         setState(() {
           _isLoading = false;
@@ -520,4 +457,67 @@ class _SignUpScreenState extends State<SignUpScreen>
       }
     }
   }
+
+  // void _handleSignUp() async {
+  //   if (_formKey.currentState!.validate()) {
+  //     setState(() {
+  //       _isLoading = true;
+  //     });
+
+  //     try {
+  //       // Step 1: Create user with Firebase Auth
+  //       final userCredential = await FirebaseAuth.instance
+  //           .createUserWithEmailAndPassword(
+  //             email: emailController.text.trim(),
+  //             password: passwordController.text.trim(),
+  //           );
+
+  //       final user = userCredential.user!;
+  //       final uid = user.uid;
+
+  //       // Step 2: Send verification email
+  //       if (!user.emailVerified) {
+  //         await user.sendEmailVerification();
+  //       }
+
+  //       // Step 3: Save role + name to Firestore
+  //       await FirebaseFirestore.instance.collection('users').doc(uid).set({
+  //         'name': nameController.text.trim(),
+  //         'email': emailController.text.trim(),
+  //         'role': widget.role,
+  //         'createdAt': FieldValue.serverTimestamp(),
+  //         'sortScore': 0,
+  //       });
+
+  //       setState(() {
+  //         _isLoading = false;
+  //       });
+
+  //       // Step 4: Navigate to verify email screen instead of home
+  //       Navigator.pushReplacement(
+  //         context,
+  //         MaterialPageRoute(
+  //           builder: (_) => const VerifyEmailScreen(role: 'User'),
+  //         ),
+  //       );
+  //     } on FirebaseAuthException catch (e) {
+  //       setState(() {
+  //         _isLoading = false;
+  //       });
+
+  //       String errorMsg = 'An error occurred';
+  //       if (e.code == 'email-already-in-use') {
+  //         errorMsg = 'This email is already in use.';
+  //       } else if (e.code == 'weak-password') {
+  //         errorMsg = 'Password should be at least 6 characters.';
+  //       } else {
+  //         errorMsg = e.message ?? errorMsg;
+  //       }
+
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
+  //       );
+  //     }
+  //   }
+  // }
 }

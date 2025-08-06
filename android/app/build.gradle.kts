@@ -18,6 +18,8 @@ android {
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_11
         targetCompatibility = JavaVersion.VERSION_11
+        isCoreLibraryDesugaringEnabled = true 
+       
     }
 
     kotlinOptions {
@@ -60,7 +62,8 @@ dependencies {
     // Also add the dependency for the TensorFlow Lite library and specify its version
     implementation("org.tensorflow:tensorflow-lite:2.16.1")
     implementation("com.google.mlkit:object-detection:17.0.2")
-
+    // ✅ Required for Java 8+ APIs used in flutter_local_notifications
+    coreLibraryDesugaring("com.android.tools:desugar_jdk_libs:2.1.5")
 }
 
 flutter {

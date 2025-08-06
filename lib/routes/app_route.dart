@@ -29,4 +29,5 @@ abstract class AppRoutes {
   static const leaderboard = '/leaderboard';
   static const additem = '/additem';
   static const markethomescreen = '/markethomescreen';
+  static const collectormapscreen = '/collectormapscreen';
 }

@@ -52,6 +52,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     {'name': 'Hazardous', 'icon': Icons.warning, 'color': Colors.red},
     {'name': 'Cardboard', 'icon': Icons.inventory_2, 'color': Colors.orange},
     {'name': 'Trash', 'icon': Icons.delete, 'color': Colors.black54},
+    {'name': 'Dustbin', 'icon': Icons.delete_sharp, 'color': Colors.black54},
   ];
 
   Set<String> _selectedCategories = <String>{};

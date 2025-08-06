@@ -62,6 +62,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
 
     _slideController.forward();
     _fadeController.forward();
+    // ✅ Fetch sortScore after init
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      final provider = Provider.of<SortScoreProvider>(context, listen: false);
+      provider.fetchSortScore();
+      provider.fetchUserRank(); // <-- add this
+    });
   }
 
   // void _fetchSortScore() async {
@@ -104,6 +110,10 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   @override
   Widget build(BuildContext context) {
     final sortScore = context.watch<SortScoreProvider>().sortScore;
+    final rank = context.watch<SortScoreProvider>().rank;
+
+    // Later in your card:
+    _buildScoreMetric('Rank', '#$rank', Icons.leaderboard_rounded);
 
     return Scaffold(
       body: CustomScrollView(
@@ -256,7 +266,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // EcoScore Dashboard Card
-                      _buildEcoScoreCard(sortScore),
+                      Consumer<SortScoreProvider>(
+                        builder: (context, provider, _) {
+                          return _buildEcoScoreCard(
+                            provider.sortScore,
+                            provider.rank,
+                          );
+                        },
+                      ),
+
                       const SizedBox(height: 24),
 
                       // Quick Actions with AR Scanner
@@ -327,7 +345,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildEcoScoreCard(int sortScore) {
+  Widget _buildEcoScoreCard(int sortScore, int rank) {
     return Container(
       padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
@@ -417,7 +435,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
             children: [
               //_buildScoreMetric('Level', '12', Icons.trending_up_rounded),
               //const SizedBox(width: 24),
-              _buildScoreMetric('Rank', '#89', Icons.leaderboard_rounded),
+              _buildScoreMetric('Rank', '#$rank', Icons.leaderboard_rounded),
               const SizedBox(width: 24),
               _buildScoreMetric(
                 'Streak',
@@ -487,8 +505,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               AppRoutes.classifywaste,
             ),
             _buildActionCard(
-              'Bulk Upload',
-              'Classify multiple items',
+              'EcoMarket Place',
+              'Sell your unuse items',
               Icons.photo_library_rounded,
               [const Color(0xFFD32F2F), const Color(0xFFF44336)],
               // '/bulk-upload',
@@ -504,8 +522,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               AppRoutes.wastepickupformupdated,
             ),
             _buildActionCard(
-              'Rewards Store',
-              'Redeem EcoPoints',
+              'Leaderboard',
+              'check your position',
               Icons.redeem_rounded,
               [const Color(0xFFFF8F00), const Color(0xFFFFC107)],
               AppRoutes.leaderboard,
@@ -683,57 +701,84 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildCommunitySection() {
-    return Container(
-      padding: const EdgeInsets.all(20),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [Colors.indigo.shade50, Colors.blue.shade50],
-        ),
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.blue.shade100),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Icon(
-                Icons.groups_rounded,
-                color: Colors.indigo.shade700,
-                size: 24,
-              ),
-              const SizedBox(width: 12),
-              const Text(
-                'Community Champions',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF1A237E),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceAround,
-            children: [
-              _buildLeaderboardItem(1, 'Alex M.', '2,580', '🥇'),
-              _buildLeaderboardItem(2, 'Sarah K.', '2,340', '🥈'),
-              _buildLeaderboardItem(3, 'Mike R.', '2,100', '🥉'),
-            ],
-          ),
-          const SizedBox(height: 16),
-          Center(
-            child: TextButton.icon(
-              onPressed: () => Navigator.pushNamed(context, '/leaderboard'),
-              icon: const Icon(Icons.leaderboard_rounded),
-              label: const Text('View Full Leaderboard'),
+    return FutureBuilder<QuerySnapshot>(
+      future: FirebaseFirestore.instance
+          .collection('users') // or 'collectors'
+          .orderBy('sortScore', descending: true)
+          .limit(3)
+          .get(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+          return const Text("No leaderboard data available.");
+        }
+
+        final topUsers = snapshot.data!.docs;
+
+        return Container(
+          padding: const EdgeInsets.all(20),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              begin: Alignment.topLeft,
+              end: Alignment.bottomRight,
+              colors: [Colors.indigo.shade50, Colors.blue.shade50],
             ),
+            borderRadius: BorderRadius.circular(16),
+            border: Border.all(color: Colors.blue.shade100),
           ),
-        ],
-      ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Row(
+                children: [
+                  Icon(
+                    Icons.groups_rounded,
+                    color: Colors.indigo.shade700,
+                    size: 24,
+                  ),
+                  const SizedBox(width: 12),
+                  const Text(
+                    'Community Champions',
+                    style: TextStyle(
+                      fontSize: 18,
+                      fontWeight: FontWeight.bold,
+                      color: Color(0xFF1A237E),
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 16),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: List.generate(topUsers.length, (index) {
+                  final user = topUsers[index].data() as Map<String, dynamic>;
+                  final name = user['name'] ?? 'Unknown';
+                  final score = user['sortScore']?.toString() ?? '0';
+                  final emojis = ['🥇', '🥈', '🥉'];
+
+                  return _buildLeaderboardItem(
+                    index + 1,
+                    name,
+                    score,
+                    emojis[index],
+                  );
+                }),
+              ),
+              const SizedBox(height: 16),
+              // Center(
+              //   child: TextButton.icon(
+              //     onPressed: () => Navigator.pushNamed(context, '/leaderboard'),
+              //     icon: const Icon(Icons.leaderboard_rounded),
+              //     label: const Text('View Full Leaderboard'),
+              //   ),
+              // ),
+            ],
+          ),
+        );
+      },
     );
   }
 

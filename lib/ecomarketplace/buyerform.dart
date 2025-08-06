@@ -1,5 +1,5 @@
 // ==========================================
-// buyer_form_screen.dart
+// buyer_form_screen.dart (Enhanced Firebase Integration)
 // ==========================================
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -74,7 +74,7 @@ class _BuyerFormScreenState extends State<BuyerFormScreen> {
         _locationController.text = userData['location'] ?? '';
       }
     } catch (e) {
-      // Handle error silently
+      print('Error loading user data: $e');
     }
   }
 
@@ -94,45 +94,89 @@ class _BuyerFormScreenState extends State<BuyerFormScreen> {
 
     try {
       final currentUserId = FirebaseAuth.instance.currentUser!.uid;
+      final purchaseId = FirebaseFirestore.instance
+          .collection('purchases')
+          .doc()
+          .id;
+      final isFreeItem = widget.itemData['price'] == 0;
+
+      // Get current timestamp
+      final timestamp = Timestamp.now();
 
       // Create comprehensive purchase record
       final purchaseData = {
+        'purchaseId': purchaseId,
         'itemId': widget.itemId,
         'buyerId': currentUserId,
         'sellerId': widget.sellerId,
-        'itemName': widget.itemData['name'],
-        'itemImageUrl': widget.itemData['imageUrl'],
-        'price': widget.itemData['price'],
-        'status': 'pending', // pending, confirmed, completed, cancelled
-        'createdAt': Timestamp.now(),
+
+        // Item details
+        'itemDetails': {
+          'name': widget.itemData['name'],
+          'imageUrl': widget.itemData['imageUrl'],
+          'price': widget.itemData['price'],
+          'category': widget.itemData['category'],
+          'condition': widget.itemData['condition'],
+          'description': widget.itemData['description'],
+        },
+
+        // Purchase status
+        'status': isFreeItem ? 'claimed' : 'pending_payment',
+        'paymentStatus': isFreeItem ? 'not_required' : 'pending',
+        'createdAt': timestamp,
+        'updatedAt': timestamp,
 
         // Buyer information
         'buyerInfo': {
           'name': _nameController.text.trim(),
           'phone': _phoneController.text.trim(),
           'location': _locationController.text.trim(),
+          'email': FirebaseAuth.instance.currentUser?.email ?? '',
         },
 
         // Payment information
-        'paymentMethod': _selectedPaymentMethod,
-        'paymentDetails': _getPaymentDetails(),
-        'paymentStatus': 'pending', // pending, processing, completed, failed
+        'paymentMethod': isFreeItem ? 'free' : _selectedPaymentMethod,
+        'paymentDetails': isFreeItem ? {} : _getPaymentDetails(),
+
+        // Transaction details
+        'transactionDetails': {
+          'amount': widget.itemData['price'],
+          'currency': 'GHS',
+          'processingFee': _calculateProcessingFee(widget.itemData['price']),
+          'totalAmount':
+              widget.itemData['price'] +
+              _calculateProcessingFee(widget.itemData['price']),
+        },
+
+        // Delivery/Pickup information
+        'deliveryInfo': {
+          'method': 'pickup', // Default to pickup
+          'address': _locationController.text.trim(),
+          'status': 'pending',
+          'scheduledDate': null,
+        },
+
+        // Communication
+        'notes': '',
+        'communicationLog': [],
       };
 
       // Create purchase record
-      final purchaseRef = await FirebaseFirestore.instance
+      await FirebaseFirestore.instance
           .collection('purchases')
-          .add(purchaseData);
+          .doc(purchaseId)
+          .set(purchaseData);
 
       // Update item status
       await FirebaseFirestore.instance
           .collection('marketplace_items')
           .doc(widget.itemId)
           .update({
-            'status': 'sold',
+            'status': isFreeItem ? 'claimed' : 'sold',
             'buyerId': currentUserId,
-            'soldAt': Timestamp.now(),
-            'purchaseId': purchaseRef.id,
+            'soldAt': timestamp,
+            'purchaseId': purchaseId,
+            'updatedAt': timestamp,
           });
 
       // Update user profile with latest info
@@ -143,17 +187,34 @@ class _BuyerFormScreenState extends State<BuyerFormScreen> {
             'name': _nameController.text.trim(),
             'phone': _phoneController.text.trim(),
             'location': _locationController.text.trim(),
-            'lastUpdated': Timestamp.now(),
+            'lastUpdated': timestamp,
           });
 
+      // Create notification for seller
+      await _createSellerNotification(currentUserId, purchaseId, isFreeItem);
+
+      // Update user purchase history
+      await _updateUserPurchaseHistory(currentUserId, purchaseId);
+
+      // Send confirmation notification to buyer
+      await _createBuyerNotification(currentUserId, purchaseId, isFreeItem);
+
+      // For paid items, simulate payment processing
+      if (!isFreeItem) {
+        await _processPayment(purchaseId);
+      }
+
       _showSnackBar(
-        'Purchase successful! You will receive confirmation shortly.',
+        isFreeItem
+            ? 'Item claimed successfully! The seller will contact you shortly.'
+            : 'Purchase initiated! You will receive payment confirmation shortly.',
         Colors.green,
       );
 
       // Return success to previous screen
       Navigator.pop(context, true);
     } catch (e) {
+      print('Error processing purchase: $e');
       _showSnackBar(
         'Failed to complete purchase. Please try again.',
         Colors.red,
@@ -165,20 +226,168 @@ class _BuyerFormScreenState extends State<BuyerFormScreen> {
     }
   }
 
+  double _calculateProcessingFee(num price) {
+    // Calculate 2% processing fee with minimum of 1 GHS
+    final fee = price * 0.02;
+    return fee < 1.0 ? 1.0 : fee;
+  }
+
+  Future<void> _processPayment(String purchaseId) async {
+    try {
+      // Simulate payment processing based on method
+      await Future.delayed(const Duration(seconds: 2));
+
+      // Update payment status
+      await FirebaseFirestore.instance
+          .collection('purchases')
+          .doc(purchaseId)
+          .update({
+            'paymentStatus': 'processing',
+            'paymentProcessedAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          });
+
+      // In a real app, you would integrate with actual payment processors
+      // For now, we'll simulate successful payment after a delay
+      await Future.delayed(const Duration(seconds: 3));
+
+      await FirebaseFirestore.instance
+          .collection('purchases')
+          .doc(purchaseId)
+          .update({
+            'paymentStatus': 'completed',
+            'status': 'confirmed',
+            'paymentCompletedAt': Timestamp.now(),
+            'updatedAt': Timestamp.now(),
+          });
+    } catch (e) {
+      print('Payment processing error: $e');
+      // Update payment status to failed
+      await FirebaseFirestore.instance
+          .collection('purchases')
+          .doc(purchaseId)
+          .update({
+            'paymentStatus': 'failed',
+            'paymentError': e.toString(),
+            'updatedAt': Timestamp.now(),
+          });
+    }
+  }
+
+  Future<void> _createSellerNotification(
+    String buyerId,
+    String purchaseId,
+    bool isFreeItem,
+  ) async {
+    try {
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'userId': widget.sellerId,
+        'type': isFreeItem ? 'item_claimed' : 'item_purchased',
+        'title': isFreeItem ? 'Item Claimed!' : 'Item Purchased!',
+        'message':
+            '${_nameController.text.trim()} has ${isFreeItem ? 'claimed' : 'purchased'} your item: ${widget.itemData['name']}',
+        'data': {
+          'purchaseId': purchaseId,
+          'itemId': widget.itemId,
+          'buyerId': buyerId,
+          'itemName': widget.itemData['name'],
+        },
+        'isRead': false,
+        'createdAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error creating seller notification: $e');
+    }
+  }
+
+  Future<void> _createBuyerNotification(
+    String buyerId,
+    String purchaseId,
+    bool isFreeItem,
+  ) async {
+    try {
+      await FirebaseFirestore.instance.collection('notifications').add({
+        'userId': buyerId,
+        'type': isFreeItem ? 'claim_confirmed' : 'purchase_confirmed',
+        'title': isFreeItem ? 'Claim Confirmed!' : 'Purchase Confirmed!',
+        'message':
+            'Your ${isFreeItem ? 'claim' : 'purchase'} of ${widget.itemData['name']} has been confirmed. You will be contacted soon.',
+        'data': {
+          'purchaseId': purchaseId,
+          'itemId': widget.itemId,
+          'sellerId': widget.sellerId,
+          'itemName': widget.itemData['name'],
+        },
+        'isRead': false,
+        'createdAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error creating buyer notification: $e');
+    }
+  }
+
+  Future<void> _updateUserPurchaseHistory(
+    String userId,
+    String purchaseId,
+  ) async {
+    try {
+      await FirebaseFirestore.instance.collection('users').doc(userId).update({
+        'purchaseHistory': FieldValue.arrayUnion([purchaseId]),
+        'totalPurchases': FieldValue.increment(1),
+        'lastPurchaseAt': Timestamp.now(),
+      });
+    } catch (e) {
+      print('Error updating user purchase history: $e');
+    }
+  }
+
   Map<String, dynamic> _getPaymentDetails() {
     if (_selectedPaymentMethod == 'momo') {
       return {
+        'type': 'mobile_money',
         'momoNumber': _momoNumberController.text.trim(),
-        'provider': 'momo', // Could be expanded to include MTN, Vodafone, etc.
+        'provider': _detectMomoProvider(_momoNumberController.text.trim()),
+        'maskedNumber': _maskPhoneNumber(_momoNumberController.text.trim()),
       };
     } else {
       return {
+        'type': 'credit_card',
         'cardNumber':
-            '**** **** **** ${_cardNumberController.text.trim().substring(_cardNumberController.text.length - 4)}',
+            '**** **** **** ${_cardNumberController.text.trim().replaceAll(' ', '').substring(_cardNumberController.text.trim().replaceAll(' ', '').length - 4)}',
         'cardHolder': _cardHolderController.text.trim(),
         'expiryDate': _expiryDateController.text.trim(),
+        'cardType': _detectCardType(_cardNumberController.text.trim()),
       };
     }
+  }
+
+  String _detectMomoProvider(String phoneNumber) {
+    final number = phoneNumber.replaceAll(RegExp(r'[^\d]'), '');
+    if (number.startsWith('024') ||
+        number.startsWith('054') ||
+        number.startsWith('055')) {
+      return 'MTN';
+    } else if (number.startsWith('020') || number.startsWith('050')) {
+      return 'Vodafone';
+    } else if (number.startsWith('027') || number.startsWith('057')) {
+      return 'AirtelTigo';
+    }
+    return 'Unknown';
+  }
+
+  String _detectCardType(String cardNumber) {
+    final number = cardNumber.replaceAll(' ', '');
+    if (number.startsWith('4')) return 'Visa';
+    if (number.startsWith('5')) return 'Mastercard';
+    if (number.startsWith('3')) return 'American Express';
+    return 'Unknown';
+  }
+
+  String _maskPhoneNumber(String phoneNumber) {
+    if (phoneNumber.length >= 10) {
+      return '***-***-${phoneNumber.substring(phoneNumber.length - 4)}';
+    }
+    return phoneNumber;
   }
 
   void _showSnackBar(String message, Color color) {
@@ -187,6 +396,7 @@ class _BuyerFormScreenState extends State<BuyerFormScreen> {
         content: Text(message),
         backgroundColor: color,
         behavior: SnackBarBehavior.floating,
+        duration: const Duration(seconds: 4),
       ),
     );
   }
@@ -816,22 +1026,5 @@ class ExpiryDateFormatter extends TextInputFormatter {
     }
 
     return newValue;
-  }
-}
-
-Color _getConditionColor(String? condition) {
-  switch (condition?.toLowerCase()) {
-    case 'new':
-      return Colors.green;
-    case 'like new':
-      return Colors.blue;
-    case 'good':
-      return Colors.orange;
-    case 'fair':
-      return Colors.red;
-    case 'free':
-      return Colors.purple;
-    default:
-      return Colors.grey;
   }
 }

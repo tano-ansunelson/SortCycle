@@ -1,6 +1,10 @@
+// ignore: unused_import
+import 'dart:ffi';
+
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/chat_page/chat_page.dart';
+// ignore: unused_import
 import 'package:flutter_application_1/chat_page/chatlist_page.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:intl/intl.dart';
@@ -8,11 +12,13 @@ import 'package:intl/intl.dart';
 class PickupManagementPage extends StatefulWidget {
   final String collectorId;
   final String collectorName;
+  //final int initialTabIndex;
 
   const PickupManagementPage({
     super.key,
     required this.collectorId,
     required this.collectorName,
+    //this.initialTabIndex=0,
   });
 
   @override
@@ -26,7 +32,11 @@ class _PickupManagementPageState extends State<PickupManagementPage>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
+    _tabController = TabController(
+      length: 2,
+      vsync: this,
+      //initialIndex: widget.initialTabIndex,
+    );
   }
 
   @override
@@ -653,24 +663,26 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               ),
             ),
             const SizedBox(width: 8),
-            Flexible(
-              fit: FlexFit.tight,
-              child: ElevatedButton.icon(
-                onPressed: () => _navigateToLocation(requestId),
-                icon: const Icon(Icons.navigation, size: 18),
-                label: const Text('Navigate'),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: Colors.blue,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 4,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(8),
-                  ),
-                ),
-              ),
-            ),
+            // Flexible(
+            //   fit: FlexFit.tight,
+            //   child: ElevatedButton.icon(
+            //     onPressed: () => _navigateToLocation(requestId),
+            //     // _navigateToLocation(requestId, data),
+            //     //_showRequestDetails(doc.id, data),
+            //     icon: const Icon(Icons.navigation, size: 18),
+            //     label: const Text('Navigate'),
+            //     style: ElevatedButton.styleFrom(
+            //       backgroundColor: Colors.blue,
+            //       padding: const EdgeInsets.symmetric(
+            //         horizontal: 4,
+            //         vertical: 12,
+            //       ),
+            //       shape: RoundedRectangleBorder(
+            //         borderRadius: BorderRadius.circular(8),
+            //       ),
+            //     ),
+            //   ),
+            // ),
             const SizedBox(width: 8),
             Flexible(
               fit: FlexFit.tight,

@@ -403,14 +403,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                           color: Colors.green.shade400,
                           borderRadius: BorderRadius.circular(12),
                         ),
-                        // child: const Text(
-                        //   '+127',
-                        //   style: TextStyle(
-                        //     color: Colors.white,
-                        //     fontSize: 12,
-                        //     fontWeight: FontWeight.bold,
-                        //   ),
-                        // ),
+                        child: const Text(
+                          '+12',
+                          style: TextStyle(
+                            color: Colors.white,
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                          ),
+                        ),
                       ),
                     ],
                   ),

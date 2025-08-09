@@ -30,4 +30,5 @@ abstract class AppRoutes {
   static const additem = '/additem';
   static const markethomescreen = '/markethomescreen';
   static const collectormapscreen = '/collectormapscreen';
+  static const pickuphistory = '/pickuphistory';
 }

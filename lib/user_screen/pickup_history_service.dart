@@ -1,19 +1,19 @@
+// import 'package:flutter/material.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/chat_page/chat_page.dart';
-import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:intl/intl.dart';
 
-class UserRequestsScreen extends StatefulWidget {
-  final String userId; // Pass the current user's ID
+class PickupHistoryScreen extends StatefulWidget {
+  final String userId;
 
-  const UserRequestsScreen({super.key, required this.userId});
+  const PickupHistoryScreen({super.key, required this.userId});
 
   @override
-  State<UserRequestsScreen> createState() => _UserRequestsScreenState();
+  State<PickupHistoryScreen> createState() => _PickupHistoryScreenState();
 }
 
-class _UserRequestsScreenState extends State<UserRequestsScreen>
+class _PickupHistoryScreenState extends State<PickupHistoryScreen>
     with SingleTickerProviderStateMixin {
   final FirebaseFirestore _firestore = FirebaseFirestore.instance;
   late AnimationController _animationController;
@@ -40,34 +40,14 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
       backgroundColor: const Color(0xFFF8FFFE),
       appBar: AppBar(
         centerTitle: true,
-        automaticallyImplyLeading: false,
         title: const Text(
-          'My Pickups',
+          'Pickup History',
           style: TextStyle(
             fontSize: 22,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.5,
           ),
         ),
-        actions: [
-          Container(
-            margin: const EdgeInsets.only(right: 16),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: IconButton(
-              onPressed: () {
-                Navigator.pushNamed(context, AppRoutes.profile);
-              },
-              icon: const Icon(
-                Icons.person_outline_rounded,
-                color: Colors.white,
-                size: 24,
-              ),
-            ),
-          ),
-        ],
         backgroundColor: const Color(0xFF2E7D32),
         foregroundColor: Colors.white,
         elevation: 0,
@@ -82,21 +62,12 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
         ),
       ),
       body: StreamBuilder<QuerySnapshot>(
-        // stream: _firestore
-        //     .collection('pickup_requests')
-        //     .where('userId', isEqualTo: widget.userId)
-        //     .orderBy('createdAt', descending: true)
-        //     .snapshots(),
         stream: _firestore
             .collection('pickup_requests')
             .where('userId', isEqualTo: widget.userId)
-            .where(
-              'status',
-              whereNotIn: ['completed'],
-            ) // 👈 this line filters out completed
-            .orderBy('createdAt', descending: true)
+            .where('status', isEqualTo: 'completed')
+            .orderBy('updatedAt', descending: true)
             .snapshots(),
-
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return const Center(
@@ -178,27 +149,27 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
                       Container(
                         padding: const EdgeInsets.all(20),
                         decoration: BoxDecoration(
-                          color: Colors.green.shade50,
+                          color: Colors.grey.shade50,
                           shape: BoxShape.circle,
                         ),
                         child: Icon(
-                          Icons.eco_outlined,
+                          Icons.history_outlined,
                           size: 64,
-                          color: Colors.green.shade400,
+                          color: Colors.grey.shade400,
                         ),
                       ),
                       const SizedBox(height: 24),
                       Text(
-                        'No pickup requests yet',
+                        'No pickup history yet',
                         style: Theme.of(context).textTheme.headlineSmall
                             ?.copyWith(
-                              color: Colors.green.shade800,
+                              color: Colors.grey.shade800,
                               fontWeight: FontWeight.w600,
                             ),
                       ),
                       const SizedBox(height: 12),
                       Text(
-                        'Start your journey towards a cleaner environment.\nYour pickup requests will appear here.',
+                        'Your completed pickup requests will appear here.\nOnce you have completed pickups, you can view and manage them.',
                         style: Theme.of(context).textTheme.bodyMedium?.copyWith(
                           color: Colors.grey.shade600,
                           height: 1.4,
@@ -230,10 +201,10 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
                     end: Offset.zero,
                   ).chain(CurveTween(curve: Curves.easeOutCubic)),
                 ),
-                child: RequestCard(
+                child: HistoryCard(
                   requestId: request.id,
                   requestData: data,
-                  onCancel: () => _cancelRequest(request.id),
+                  onDelete: () => _deleteHistoryItem(request.id),
                 ),
               );
             },
@@ -243,10 +214,10 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
     );
   }
 
-  Future<void> _cancelRequest(String requestId) async {
+  Future<void> _deleteHistoryItem(String requestId) async {
     try {
       // Show confirmation dialog
-      bool? shouldCancel = await showDialog<bool>(
+      bool? shouldDelete = await showDialog<bool>(
         context: context,
         builder: (context) => AlertDialog(
           shape: RoundedRectangleBorder(
@@ -254,19 +225,19 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
           ),
           title: Row(
             children: [
-              Icon(Icons.warning_amber_rounded, color: Colors.orange.shade600),
+              Icon(Icons.delete_outline, color: Colors.red.shade600),
               const SizedBox(width: 8),
-              const Text('Cancel Request'),
+              const Text('Delete History'),
             ],
           ),
           content: const Text(
-            'Are you sure you want to cancel this pickup request? This action cannot be undone.',
+            'Are you sure you want to delete this history item? This action cannot be undone.',
           ),
           actions: [
             TextButton(
               onPressed: () => Navigator.of(context).pop(false),
               child: Text(
-                'Keep Request',
+                'Cancel',
                 style: TextStyle(color: Colors.grey.shade600),
               ),
             ),
@@ -279,17 +250,14 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
                   borderRadius: BorderRadius.circular(8),
                 ),
               ),
-              child: const Text('Yes, Cancel'),
+              child: const Text('Yes, Delete'),
             ),
           ],
         ),
       );
 
-      if (shouldCancel == true) {
-        await _firestore.collection('pickup_requests').doc(requestId).update({
-          'status': 'cancelled',
-          'updatedAt': FieldValue.serverTimestamp(),
-        });
+      if (shouldDelete == true) {
+        await _firestore.collection('pickup_requests').doc(requestId).delete();
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
@@ -298,10 +266,10 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
                 children: [
                   Icon(Icons.check_circle, color: Colors.white),
                   SizedBox(width: 8),
-                  Text('Request cancelled successfully'),
+                  Text('History item deleted successfully'),
                 ],
               ),
-              backgroundColor: Colors.orange.shade600,
+              backgroundColor: Colors.green.shade600,
               behavior: SnackBarBehavior.floating,
               shape: RoundedRectangleBorder(
                 borderRadius: BorderRadius.circular(10),
@@ -319,7 +287,7 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
                 const Icon(Icons.error, color: Colors.white),
                 const SizedBox(width: 8),
                 Expanded(
-                  child: Text('Failed to cancel request: ${e.toString()}'),
+                  child: Text('Failed to delete history item: ${e.toString()}'),
                 ),
               ],
             ),
@@ -335,23 +303,23 @@ class _UserRequestsScreenState extends State<UserRequestsScreen>
   }
 }
 
-class RequestCard extends StatefulWidget {
+class HistoryCard extends StatefulWidget {
   final String requestId;
   final Map<String, dynamic> requestData;
-  final VoidCallback onCancel;
+  final VoidCallback onDelete;
 
-  const RequestCard({
+  const HistoryCard({
     super.key,
     required this.requestId,
     required this.requestData,
-    required this.onCancel,
+    required this.onDelete,
   });
 
   @override
-  State<RequestCard> createState() => _RequestCardState();
+  State<HistoryCard> createState() => _HistoryCardState();
 }
 
-class _RequestCardState extends State<RequestCard>
+class _HistoryCardState extends State<HistoryCard>
     with SingleTickerProviderStateMixin {
   late AnimationController _controller;
   late Animation<double> _scaleAnimation;
@@ -378,11 +346,10 @@ class _RequestCardState extends State<RequestCard>
 
   @override
   Widget build(BuildContext context) {
-    final status = widget.requestData['status'] as String;
     final pickupDate = (widget.requestData['pickupDate'] as Timestamp).toDate();
-    // final wasteCategories = List<String>.from(
-    //   widget.requestData['wasteCategories'] ?? [],
-    // );
+    final completedAt = widget.requestData['updatedAt'] != null
+        ? (widget.requestData['updatedAt'] as Timestamp).toDate()
+        : pickupDate;
     final collectorId = widget.requestData['collectorId'] as String?;
 
     return GestureDetector(
@@ -428,7 +395,42 @@ class _RequestCardState extends State<RequestCard>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    _buildStatusChip(status),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 16,
+                        vertical: 8,
+                      ),
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [Colors.green.shade100, Colors.green.shade50],
+                        ),
+                        borderRadius: BorderRadius.circular(20),
+                        border: Border.all(
+                          color: Colors.green.shade800.withOpacity(0.3),
+                          width: 1,
+                        ),
+                      ),
+                      child: Row(
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          Icon(
+                            Icons.check_circle_rounded,
+                            size: 16,
+                            color: Colors.green.shade800,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'COMPLETED',
+                            style: TextStyle(
+                              fontSize: 12,
+                              fontWeight: FontWeight.w700,
+                              color: Colors.green.shade800,
+                              letterSpacing: 0.5,
+                            ),
+                          ),
+                        ],
+                      ),
+                    ),
                     Container(
                       padding: const EdgeInsets.symmetric(
                         horizontal: 12,
@@ -442,13 +444,13 @@ class _RequestCardState extends State<RequestCard>
                         mainAxisSize: MainAxisSize.min,
                         children: [
                           Icon(
-                            Icons.calendar_today,
+                            Icons.event_available,
                             size: 14,
                             color: Colors.grey.shade600,
                           ),
                           const SizedBox(width: 4),
                           Text(
-                            DateFormat('MMM dd, yyyy').format(pickupDate),
+                            DateFormat('MMM dd, yyyy').format(completedAt),
                             style: TextStyle(
                               fontSize: 12,
                               color: Colors.grey.shade600,
@@ -463,10 +465,10 @@ class _RequestCardState extends State<RequestCard>
 
                 const SizedBox(height: 20),
 
-                // Pickup Details
+                // Original Pickup Details
                 _buildInfoRow(
                   Icons.access_time_rounded,
-                  'Pickup Time',
+                  'Original Pickup Time',
                   DateFormat('MMM dd, yyyy - hh:mm a').format(pickupDate),
                   Colors.blue.shade600,
                 ),
@@ -478,6 +480,15 @@ class _RequestCardState extends State<RequestCard>
                   'Location',
                   '${widget.requestData['userTown']}',
                   Colors.red.shade600,
+                ),
+
+                const SizedBox(height: 12),
+
+                _buildInfoRow(
+                  Icons.event_available,
+                  'Completed On',
+                  DateFormat('MMM dd, yyyy - hh:mm a').format(completedAt),
+                  Colors.green.shade600,
                 ),
 
                 const SizedBox(height: 16),
@@ -502,7 +513,7 @@ class _RequestCardState extends State<RequestCard>
                           ),
                           child: _buildInfoRow(
                             Icons.person_rounded,
-                            'Assigned Collector',
+                            'Collector',
                             '${collectorData['name']} - ${collectorData['phone']}',
                             Colors.purple.shade600,
                           ),
@@ -518,47 +529,6 @@ class _RequestCardState extends State<RequestCard>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Cancel button (only for pending requests)
-                    if (status == 'pending')
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: widget.onCancel,
-                          icon: const Icon(Icons.close, size: 18),
-                          label: const Text('Cancel'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red.shade600,
-                            side: BorderSide(color: Colors.red.shade300),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      )
-                    else
-                      const Spacer(),
-
-                    if (status == 'pending') const SizedBox(width: 12),
-
-                    // View Details button
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showRequestDetails(context),
-                        icon: const Icon(Icons.info_outline, size: 18),
-                        label: const Text('Details'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue.shade600,
-                          side: BorderSide(color: Colors.blue.shade300),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
                     // Chat button (only if collector is assigned)
                     if (collectorId != null)
                       Expanded(
@@ -594,76 +564,46 @@ class _RequestCardState extends State<RequestCard>
                       )
                     else
                       const Spacer(),
+                    // View Details button
+                    // Expanded(
+                    //   child: OutlinedButton.icon(
+                    //     onPressed: () => _showHistoryDetails(context),
+                    //     icon: const Icon(Icons.info_outline, size: 18),
+                    //     label: const Text('Details'),
+                    //     style: OutlinedButton.styleFrom(
+                    //       foregroundColor: Colors.blue.shade600,
+                    //       side: BorderSide(color: Colors.blue.shade300),
+                    //       shape: RoundedRectangleBorder(
+                    //         borderRadius: BorderRadius.circular(10),
+                    //       ),
+                    //       padding: const EdgeInsets.symmetric(vertical: 12),
+                    //     ),
+                    //   ),
+                    // ),
+                    const SizedBox(width: 12),
+
+                    // Delete button
+                    Expanded(
+                      child: OutlinedButton.icon(
+                        onPressed: widget.onDelete,
+                        icon: const Icon(Icons.delete_outline, size: 18),
+                        label: const Text('Delete'),
+                        style: OutlinedButton.styleFrom(
+                          foregroundColor: Colors.red.shade600,
+                          side: BorderSide(color: Colors.red.shade300),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                        ),
+                      ),
+                    ),
                   ],
                 ),
               ],
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildStatusChip(String status) {
-    Color backgroundColor;
-    Color textColor;
-    IconData icon;
-    List<Color> gradientColors;
-
-    switch (status.toLowerCase()) {
-      case 'pending':
-        backgroundColor = Colors.orange.shade100;
-        textColor = Colors.orange.shade800;
-        icon = Icons.schedule_rounded;
-        gradientColors = [Colors.orange.shade100, Colors.orange.shade50];
-        break;
-      case 'accepted':
-        backgroundColor = Colors.blue.shade100;
-        textColor = Colors.blue.shade800;
-        icon = Icons.check_circle_outline_rounded;
-        gradientColors = [Colors.blue.shade100, Colors.blue.shade50];
-        break;
-      case 'completed':
-        backgroundColor = Colors.green.shade100;
-        textColor = Colors.green.shade800;
-        icon = Icons.check_circle_rounded;
-        gradientColors = [Colors.green.shade100, Colors.green.shade50];
-        break;
-      case 'cancelled':
-        backgroundColor = Colors.red.shade100;
-        textColor = Colors.red.shade800;
-        icon = Icons.cancel_outlined;
-        gradientColors = [Colors.red.shade100, Colors.red.shade50];
-        break;
-      default:
-        backgroundColor = Colors.grey.shade100;
-        textColor = Colors.grey.shade800;
-        icon = Icons.help_outline_rounded;
-        gradientColors = [Colors.grey.shade100, Colors.grey.shade50];
-    }
-
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(colors: gradientColors),
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: textColor.withOpacity(0.3), width: 1),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Icon(icon, size: 16, color: textColor),
-          const SizedBox(width: 6),
-          Text(
-            status.toUpperCase(),
-            style: TextStyle(
-              fontSize: 12,
-              fontWeight: FontWeight.w700,
-              color: textColor,
-              letterSpacing: 0.5,
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -714,7 +654,7 @@ class _RequestCardState extends State<RequestCard>
     );
   }
 
-  void _showRequestDetails(BuildContext context) {
+  void _showHistoryDetails(BuildContext context) {
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -742,14 +682,14 @@ class _RequestCardState extends State<RequestCard>
                       borderRadius: BorderRadius.circular(10),
                     ),
                     child: Icon(
-                      Icons.info_outline_rounded,
+                      Icons.history_rounded,
                       color: Colors.green.shade600,
                       size: 24,
                     ),
                   ),
                   const SizedBox(width: 12),
                   Text(
-                    'Request Details',
+                    'History Details',
                     style: Theme.of(context).textTheme.headlineSmall?.copyWith(
                       fontWeight: FontWeight.w700,
                       color: Colors.green.shade800,
@@ -780,7 +720,7 @@ class _RequestCardState extends State<RequestCard>
                       widget.requestData['status'] ?? 'N/A',
                     ),
                     _buildDetailRow(
-                      'Created At',
+                      'Original Request Date',
                       widget.requestData['createdAt'] != null
                           ? DateFormat('MMM dd, yyyy - hh:mm a').format(
                               (widget.requestData['createdAt'] as Timestamp)
@@ -788,13 +728,34 @@ class _RequestCardState extends State<RequestCard>
                             )
                           : 'N/A',
                     ),
+                    _buildDetailRow(
+                      'Scheduled Pickup',
+                      widget.requestData['pickupDate'] != null
+                          ? DateFormat('MMM dd, yyyy - hh:mm a').format(
+                              (widget.requestData['pickupDate'] as Timestamp)
+                                  .toDate(),
+                            )
+                          : 'N/A',
+                    ),
                     if (widget.requestData['updatedAt'] != null)
                       _buildDetailRow(
-                        'Updated At',
+                        'Completed At',
                         DateFormat('MMM dd, yyyy - hh:mm a').format(
                           (widget.requestData['updatedAt'] as Timestamp)
                               .toDate(),
                         ),
+                      ),
+                    if (widget.requestData['collectorName'] != null)
+                      _buildDetailRow(
+                        'Completed By',
+                        widget.requestData['collectorName'],
+                      ),
+                    if (widget.requestData['wasteCategories'] != null)
+                      _buildDetailRow(
+                        'Waste Categories',
+                        List<String>.from(
+                          widget.requestData['wasteCategories'] ?? [],
+                        ).join(', '),
                       ),
                   ],
                 ),
@@ -864,3 +825,112 @@ class _RequestCardState extends State<RequestCard>
     );
   }
 }
+
+// import 'package:cloud_firestore/cloud_firestore.dart';
+// import 'package:intl/intl.dart';
+
+// class HistoryScreen extends StatelessWidget {
+//   final String userId;
+
+//   const HistoryScreen({super.key, required this.userId});
+
+//   @override
+//   Widget build(BuildContext context) {
+//     return Scaffold(
+//       backgroundColor: const Color(0xFFF8FFFE),
+//       appBar: AppBar(
+//         title: const Text('Completed History'),
+//         centerTitle: true,
+//         backgroundColor: const Color(0xFF2E7D32),
+//         foregroundColor: Colors.white,
+//       ),
+//       body: StreamBuilder<QuerySnapshot>(
+//         stream: FirebaseFirestore.instance
+//             .collection('pickup_requests')
+//             .where('userId', isEqualTo: userId)
+//             .where('status', isEqualTo: 'completed')
+//             .orderBy('updatedAt', descending: true)
+//             .snapshots(),
+//         builder: (context, snapshot) {
+//           if (snapshot.connectionState == ConnectionState.waiting) {
+//             return const Center(
+//               child: CircularProgressIndicator(
+//                 valueColor: AlwaysStoppedAnimation<Color>(Color(0xFF2E7D32)),
+//               ),
+//             );
+//           }
+
+//           if (snapshot.hasError) {
+//             return Center(
+//               child: Text(
+//                 'Error loading history: ${snapshot.error}',
+//                 style: const TextStyle(color: Colors.red),
+//               ),
+//             );
+//           }
+
+//           if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+//             return const Center(
+//               child: Text(
+//                 'No completed pickups yet.',
+//                 style: TextStyle(fontSize: 16),
+//               ),
+//             );
+//           }
+
+//           final historyDocs = snapshot.data!.docs;
+
+//           return ListView.builder(
+//             padding: const EdgeInsets.all(16),
+//             itemCount: historyDocs.length,
+//             itemBuilder: (context, index) {
+//               final data = historyDocs[index].data() as Map<String, dynamic>;
+//               final updatedAt = (data['updatedAt'] as Timestamp?)?.toDate();
+
+//               return Container(
+//                 margin: const EdgeInsets.only(bottom: 16),
+//                 padding: const EdgeInsets.all(16),
+//                 decoration: BoxDecoration(
+//                   color: Colors.green.shade50,
+//                   borderRadius: BorderRadius.circular(12),
+//                   border: Border.all(color: Colors.green.shade200),
+//                 ),
+//                 child: Column(
+//                   crossAxisAlignment: CrossAxisAlignment.start,
+//                   children: [
+//                     const Row(
+//                       children: [
+//                         Icon(Icons.check_circle, color: Colors.green),
+//                         SizedBox(width: 8),
+//                         Text(
+//                           'Pickup Completed',
+//                           style: TextStyle(
+//                             fontWeight: FontWeight.bold,
+//                             color: Colors.green,
+//                           ),
+//                         ),
+//                       ],
+//                     ),
+//                     const SizedBox(height: 8),
+//                     Text('Request ID: ${historyDocs[index].id}'),
+//                     if (updatedAt != null)
+//                       Text(
+//                         'Completed On: ${DateFormat('MMM dd, yyyy – hh:mm a').format(updatedAt)}',
+//                       ),
+//                     const SizedBox(height: 8),
+//                     Text('Location: ${data['userTown'] ?? 'Unknown'}'),
+//                     Text('Collector: ${data['collectorName'] ?? 'N/A'}'),
+//                     const SizedBox(height: 8),
+//                     Text(
+//                       'Waste Categories: ${List<String>.from(data['wasteCategories'] ?? []).join(', ')}',
+//                     ),
+//                   ],
+//                 ),
+//               );
+//             },
+//           );
+//         },
+//       ),
+//     );
+//   }
+// }

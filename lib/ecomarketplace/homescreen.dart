@@ -64,11 +64,13 @@ class _MarketHomeScreen extends State<MarketHomeScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.grey[50],
+      backgroundColor: const Color.fromARGB(255, 250, 250, 250),
       appBar: AppBar(
+        centerTitle: true,
+        automaticallyImplyLeading: false,
         elevation: 0,
-        backgroundColor: Colors.white,
-        foregroundColor: Colors.black87,
+        backgroundColor: const Color.fromARGB(255, 34, 125, 69),
+        foregroundColor: const Color.fromARGB(221, 250, 249, 249),
         title: const Text(
           'EcoMarketplace',
           style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24),

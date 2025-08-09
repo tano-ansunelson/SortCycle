@@ -1,4 +1,6 @@
 // Enhanced Beautiful WastePickupFormUpdated
+import 'dart:async';
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
@@ -18,8 +20,8 @@ class WastePickupFormUpdated extends StatefulWidget {
 class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  final _nameController = TextEditingController();
-  final _phoneController = TextEditingController();
+  //final _nameController = TextEditingController();
+  //final _phoneController = TextEditingController();
   final _townController = TextEditingController();
 
   // Animation controllers
@@ -37,25 +39,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
-  // Category selection with icons
-  final List<Map<String, dynamic>> _wasteCategories = [
-    {'name': 'Plastic', 'icon': Icons.recycling, 'color': Colors.blue},
-    {'name': 'Metal', 'icon': Icons.build, 'color': Colors.grey},
-    {'name': 'Paper', 'icon': Icons.description, 'color': Colors.brown},
-    {'name': 'Glass', 'icon': Icons.local_bar, 'color': Colors.cyan},
-    {
-      'name': 'Electronic',
-      'icon': Icons.electrical_services,
-      'color': Colors.purple,
-    },
-    {'name': 'Organic', 'icon': Icons.eco, 'color': Colors.green},
-    {'name': 'Hazardous', 'icon': Icons.warning, 'color': Colors.red},
-    {'name': 'Cardboard', 'icon': Icons.inventory_2, 'color': Colors.orange},
-    {'name': 'Trash', 'icon': Icons.delete, 'color': Colors.black54},
-    {'name': 'Dustbin', 'icon': Icons.delete_sharp, 'color': Colors.black54},
-  ];
-
-  Set<String> _selectedCategories = <String>{};
+  final Set<String> _selectedCategories = <String>{};
 
   // Collectors
   List<Map<String, dynamic>> _nearbyCollectors = [];
@@ -93,8 +77,19 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     _townController.addListener(() {
       final town = _townController.text.trim();
       if (town.isNotEmpty && town.length >= 3) {
-        _fetchNearbyCollectors();
+        // _fetchNearbyCollectors();
+        // Debounce to prevent multiple rapid calls
+        _debounceFetch(town);
       }
+    });
+  }
+
+  // Debounce helper
+  Timer? _debounce;
+  void _debounceFetch(String town) {
+    _debounce?.cancel();
+    _debounce = Timer(const Duration(milliseconds: 500), () {
+      _fetchNearbyCollectors();
     });
   }
 
@@ -102,9 +97,10 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   void dispose() {
     _slideController.dispose();
     _fadeController.dispose();
-    _nameController.dispose();
-    _phoneController.dispose();
+    // _nameController.dispose();
+    // _phoneController.dispose();
     _townController.dispose();
+    _debounce?.cancel();
     super.dispose();
   }
 
@@ -159,9 +155,23 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     );
 
     if (picked != null && picked != _selectedTime) {
-      setState(() {
-        _selectedTime = picked;
-      });
+      // Check if time is between 9AM and 5PM
+      final int pickedMinutes = picked.hour * 60 + picked.minute;
+      const int minMinutes = 9 * 60; // 9:00 AM
+      const int maxMinutes = 17 * 60; // 5:00 PM
+
+      if (pickedMinutes >= minMinutes && pickedMinutes <= maxMinutes) {
+        setState(() {
+          _selectedTime = picked;
+        });
+      } else {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.red,
+            content: Text('Please select a time between 9:00 AM and 5:00 PM'),
+          ),
+        );
+      }
     }
   }
 
@@ -216,7 +226,6 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     }
   }
 
-  // Fetch Nearby Collectors
   Future<void> _fetchNearbyCollectors() async {
     setState(() {
       _isLoadingCollectors = true;
@@ -237,18 +246,17 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
           .where('town', isEqualTo: userTown)
           .get();
 
-      List<Map<String, dynamic>> townCollectors = [];
-
-      for (QueryDocumentSnapshot doc in collectorsSnapshot.docs) {
-        Map<String, dynamic> collectorData = doc.data() as Map<String, dynamic>;
-
-        townCollectors.add({
+      List<Map<String, dynamic>> townCollectors = collectorsSnapshot.docs.map((
+        doc,
+      ) {
+        Map<String, dynamic> data = doc.data() as Map<String, dynamic>;
+        return {
           'id': doc.id,
-          'name': collectorData['name'] ?? 'Unknown Collector',
-          'phone': collectorData['phone'] ?? '',
-          'town': collectorData['town'],
-        });
-      }
+          'name': data['name'] ?? 'Unknown Collector',
+          'phone': data['phone'] ?? '',
+          'town': data['town'],
+        };
+      }).toList();
 
       setState(() {
         _nearbyCollectors = townCollectors;
@@ -256,46 +264,106 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
       });
 
       if (_nearbyCollectors.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('No collectors found in your town.'),
-            backgroundColor: Colors.orange.shade600,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(10),
-            ),
-          ),
+        _showSnackBar(
+          'No collectors found in your town.',
+          Colors.orange.shade600,
         );
       }
     } catch (e) {
       setState(() {
         _isLoadingCollectors = false;
       });
-
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Failed to fetch collectors: ${e.toString()}'),
-          backgroundColor: Colors.red.shade600,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(10),
-          ),
-        ),
+      _showSnackBar(
+        'Failed to fetch collectors: ${e.toString()}',
+        Colors.red.shade600,
       );
     }
   }
 
-  // Submit Pickup Request
+  void _showSnackBar(String message, Color color) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: color,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
+      ),
+    );
+  }
+
+  // Fetch Nearby Collectors
+  // Future<void> _fetchNearbyCollectors() async {
+  //   setState(() {
+  //     _isLoadingCollectors = true;
+  //     _nearbyCollectors.clear();
+  //     _selectedCollectorId = null;
+  //   });
+
+  //   try {
+  //     String userTown = _townController.text.trim().toLowerCase();
+
+  //     if (userTown.isEmpty) {
+  //       throw Exception('Please enter your town to fetch collectors.');
+  //     }
+
+  //     QuerySnapshot collectorsSnapshot = await FirebaseFirestore.instance
+  //         .collection('collectors')
+  //         .where('isActive', isEqualTo: true)
+  //         .where('town', isEqualTo: userTown)
+  //         .get();
+
+  //     List<Map<String, dynamic>> townCollectors = [];
+
+  //     for (QueryDocumentSnapshot doc in collectorsSnapshot.docs) {
+  //       Map<String, dynamic> collectorData = doc.data() as Map<String, dynamic>;
+
+  //       townCollectors.add({
+  //         'id': doc.id,
+  //         'name': collectorData['name'] ?? 'Unknown Collector',
+  //         'phone': collectorData['phone'] ?? '',
+  //         'town': collectorData['town'],
+  //       });
+  //     }
+
+  //     setState(() {
+  //       _nearbyCollectors = townCollectors;
+  //       _isLoadingCollectors = false;
+  //     });
+
+  //     if (_nearbyCollectors.isEmpty) {
+  //       ScaffoldMessenger.of(context).showSnackBar(
+  //         SnackBar(
+  //           content: const Text('No collectors found in your town.'),
+  //           backgroundColor: Colors.orange.shade600,
+  //           behavior: SnackBarBehavior.floating,
+  //           shape: RoundedRectangleBorder(
+  //             borderRadius: BorderRadius.circular(10),
+  //           ),
+  //         ),
+  //       );
+  //     }
+  //   } catch (e) {
+  //     setState(() {
+  //       _isLoadingCollectors = false;
+  //     });
+
+  //     ScaffoldMessenger.of(context).showSnackBar(
+  //       SnackBar(
+  //         content: Text('Failed to fetch collectors: ${e.toString()}'),
+  //         backgroundColor: Colors.red.shade600,
+  //         behavior: SnackBarBehavior.floating,
+  //         shape: RoundedRectangleBorder(
+  //           borderRadius: BorderRadius.circular(10),
+  //         ),
+  //       ),
+  //     );
+  //   }
+  // }
+
   Future<void> _submitPickupRequest() async {
     HapticFeedback.mediumImpact();
 
     if (!_formKey.currentState!.validate()) return;
-
-    // Validation checks with beautiful snackbars
-    if (_selectedCategories.isEmpty) {
-      _showErrorSnackBar('Please select at least one waste category');
-      return;
-    }
 
     if (_selectedDate == null) {
       _showErrorSnackBar('Please select a pickup date');
@@ -318,8 +386,24 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     }
 
     try {
-      // Show beautiful loading dialog
       _showLoadingDialog();
+
+      // 🔸 Fetch user info from Firestore
+      final userDoc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(widget.userId)
+          .get();
+
+      if (!userDoc.exists) {
+        Navigator.of(context).pop(); // close loading dialog
+        _showErrorSnackBar('User data not found');
+        return;
+      }
+
+      final userData = userDoc.data()!;
+      final userName = userData['name'] ?? 'Unknown';
+      final userPhone = userData['phone'] ?? '';
+      //final userTown = userData['town'] ?? '';
 
       DateTime pickupDateTime = DateTime(
         _selectedDate!.year,
@@ -333,14 +417,15 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         (collector) => collector['id'] == _selectedCollectorId,
         orElse: () => {},
       );
+
       final collectorName = selectedCollector['name'] ?? 'Unknown Collector';
 
+      // 🔸 Save pickup request
       await FirebaseFirestore.instance.collection('pickup_requests').add({
         'userId': widget.userId,
-        'userName': _nameController.text.trim(),
-        'userPhone': _phoneController.text.trim(),
+        'userName': userName,
+        'userPhone': userPhone,
         'userTown': _townController.text.trim(),
-        'wasteCategories': _selectedCategories.toList(),
         'userLatitude': _currentPosition!.latitude,
         'userLongitude': _currentPosition!.longitude,
         'collectorId': _selectedCollectorId,
@@ -350,14 +435,87 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      Navigator.of(context).pop(); // Close loading dialog
-      // HapticFeedback.successFeedback();
+      Navigator.of(context).pop(); // Close loading
       _showSuccessDialog();
     } catch (e) {
-      Navigator.of(context).pop(); // Close loading dialog
+      Navigator.of(context).pop(); // Close loading
       _showErrorSnackBar('Failed to submit request: ${e.toString()}');
     }
   }
+
+  // Submit Pickup Request
+  // Future<void> _submitPickupRequest() async {
+  //   HapticFeedback.mediumImpact();
+
+  //   if (!_formKey.currentState!.validate()) return;
+
+  //   // Validation checks with beautiful snackbars
+  //   // if (_selectedCategories.isEmpty) {
+  //   //   _showErrorSnackBar('Please select at least one waste category');
+  //   //   return;
+  //   // }
+
+  //   if (_selectedDate == null) {
+  //     _showErrorSnackBar('Please select a pickup date');
+  //     return;
+  //   }
+
+  //   if (_selectedTime == null) {
+  //     _showErrorSnackBar('Please select a pickup time');
+  //     return;
+  //   }
+
+  //   if (_currentPosition == null) {
+  //     _showErrorSnackBar('Please set your location first');
+  //     return;
+  //   }
+
+  //   if (_selectedCollectorId == null) {
+  //     _showErrorSnackBar('Please select a collector');
+  //     return;
+  //   }
+
+  //   try {
+  //     // Show beautiful loading dialog
+  //     _showLoadingDialog();
+
+  //     DateTime pickupDateTime = DateTime(
+  //       _selectedDate!.year,
+  //       _selectedDate!.month,
+  //       _selectedDate!.day,
+  //       _selectedTime!.hour,
+  //       _selectedTime!.minute,
+  //     );
+
+  //     final selectedCollector = _nearbyCollectors.firstWhere(
+  //       (collector) => collector['id'] == _selectedCollectorId,
+  //       orElse: () => {},
+  //     );
+  //     final collectorName = selectedCollector['name'] ?? 'Unknown Collector';
+
+  //     await FirebaseFirestore.instance.collection('pickup_requests').add({
+  //       'userId': widget.userId,
+  //       //'userName': _nameController.text.trim(),
+  //       'userPhone': _phoneController.text.trim(),
+  //       'userTown': _townController.text.trim(),
+  //      // 'wasteCategories': _selectedCategories.toList(),
+  //       'userLatitude': _currentPosition!.latitude,
+  //       'userLongitude': _currentPosition!.longitude,
+  //       'collectorId': _selectedCollectorId,
+  //       'collectorName': collectorName,
+  //       'pickupDate': Timestamp.fromDate(pickupDateTime),
+  //       'status': 'pending',
+  //       'createdAt': FieldValue.serverTimestamp(),
+  //     });
+
+  //     Navigator.of(context).pop(); // Close loading dialog
+  //     // HapticFeedback.successFeedback();
+  //     _showSuccessDialog();
+  //   } catch (e) {
+  //     Navigator.of(context).pop(); // Close loading dialog
+  //     _showErrorSnackBar('Failed to submit request: ${e.toString()}');
+  //   }
+  // }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -496,8 +654,8 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
 
   void _resetForm() {
     setState(() {
-      _nameController.clear();
-      _phoneController.clear();
+      // _nameController.clear();
+      //_phoneController.clear();
       _townController.clear();
       _selectedCategories.clear();
       _currentPosition = null;
@@ -585,15 +743,13 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                             delay: 0,
                             child: _buildUserInfoSection(),
                           ),
-
                           const SizedBox(height: 16),
 
                           // Waste Categories Card
-                          _buildAnimatedCard(
-                            delay: 200,
-                            child: _buildWasteCategoriesSection(),
-                          ),
-
+                          // _buildAnimatedCard(
+                          //   delay: 200,
+                          //   child: _buildWasteCategoriesSection(),
+                          // ),
                           const SizedBox(height: 16),
 
                           // Schedule Card
@@ -696,31 +852,31 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
               ),
             ],
           ),
-          const SizedBox(height: 24),
-          _buildStyledTextField(
-            controller: _nameController,
-            label: 'Full Name',
-            icon: Icons.person_outline,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter your name';
-              }
-              return null;
-            },
-          ),
-          const SizedBox(height: 16),
-          _buildStyledTextField(
-            controller: _phoneController,
-            label: 'Phone Number',
-            icon: Icons.phone_outlined,
-            keyboardType: TextInputType.phone,
-            validator: (value) {
-              if (value == null || value.trim().isEmpty) {
-                return 'Please enter your phone number';
-              }
-              return null;
-            },
-          ),
+          // const SizedBox(height: 24),
+          // _buildStyledTextField(
+          //   controller: _nameController,
+          //   label: 'Full Name',
+          //   icon: Icons.person_outline,
+          //   validator: (value) {
+          //     if (value == null || value.trim().isEmpty) {
+          //       return 'Please enter your name';
+          //     }
+          //     return null;
+          //   },
+          // ),
+          // const SizedBox(height: 16),
+          // _buildStyledTextField(
+          //   controller: _phoneController,
+          //   label: 'Phone Number',
+          //   icon: Icons.phone_outlined,
+          //   keyboardType: TextInputType.phone,
+          //   validator: (value) {
+          //     if (value == null || value.trim().isEmpty) {
+          //       return 'Please enter your phone number';
+          //     }
+          //     return null;
+          //   },
+          // ),
           const SizedBox(height: 16),
           _buildStyledTextField(
             controller: _townController,
@@ -773,120 +929,120 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     );
   }
 
-  Widget _buildWasteCategoriesSection() {
-    return Container(
-      padding: const EdgeInsets.all(24),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.05),
-            blurRadius: 10,
-            offset: const Offset(0, 5),
-          ),
-        ],
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.all(12),
-                decoration: BoxDecoration(
-                  color: Colors.green.shade50,
-                  borderRadius: BorderRadius.circular(12),
-                ),
-                child: Icon(
-                  Icons.category,
-                  color: Colors.green.shade600,
-                  size: 24,
-                ),
-              ),
-              const SizedBox(width: 16),
-              const Text(
-                'Waste Categories',
-                style: TextStyle(
-                  fontSize: 22,
-                  fontWeight: FontWeight.bold,
-                  color: Color(0xFF2E2E2E),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Select the types of waste you want to dispose of',
-            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-          ),
-          const SizedBox(height: 20),
-          Wrap(
-            spacing: 12,
-            runSpacing: 12,
-            children: _wasteCategories.map((category) {
-              final isSelected = _selectedCategories.contains(category['name']);
-              return GestureDetector(
-                onTap: () {
-                  HapticFeedback.lightImpact();
-                  setState(() {
-                    if (isSelected) {
-                      _selectedCategories.remove(category['name']);
-                    } else {
-                      _selectedCategories.add(category['name']);
-                    }
-                  });
-                },
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 200),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 16,
-                    vertical: 12,
-                  ),
-                  decoration: BoxDecoration(
-                    color: isSelected
-                        ? category['color'].withOpacity(0.1)
-                        : Colors.grey.shade100,
-                    borderRadius: BorderRadius.circular(25),
-                    border: Border.all(
-                      color: isSelected
-                          ? category['color']
-                          : Colors.grey.shade300,
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(
-                        category['icon'],
-                        size: 18,
-                        color: isSelected
-                            ? category['color']
-                            : Colors.grey.shade600,
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        category['name'],
-                        style: TextStyle(
-                          color: isSelected
-                              ? category['color']
-                              : Colors.grey.shade700,
-                          fontWeight: isSelected
-                              ? FontWeight.bold
-                              : FontWeight.normal,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              );
-            }).toList(),
-          ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildWasteCategoriesSection() {
+  //   return Container(
+  //     padding: const EdgeInsets.all(24),
+  //     decoration: BoxDecoration(
+  //       color: Colors.white,
+  //       borderRadius: BorderRadius.circular(20),
+  //       boxShadow: [
+  //         BoxShadow(
+  //           color: Colors.black.withOpacity(0.05),
+  //           blurRadius: 10,
+  //           offset: const Offset(0, 5),
+  //         ),
+  //       ],
+  //     ),
+  //     child: Column(
+  //       crossAxisAlignment: CrossAxisAlignment.start,
+  //       children: [
+  //         Row(
+  //           children: [
+  //             Container(
+  //               padding: const EdgeInsets.all(12),
+  //               decoration: BoxDecoration(
+  //                 color: Colors.green.shade50,
+  //                 borderRadius: BorderRadius.circular(12),
+  //               ),
+  //               child: Icon(
+  //                 Icons.category,
+  //                 color: Colors.green.shade600,
+  //                 size: 24,
+  //               ),
+  //             ),
+  //             const SizedBox(width: 16),
+  //             const Text(
+  //               'Waste Categories',
+  //               style: TextStyle(
+  //                 fontSize: 22,
+  //                 fontWeight: FontWeight.bold,
+  //                 color: Color(0xFF2E2E2E),
+  //               ),
+  //             ),
+  //           ],
+  //         ),
+  //         const SizedBox(height: 8),
+  //         Text(
+  //           'Select the types of waste you want to dispose of',
+  //           style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+  //         ),
+  //         const SizedBox(height: 20),
+  //         Wrap(
+  //           spacing: 12,
+  //           runSpacing: 12,
+  //           children: _wasteCategories.map((category) {
+  //             final isSelected = _selectedCategories.contains(category['name']);
+  //             return GestureDetector(
+  //               onTap: () {
+  //                 HapticFeedback.lightImpact();
+  //                 setState(() {
+  //                   if (isSelected) {
+  //                     _selectedCategories.remove(category['name']);
+  //                   } else {
+  //                     _selectedCategories.add(category['name']);
+  //                   }
+  //                 });
+  //               },
+  //               child: AnimatedContainer(
+  //                 duration: const Duration(milliseconds: 200),
+  //                 padding: const EdgeInsets.symmetric(
+  //                   horizontal: 16,
+  //                   vertical: 12,
+  //                 ),
+  //                 decoration: BoxDecoration(
+  //                   color: isSelected
+  //                       ? category['color'].withOpacity(0.1)
+  //                       : Colors.grey.shade100,
+  //                   borderRadius: BorderRadius.circular(25),
+  //                   border: Border.all(
+  //                     color: isSelected
+  //                         ? category['color']
+  //                         : Colors.grey.shade300,
+  //                     width: isSelected ? 2 : 1,
+  //                   ),
+  //                 ),
+  //                 child: Row(
+  //                   mainAxisSize: MainAxisSize.min,
+  //                   children: [
+  //                     Icon(
+  //                       category['icon'],
+  //                       size: 18,
+  //                       color: isSelected
+  //                           ? category['color']
+  //                           : Colors.grey.shade600,
+  //                     ),
+  //                     const SizedBox(width: 8),
+  //                     Text(
+  //                       category['name'],
+  //                       style: TextStyle(
+  //                         color: isSelected
+  //                             ? category['color']
+  //                             : Colors.grey.shade700,
+  //                         fontWeight: isSelected
+  //                             ? FontWeight.bold
+  //                             : FontWeight.normal,
+  //                       ),
+  //                     ),
+  //                   ],
+  //                 ),
+  //               ),
+  //             );
+  //           }).toList(),
+  //         ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   Widget _buildScheduleSection() {
     return Container(

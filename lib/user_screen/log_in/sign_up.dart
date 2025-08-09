@@ -18,6 +18,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   final nameController = TextEditingController();
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
+  final phoneNumberController = TextEditingController();
   bool _obscurePassword = true;
   bool _isLoading = false;
 
@@ -51,6 +52,7 @@ class _SignUpScreenState extends State<SignUpScreen>
     nameController.dispose();
     emailController.dispose();
     passwordController.dispose();
+    phoneNumberController.dispose();
     super.dispose();
   }
 
@@ -76,9 +78,11 @@ class _SignUpScreenState extends State<SignUpScreen>
                   const SizedBox(height: 40),
                   _buildSignUpForm(),
                   const SizedBox(height: 30),
-                  _buildSocialLogin(),
-                  const SizedBox(height: 30),
                   _buildSignInLink(),
+                  //_buildSocialLogin(),
+                  const SizedBox(height: 30),
+
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
@@ -178,13 +182,15 @@ class _SignUpScreenState extends State<SignUpScreen>
                 style: TextStyle(fontSize: 14, color: Colors.grey[600]),
                 textAlign: TextAlign.center,
               ),
-              const SizedBox(height: 30),
+              const SizedBox(height: 15),
               _buildNameField(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
               _buildEmailField(),
-              const SizedBox(height: 20),
+              const SizedBox(height: 15),
+              _buildPhoneNumber(),
+              const SizedBox(height: 15),
               _buildPasswordField(),
-              const SizedBox(height: 30),
+              const SizedBox(height: 15),
               _buildSignUpButton(),
             ],
           ),
@@ -249,6 +255,34 @@ class _SignUpScreenState extends State<SignUpScreen>
     );
   }
 
+  Widget _buildPhoneNumber() {
+    return TextFormField(
+      controller: phoneNumberController,
+      keyboardType: TextInputType.number,
+      decoration: InputDecoration(
+        labelText: 'Phone Number',
+        prefixIcon: const Icon(Icons.phone, color: Color(0xFF4CAF50)),
+        border: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: BorderSide(color: Colors.grey[300]!),
+        ),
+        focusedBorder: OutlineInputBorder(
+          borderRadius: BorderRadius.circular(12),
+          borderSide: const BorderSide(color: Color(0xFF4CAF50), width: 2),
+        ),
+        filled: true,
+        fillColor: Colors.grey[50],
+      ),
+      validator: (value) {
+        if (value == null || value.trim().isEmpty) {
+          return 'Please enter your phone number';
+        }
+
+        return null;
+      },
+    );
+  }
+
   Widget _buildPasswordField() {
     return TextFormField(
       controller: passwordController,
@@ -288,7 +322,7 @@ class _SignUpScreenState extends State<SignUpScreen>
   }
 
   Widget _buildSignUpButton() {
-    return Container(
+    return SizedBox(
       height: 55,
       child: ElevatedButton(
         onPressed: _isLoading ? null : _handleSignUp,
@@ -310,37 +344,37 @@ class _SignUpScreenState extends State<SignUpScreen>
     );
   }
 
-  Widget _buildSocialLogin() {
-    return FadeTransition(
-      opacity: _fadeAnimation,
-      child: const Column(
-        children: [
-          Row(
-            children: [
-              Expanded(child: Divider(color: Colors.white54)),
-              Padding(
-                padding: EdgeInsets.symmetric(horizontal: 16),
-                child: Text(
-                  'Or continue with',
-                  style: TextStyle(color: Colors.white70),
-                ),
-              ),
-              Expanded(child: Divider(color: Colors.white54)),
-            ],
-          ),
-          SizedBox(height: 25),
-          // Row(
-          //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          //   children: [
-          //     _buildSocialButton(Icons.g_mobiledata, 'Google'),
-          //     _buildSocialButton(Icons.facebook, 'Facebook'),
-          //     _buildSocialButton(Icons.apple, 'Apple'),
-          //   ],
-          // ),
-        ],
-      ),
-    );
-  }
+  // Widget _buildSocialLogin() {
+  //   return FadeTransition(
+  //     opacity: _fadeAnimation,
+  //     child: const Column(
+  //       children: [
+  //         Row(
+  //           children: [
+  //             Expanded(child: Divider(color: Colors.white54)),
+  //             Padding(
+  //               padding: EdgeInsets.symmetric(horizontal: 16),
+  //               child: Text(
+  //                 'Or continue with',
+  //                 style: TextStyle(color: Colors.white70),
+  //               ),
+  //             ),
+  //             Expanded(child: Divider(color: Colors.white54)),
+  //           ],
+  //         ),
+  //         SizedBox(height: 25),
+  //         // Row(
+  //         //   mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+  //         //   children: [
+  //         //     _buildSocialButton(Icons.g_mobiledata, 'Google'),
+  //         //     _buildSocialButton(Icons.facebook, 'Facebook'),
+  //         //     _buildSocialButton(Icons.apple, 'Apple'),
+  //         //   ],
+  //         // ),
+  //       ],
+  //     ),
+  //   );
+  // }
 
   // Widget _buildSocialButton(IconData icon, String label) {
   //   return Container(
@@ -414,9 +448,10 @@ class _SignUpScreenState extends State<SignUpScreen>
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
           'name': nameController.text.trim(),
           'email': emailController.text.trim(),
+          'phone': phoneNumberController,
           'role': widget.role, // 👈 this is where role is saved
           'createdAt': FieldValue.serverTimestamp(),
-          'sortScore': 0,
+          //'sortScore': 0,
         });
 
         setState(() {
@@ -457,67 +492,4 @@ class _SignUpScreenState extends State<SignUpScreen>
       }
     }
   }
-
-  // void _handleSignUp() async {
-  //   if (_formKey.currentState!.validate()) {
-  //     setState(() {
-  //       _isLoading = true;
-  //     });
-
-  //     try {
-  //       // Step 1: Create user with Firebase Auth
-  //       final userCredential = await FirebaseAuth.instance
-  //           .createUserWithEmailAndPassword(
-  //             email: emailController.text.trim(),
-  //             password: passwordController.text.trim(),
-  //           );
-
-  //       final user = userCredential.user!;
-  //       final uid = user.uid;
-
-  //       // Step 2: Send verification email
-  //       if (!user.emailVerified) {
-  //         await user.sendEmailVerification();
-  //       }
-
-  //       // Step 3: Save role + name to Firestore
-  //       await FirebaseFirestore.instance.collection('users').doc(uid).set({
-  //         'name': nameController.text.trim(),
-  //         'email': emailController.text.trim(),
-  //         'role': widget.role,
-  //         'createdAt': FieldValue.serverTimestamp(),
-  //         'sortScore': 0,
-  //       });
-
-  //       setState(() {
-  //         _isLoading = false;
-  //       });
-
-  //       // Step 4: Navigate to verify email screen instead of home
-  //       Navigator.pushReplacement(
-  //         context,
-  //         MaterialPageRoute(
-  //           builder: (_) => const VerifyEmailScreen(role: 'User'),
-  //         ),
-  //       );
-  //     } on FirebaseAuthException catch (e) {
-  //       setState(() {
-  //         _isLoading = false;
-  //       });
-
-  //       String errorMsg = 'An error occurred';
-  //       if (e.code == 'email-already-in-use') {
-  //         errorMsg = 'This email is already in use.';
-  //       } else if (e.code == 'weak-password') {
-  //         errorMsg = 'Password should be at least 6 characters.';
-  //       } else {
-  //         errorMsg = e.message ?? errorMsg;
-  //       }
-
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
-  //       );
-  //     }
-  //   }
-  // }
 }

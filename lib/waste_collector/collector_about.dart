@@ -235,8 +235,13 @@ class _CollectorAboutPageState extends State<CollectorAboutPage>
     return Container(
       padding: const EdgeInsets.all(32),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [Colors.blue.shade50, Colors.blue.shade100],
+        gradient: const LinearGradient(
+          colors: [
+            Color.fromARGB(255, 144, 241, 149),
+            Color.fromARGB(255, 155, 239, 159),
+            Color.fromARGB(255, 141, 237, 144),
+          ],
+          // [Colors.blue.shade50, Colors.blue.shade100],
         ),
         borderRadius: BorderRadius.circular(24),
         boxShadow: [
@@ -258,7 +263,12 @@ class _CollectorAboutPageState extends State<CollectorAboutPage>
               shape: BoxShape.circle,
               boxShadow: [
                 BoxShadow(
-                  color: Colors.blue.withOpacity(0.4),
+                  color: const Color.fromARGB(
+                    255,
+                    60,
+                    232,
+                    106,
+                  ).withOpacity(0.4),
                   blurRadius: 20,
                   offset: const Offset(0, 5),
                 ),

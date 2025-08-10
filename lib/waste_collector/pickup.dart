@@ -50,6 +50,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
     return Scaffold(
       backgroundColor: Colors.grey[50],
       appBar: AppBar(
+        centerTitle: true,
         automaticallyImplyLeading: false,
         elevation: 0,
         backgroundColor: Colors.white,
@@ -951,11 +952,11 @@ class _PickupManagementPageState extends State<PickupManagementPage>
     );
   }
 
-  void _navigateToLocation(String requestId) {
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(const SnackBar(content: Text('Opening navigation...')));
-    // Here you would integrate with maps/navigation
-    // For example: launch Google Maps or Apple Maps
-  }
+  // void _navigateToLocation(String requestId) {
+  //   ScaffoldMessenger.of(
+  //     context,
+  //   ).showSnackBar(const SnackBar(content: Text('Opening navigation...')));
+  //   // Here you would integrate with maps/navigation
+  //   // For example: launch Google Maps or Apple Maps
+  // }
 }

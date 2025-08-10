@@ -7,9 +7,11 @@ import 'package:flutter/foundation.dart';
 class UserProvider with ChangeNotifier {
   String? _username;
   String? _email;
+  String? _phone;
 
   String? get username => _username;
   String? get email => _email;
+  String? get phone => _phone;
 
   Future<void> fetchUserData() async {
     final uid = FirebaseAuth.instance.currentUser?.uid;
@@ -22,6 +24,7 @@ class UserProvider with ChangeNotifier {
       if (data != null) {
         _username = doc.data()?['name'];
         _email = doc.data()?['email'];
+        _phone = doc.data()?['phone'];
         notifyListeners();
       }
     }
@@ -124,31 +127,66 @@ class SortScoreProvider with ChangeNotifier {
 
   Future<void> fetchUserRank(String userId) async {
     try {
-      final users = await FirebaseFirestore.instance
+      // First check if user has a cached rank in user_stats collection
+      final userStatsDoc = await FirebaseFirestore.instance
+          .collection('user_stats')
+          .doc(userId)
+          .get();
+
+      if (userStatsDoc.exists && userStatsDoc.data()?['rank'] != null) {
+        _rank = userStatsDoc.data()!['rank'];
+        notifyListeners();
+        return;
+      }
+
+      // Fallback: Only get user's completed requests count and approximate rank
+      final userCompletedCount = await FirebaseFirestore.instance
+          .collection('pickup_requests')
+          .where('userId', isEqualTo: userId)
+          .where('status', isEqualTo: 'completed')
+          .count()
+          .get();
+
+      final totalUserCompletedCount = userCompletedCount.count ?? 0;
+
+      // Get count of users with more completions than current user
+      final betterUsersQuery = await FirebaseFirestore.instance
           .collection('pickup_requests')
           .where('status', isEqualTo: 'completed')
           .get();
 
-      final Map<String, int> userCompletionCounts = {};
-
-      for (var doc in users.docs) {
+      final Map<String, int> userCounts = {};
+      for (var doc in betterUsersQuery.docs) {
         final uid = doc['userId'];
-        userCompletionCounts[uid] = (userCompletionCounts[uid] ?? 0) + 1;
+        userCounts[uid] = (userCounts[uid] ?? 0) + 1;
       }
 
-      final sorted = userCompletionCounts.entries.toList()
-        ..sort((a, b) => b.value.compareTo(a.value));
-
-      for (int i = 0; i < sorted.length; i++) {
-        if (sorted[i].key == userId) {
-          _rank = i + 1;
-          break;
+      // Count users with more completions
+      int betterUsersCount = 0;
+      for (var count in userCounts.values) {
+        if (count > totalUserCompletedCount) {
+          betterUsersCount++;
         }
       }
+
+      _rank = betterUsersCount + 1;
+
+      // Cache the result for future use
+      await FirebaseFirestore.instance
+          .collection('user_stats')
+          .doc(userId)
+          .set({
+            'rank': _rank,
+            'totalPickups': _totalPickups,
+            'lastUpdated': FieldValue.serverTimestamp(),
+          }, SetOptions(merge: true));
 
       notifyListeners();
     } catch (e) {
       debugPrint("Error fetching rank: $e");
+      // Set a default rank if there's an error
+      _rank = 0;
+      notifyListeners();
     }
   }
 }

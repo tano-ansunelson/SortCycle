@@ -58,6 +58,8 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
 
   @override
   void dispose() {
+    _messageController.dispose();
+    _scrollController.dispose();
     _typingAnimationController.dispose();
     _quickActionsController.dispose();
     _setTypingStatus(false);

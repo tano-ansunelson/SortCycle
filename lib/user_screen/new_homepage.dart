@@ -4,6 +4,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/provider/provider.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
+import 'package:flutter_application_1/user_screen/user_tracking_collector.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -18,6 +19,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   late AnimationController _fadeController;
   late Animation<Offset> _slideAnimation;
   late Animation<double> _fadeAnimation;
+  String? userRequestId;
 
   @override
   void initState() {
@@ -45,17 +47,29 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     _fadeController.forward();
 
     // Fetch sortScore after init
-    // Fetch sortScore after init
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final userId = FirebaseAuth.instance.currentUser?.uid;
-      print("Current user ID: $userId"); // Add this debug line
       if (userId != null) {
         final provider = Provider.of<SortScoreProvider>(context, listen: false);
         provider.calculatePickupStats(userId);
-      } else {
-        print("No user logged in"); // Add this debug line
       }
     });
+    final userId = FirebaseAuth.instance.currentUser?.uid;
+    if (userId != null) {
+      FirebaseFirestore.instance
+          .collection('pickup_requests')
+          .where('userId', isEqualTo: userId)
+          .orderBy('timestamp', descending: true)
+          .limit(1)
+          .get()
+          .then((snapshot) {
+            if (snapshot.docs.isNotEmpty) {
+              setState(() {
+                userRequestId = snapshot.docs.first.id;
+              });
+            }
+          });
+    }
   }
 
   @override
@@ -219,13 +233,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       // SortScore Dashboard Card
-                      // SortScore Dashboard Card
-                      Consumer<SortScoreProvider>(
-                        builder: (context, provider, child) {
-                          print(
-                            "Consumer rebuilding - Total: ${provider.totalPickups}, Monthly: ${provider.monthlyPickups}, Rank: ${provider.rank}",
-                          );
-                          return _buildSortScoreCard(provider);
+                      Selector<SortScoreProvider, Map<String, dynamic>>(
+                        selector: (context, provider) => {
+                          'totalPickups': provider.totalPickups,
+                          'monthlyPickups': provider.monthlyPickups,
+                          'rank': provider.rank,
+                          'isLoading': provider.isLoading,
+                        },
+                        builder: (context, data, child) {
+                          return _buildSortScoreCard(data);
                         },
                       ),
 
@@ -292,10 +308,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
-  Widget _buildSortScoreCard(SortScoreProvider provider) {
-    print(
-      "Building SortScore card - Total: ${provider.totalPickups}, Monthly: ${provider.monthlyPickups}, Rank: ${provider.rank}",
-    );
+  Widget _buildSortScoreCard(Map<String, dynamic> data) {
+    final totalPickups = data['totalPickups'] as int;
+    final monthlyPickups = data['monthlyPickups'] as int;
+    final rank = data['rank'] as int;
+    final isLoading = data['isLoading'] as bool;
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -314,7 +331,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
           ),
         ],
       ),
-      child: provider.isLoading
+      child: isLoading
           ? const Center(
               child: Padding(
                 padding: EdgeInsets.all(20.0),
@@ -344,7 +361,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                         Row(
                           children: [
                             Text(
-                              provider.totalPickups.toString(),
+                              totalPickups.toString(),
                               style: const TextStyle(
                                 color: Colors.white,
                                 fontSize: 32,
@@ -353,14 +370,19 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                             ),
                             const SizedBox(width: 8),
                             // Show a refresh button if data is 0
-                            if (provider.totalPickups == 0 &&
-                                provider.monthlyPickups == 0 &&
-                                provider.rank == 0)
+                            if (totalPickups == 0 &&
+                                monthlyPickups == 0 &&
+                                rank == 0)
                               GestureDetector(
                                 onTap: () {
                                   final userId =
                                       FirebaseAuth.instance.currentUser?.uid;
                                   if (userId != null) {
+                                    final provider =
+                                        Provider.of<SortScoreProvider>(
+                                          context,
+                                          listen: false,
+                                        );
                                     provider.calculatePickupStats(userId);
                                   }
                                 },
@@ -393,13 +415,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   children: [
                     _buildScoreMetric(
                       'Rank',
-                      provider.rank == 0 ? '-' : '${provider.rank}',
+                      rank == 0 ? '-' : '$rank',
                       Icons.leaderboard_rounded,
                     ),
                     const SizedBox(width: 24),
                     _buildScoreMetric(
                       'This Month',
-                      '${provider.monthlyPickups}',
+                      '$monthlyPickups',
                       Icons.calendar_month_rounded,
                     ),
                   ],
@@ -438,7 +460,15 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     );
   }
 
+  // ...existing code...
   Widget _buildQuickActions() {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+
+    if (currentUserId == null) {
+      // Show a message if no user is logged in
+      return const Center(child: Text('No user logged in'));
+    }
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -466,12 +496,59 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               [const Color(0xFF1976D2), const Color(0xFF2196F3)],
               AppRoutes.wastepickupformupdated,
             ),
-            _buildActionCard(
-              'Track Requests',
-              'Monitor pickup status',
-              Icons.track_changes_rounded,
-              [const Color(0xFF388E3C), const Color(0xFF4CAF50)],
-              '/track-pickups', // You'll need to create this route
+            StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('pickup_requests')
+                  .where('userId', isEqualTo: currentUserId)
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
+                  return _buildActionCard(
+                    'Track Requests',
+                    'No active pickups',
+                    Icons.track_changes_rounded,
+                    [const Color(0xFF9E9E9E), const Color(0xFFBDBDBD)],
+                    '',
+                    onTap: null,
+                  );
+                }
+
+                // Find the first 'in_progress' request if any
+                QueryDocumentSnapshot? inProgressRequest;
+                for (var doc in snapshot.data!.docs) {
+                  if (doc.get('status') == 'in_progress') {
+                    inProgressRequest = doc;
+                    break;
+                  }
+                }
+
+                final hasInProgress = inProgressRequest != null;
+
+                return _buildActionCard(
+                  'Track Requests',
+                  hasInProgress
+                      ? 'Monitor pickup status'
+                      : 'No pickup in progress',
+                  Icons.track_changes_rounded,
+                  hasInProgress
+                      ? [const Color(0xFF388E3C), const Color(0xFF4CAF50)]
+                      : [const Color(0xFF9E9E9E), const Color(0xFFBDBDBD)],
+                  '',
+                  onTap: hasInProgress
+                      ? () {
+                          Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) => UserCollectorTrackingScreen(
+                                requestId: inProgressRequest!.id,
+                                userId: currentUserId,
+                              ),
+                            ),
+                          );
+                        }
+                      : null,
+                );
+              },
             ),
             _buildActionCard(
               'Pickup History',
@@ -479,7 +556,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               Icons.history_rounded,
               [const Color(0xFF7B1FA2), const Color(0xFF9C27B0)],
               AppRoutes.pickuphistory,
-              // '/pickup-history', // You'll need to create this route
             ),
             _buildActionCard(
               'Leaderboard',
@@ -493,14 +569,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ],
     );
   }
+  // ...existing code...
 
   Widget _buildActionCard(
     String title,
     String subtitle,
     IconData icon,
     List<Color> colors,
-    String route,
-  ) {
+    String route, {
+    VoidCallback? onTap,
+  }) {
     return Container(
       decoration: BoxDecoration(
         gradient: LinearGradient(colors: colors),
@@ -516,7 +594,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       child: Material(
         color: Colors.transparent,
         child: InkWell(
-          onTap: () => Navigator.pushNamed(context, route),
+          onTap:
+              onTap ??
+              () {
+                if (route.isNotEmpty) {
+                  Navigator.pushNamed(context, route);
+                }
+              },
           borderRadius: BorderRadius.circular(16),
           child: Padding(
             padding: const EdgeInsets.all(16),
@@ -552,6 +636,11 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   Widget _buildRecentPickups() {
+    final currentUserId = FirebaseAuth.instance.currentUser?.uid;
+    if (currentUserId == null) {
+      return const Text('User not logged in');
+    }
+
     return Container(
       padding: const EdgeInsets.all(20),
       decoration: BoxDecoration(
@@ -596,40 +685,78 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   ),
                 ],
               ),
-              // TextButton(
-              //   onPressed: () {
-              //     // Navigate to full history
-              //   },
-              //   child: const Text('View All'),
-              // ),
             ],
           ),
           const SizedBox(height: 16),
-          _buildPickupItem(
-            'Mixed Recyclables',
-            'Completed • 2 days ago',
-            Icons.check_circle,
-            Colors.green,
-          ),
-          _buildPickupItem(
-            'Electronic Waste',
-            'In Progress • Collector assigned',
-            Icons.local_shipping,
-            Colors.orange,
-          ),
-          _buildPickupItem(
-            'Organic Waste',
-            'Scheduled • Tomorrow 10:00 AM',
-            Icons.schedule,
-            Colors.blue,
+
+          StreamBuilder<QuerySnapshot>(
+            stream: FirebaseFirestore.instance
+                .collection('pickup_requests')
+                .where('status', isEqualTo: 'completed')
+                .where('userId', isEqualTo: currentUserId)
+                .orderBy('updatedAt', descending: true) // Use updatedAt to sort
+                .limit(3)
+                .snapshots(),
+            builder: (context, snapshot) {
+              if (snapshot.hasError) {
+                return Text('Error: ${snapshot.error}');
+              }
+              if (snapshot.connectionState == ConnectionState.waiting) {
+                return const Center(child: CircularProgressIndicator());
+              }
+              if (snapshot.data!.docs.isEmpty) {
+                return const Text('No completed requests yet.');
+              }
+
+              return Column(
+                children: snapshot.data!.docs.map((doc) {
+                  final data = doc.data()! as Map<String, dynamic>;
+
+                  final collector =
+                      data['collectorName'] ?? 'Unknown Collector';
+
+                  final userTown = data['userTown'] ?? 'Unknown Town';
+                  final Timestamp? updatedTimestamp = data['updatedAt'];
+                  String timeAgo = 'unknown time';
+
+                  if (updatedTimestamp != null) {
+                    final updatedDate = updatedTimestamp.toDate();
+                    timeAgo = _formatTimeAgo(updatedDate);
+                  }
+
+                  return _buildPickupItem(
+                    collector,
+                    userTown,
+                    'Completed • $timeAgo',
+                    Icons.check_circle,
+                    Colors.green,
+                  );
+                }).toList(),
+              );
+            },
           ),
         ],
       ),
     );
   }
 
+  // Helper to format "time ago" string
+  String _formatTimeAgo(DateTime dateTime) {
+    final Duration diff = DateTime.now().difference(dateTime);
+    if (diff.inDays >= 1) {
+      return '${diff.inDays} day${diff.inDays > 1 ? 's' : ''} ago';
+    } else if (diff.inHours >= 1) {
+      return '${diff.inHours} hour${diff.inHours > 1 ? 's' : ''} ago';
+    } else if (diff.inMinutes >= 1) {
+      return '${diff.inMinutes} minute${diff.inMinutes > 1 ? 's' : ''} ago';
+    } else {
+      return 'just now';
+    }
+  }
+
   Widget _buildPickupItem(
-    String wasteType,
+    String collector,
+    String userTown,
     String status,
     IconData icon,
     Color color,
@@ -652,12 +779,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Text(
-                  wasteType,
+                  collector,
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 14,
                     color: Color(0xFF1B5E20),
                   ),
+                ),
+                Text(
+                  userTown,
+                  style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
                 ),
                 const SizedBox(height: 2),
                 Text(
@@ -672,102 +803,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
       ),
     );
   }
-
-  // Widget _buildCommunitySection() {
-  //   return FutureBuilder<QuerySnapshot>(
-  //     future: FirebaseFirestore.instance
-  //         .collection('users') // or 'collectors'
-  //         .orderBy('sortScore', descending: true)
-  //         .limit(3)
-  //         .get(),
-  //     builder: (context, snapshot) {
-  //       if (snapshot.connectionState == ConnectionState.waiting) {
-  //         return const Center(child: CircularProgressIndicator());
-  //       }
-
-  //       if (!snapshot.hasData || snapshot.data!.docs.isEmpty) {
-  //         return const Text("No leaderboard data available.");
-  //       }
-
-  //       final topUsers = snapshot.data!.docs;
-
-  //       return Container(
-  //         padding: const EdgeInsets.all(20),
-  //         decoration: BoxDecoration(
-  //           gradient: LinearGradient(
-  //             begin: Alignment.topLeft,
-  //             end: Alignment.bottomRight,
-  //             colors: [Colors.indigo.shade50, Colors.blue.shade50],
-  //           ),
-  //           borderRadius: BorderRadius.circular(16),
-  //           border: Border.all(color: Colors.blue.shade100),
-  //         ),
-  //         child: Column(
-  //           crossAxisAlignment: CrossAxisAlignment.start,
-  //           children: [
-  //             Row(
-  //               children: [
-  //                 Icon(
-  //                   Icons.groups_rounded,
-  //                   color: Colors.indigo.shade700,
-  //                   size: 24,
-  //                 ),
-  //                 const SizedBox(width: 12),
-  //                 const Text(
-  //                   'Community Champions',
-  //                   style: TextStyle(
-  //                     fontSize: 18,
-  //                     fontWeight: FontWeight.bold,
-  //                     color: Color(0xFF1A237E),
-  //                   ),
-  //                 ),
-  //               ],
-  //             ),
-  //             const SizedBox(height: 16),
-  //             Row(
-  //               mainAxisAlignment: MainAxisAlignment.spaceAround,
-  //               children: List.generate(topUsers.length, (index) {
-  //                 final user = topUsers[index].data() as Map<String, dynamic>;
-  //                 final name = user['name'] ?? 'Unknown';
-  //                 final score = user['sortScore']?.toString() ?? '0';
-  //                 final emojis = ['🥇', '🥈', '🥉'];
-
-  //                 return _buildLeaderboardItem(
-  //                   index + 1,
-  //                   name,
-  //                   score,
-  //                   emojis[index],
-  //                 );
-  //               }),
-  //             ),
-  //           ],
-  //         ),
-  //       );
-  //     },
-  //   );
-  // }
-
-  // Widget _buildLeaderboardItem(
-  //   int rank,
-  //   String name,
-  //   String score,
-  //   String emoji,
-  // ) {
-  //   return Column(
-  //     children: [
-  //       Text(emoji, style: const TextStyle(fontSize: 24)),
-  //       const SizedBox(height: 8),
-  //       Text(
-  //         name,
-  //         style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14),
-  //       ),
-  //       Text(
-  //         score,
-  //         style: TextStyle(color: Colors.grey.shade600, fontSize: 12),
-  //       ),
-  //     ],
-  //   );
-  // }
 
   Widget _buildPickupGuidelines() {
     return Container(

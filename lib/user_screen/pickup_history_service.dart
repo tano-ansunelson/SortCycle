@@ -152,10 +152,10 @@ class _PickupHistoryScreenState extends State<PickupHistoryScreen>
                           color: Colors.grey.shade50,
                           shape: BoxShape.circle,
                         ),
-                        child: Icon(
+                        child: const Icon(
                           Icons.history_outlined,
                           size: 64,
-                          color: Colors.grey.shade400,
+                          color: Colors.greenAccent,
                         ),
                       ),
                       const SizedBox(height: 24),

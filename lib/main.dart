@@ -4,7 +4,6 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-//import 'package:flutter/services.dart';
 import 'package:flutter_application_1/chat_page/chat_page.dart';
 import 'package:flutter_application_1/chat_page/chatlist_page.dart';
 import 'package:flutter_application_1/ecomarketplace/homescreen.dart';
@@ -13,10 +12,10 @@ import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:flutter_application_1/service/component/leaderboard.dart';
 import 'package:flutter_application_1/user_screen/about_screen.dart';
 import 'package:flutter_application_1/user_screen/edit_profile.dart';
-import 'package:flutter_application_1/user_screen/forms.dart';
+//import 'package:flutter_application_1/user_screen/forms.dart';
 import 'package:flutter_application_1/user_screen/log_in/sign_in_screen.dart';
 import 'package:flutter_application_1/user_screen/pickup_history_service.dart';
-//import 'package:flutter_application_1/user_screen/not_using/userclassify.dart';
+
 import 'package:flutter_application_1/user_screen/waste_form.dart';
 import 'package:flutter_application_1/waste_collector/collectorMapScreen.dart';
 import 'package:flutter_application_1/waste_collector/collector_about.dart';
@@ -37,7 +36,7 @@ import 'firebase_options.dart';
 
 Future<void> _firebaseMessagingBackgroundHandler(RemoteMessage message) async {
   await Firebase.initializeApp(options: DefaultFirebaseOptions.currentPlatform);
-  print('🔕 Background message received: ${message.messageId}');
+  // Background message received
 }
 
 void main() async {
@@ -87,10 +86,7 @@ class _MyAppState extends State<MyApp> {
     );
 
     if (settings.authorizationStatus == AuthorizationStatus.authorized) {
-      print('✅ Notification permission granted.');
-
       String? token = await messaging.getToken();
-      print('🔑 FCM Token: $token');
 
       final uid = FirebaseAuth.instance.currentUser?.uid;
       if (uid != null) {
@@ -114,14 +110,12 @@ class _MyAppState extends State<MyApp> {
     }
 
     FirebaseMessaging.onMessage.listen((RemoteMessage message) {
-      print(
-        '🔔 Foreground notification: ${message.notification?.title} - ${message.notification?.body}',
-      );
+      // Handle foreground notifications
       // You can use flutter_local_notifications here to show custom local popup if needed
     });
 
     FirebaseMessaging.onMessageOpenedApp.listen((RemoteMessage message) {
-      print('📱 App opened from notification');
+      // Handle notification tap when app is in background
       // Navigate to chat or pickup screen if needed
     });
   }

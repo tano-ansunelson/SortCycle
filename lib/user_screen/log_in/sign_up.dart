@@ -448,7 +448,7 @@ class _SignUpScreenState extends State<SignUpScreen>
         await FirebaseFirestore.instance.collection('users').doc(uid).set({
           'name': nameController.text.trim(),
           'email': emailController.text.trim(),
-          'phone': phoneNumberController,
+          'phone': phoneNumberController.text,
           'role': widget.role, // 👈 this is where role is saved
           'createdAt': FieldValue.serverTimestamp(),
           //'sortScore': 0,

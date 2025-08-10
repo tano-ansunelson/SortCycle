@@ -30,7 +30,7 @@ environment:
 dependencies:
   flutter:
     sdk: flutter
-  lucide_icons: 0.257.0
+  lucide_icons: ^0.257.0
   fl_chart: ^0.66.2
   intl: ^0.18.1
   google_maps_flutter: ^2.12.3
@@ -38,16 +38,13 @@ dependencies:
   permission_handler: ^11.3.0
   image_picker: ^1.1.2
   google_sign_in: ^6.3.0
-  firebase_ml_model_downloader: ^0.3.3+5
-  tflite_flutter: ^0.11.0
+  # ML/AI dependencies - only if actually used
+  # firebase_ml_model_downloader: ^0.3.3+5
+  # tflite_flutter: ^0.11.0
   logger: ^2.6.0
   image: ^4.5.4
   uuid: ^4.5.1
-  #tflite_flutter_helper: ^0.3.1
-  #tflite_flutter_helper_plus: ^0.0.2
-  
-
-
+  cached_network_image: ^3.3.1
 
   # The following adds the Cupertino Icons font to your application.
   # Use with the CupertinoIcons class for iOS style icons.
@@ -55,13 +52,14 @@ dependencies:
   firebase_core: ^3.13.1
   firebase_app_check: ^0.3.2+10
   firebase_auth: ^5.6.0
-  firebase_ai: ^2.1.0
+  # firebase_ai: ^2.1.0  # Commented out if not used
   cloud_firestore: ^5.6.10
   provider: ^6.1.5
   firebase_storage: ^12.4.10
   url_launcher: ^6.3.2
   firebase_messaging: ^15.2.10
   flutter_local_notifications: ^19.4.0
+  http: ^1.5.0
 
 dev_dependencies:
   flutter_test:
@@ -95,13 +93,12 @@ flutter:
 
   # To add assets to your application, add an assets section, like this:
   assets:
-    - assests/7123025_logo_google_g_icon.png
+    - assests/
     - assests/user_avatar.jpg
-    - assests/image.jpg
-    - assests/image (13).jpg
-    - assests/image (1).jpg
-    - assests/image (4).jpg
-    - assests/image (16).jpg
+    - assests/waste.png
+    - assests/splas_logo.jpg
+    - assests/ChatGPT Image Aug 9, 2025, 03_00_09 PM.png
+  
 
   # An image asset can refer to one or more resolution-specific "variants", see
   # https://flutter.dev/to/resolution-aware-images

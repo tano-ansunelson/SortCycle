@@ -4,6 +4,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/ecomarketplace/buyerform.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 
 class ItemDetailScreen extends StatefulWidget {
   final String itemId;
@@ -180,15 +181,21 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
               background: Stack(
                 fit: StackFit.expand,
                 children: [
-                  Image.network(
-                    widget.itemData['imageUrl'] ?? '',
+                  CachedNetworkImage(
+                    imageUrl: widget.itemData['imageUrl'] ?? '',
                     fit: BoxFit.cover,
-                    errorBuilder: (context, error, stackTrace) {
-                      return Container(
-                        color: Colors.grey[300],
-                        child: const Icon(Icons.image_not_supported, size: 50),
-                      );
-                    },
+                    placeholder: (context, url) => Container(
+                      color: Colors.grey[300],
+                      child: const Center(
+                        child: CircularProgressIndicator(),
+                      ),
+                    ),
+                    errorWidget: (context, url, error) => Container(
+                      color: Colors.grey[300],
+                      child: const Icon(Icons.image_not_supported, size: 50),
+                    ),
+                    memCacheWidth: 800,
+                    memCacheHeight: 600,
                   ),
                   const DecoratedBox(
                     decoration: BoxDecoration(
@@ -447,6 +454,13 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
               children: [
                 Text(
                   ownerData?['name'] ?? 'Unknown Seller',
+                  style: const TextStyle(
+                    fontWeight: FontWeight.bold,
+                    fontSize: 16,
+                  ),
+                ),
+                Text(
+                  ownerData?['phone'] ?? 'N/A',
                   style: const TextStyle(
                     fontWeight: FontWeight.bold,
                     fontSize: 16,

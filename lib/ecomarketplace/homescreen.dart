@@ -3,9 +3,9 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/ecomarketplace/add_items.dart';
 import 'package:flutter_application_1/ecomarketplace/itemdetails.dart';
-//import 'add_item_screen.dart';
+import 'package:cached_network_image/cached_network_image.dart';
 import 'my_listing_page.dart';
-//import 'my_listings_screen.dart';
+
 
 class MarketHomeScreen extends StatefulWidget {
   const MarketHomeScreen({super.key});
@@ -364,48 +364,41 @@ class _MarketHomeScreen extends State<MarketHomeScreen> {
                     borderRadius: const BorderRadius.vertical(
                       top: Radius.circular(16),
                     ),
-                    child: Image.network(
-                      data['imageUrl'] ?? '',
+                    child: CachedNetworkImage(
+                      imageUrl: data['imageUrl'] ?? '',
                       width: double.infinity,
                       fit: BoxFit.cover,
-                      errorBuilder: (context, error, stackTrace) {
-                        return Container(
-                          color: Colors.grey[200],
-                          child: Column(
-                            mainAxisAlignment: MainAxisAlignment.center,
-                            children: [
-                              Icon(
-                                Icons.image_not_supported,
-                                color: Colors.grey[400],
-                                size: 32,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                'No Image',
-                                style: TextStyle(
-                                  color: Colors.grey[500],
-                                  fontSize: 10,
-                                ),
-                              ),
-                            ],
+                      placeholder: (context, url) => Container(
+                        color: Colors.grey[200],
+                        child: const Center(
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2,
                           ),
-                        );
-                      },
-                      loadingBuilder: (context, child, loadingProgress) {
-                        if (loadingProgress == null) return child;
-                        return Container(
-                          color: Colors.grey[200],
-                          child: Center(
-                            child: CircularProgressIndicator(
-                              value: loadingProgress.expectedTotalBytes != null
-                                  ? loadingProgress.cumulativeBytesLoaded /
-                                        loadingProgress.expectedTotalBytes!
-                                  : null,
-                              strokeWidth: 2,
+                        ),
+                      ),
+                      errorWidget: (context, url, error) => Container(
+                        color: Colors.grey[200],
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Icon(
+                              Icons.image_not_supported,
+                              color: Colors.grey[400],
+                              size: 32,
                             ),
-                          ),
-                        );
-                      },
+                            const SizedBox(height: 4),
+                            Text(
+                              'No Image',
+                              style: TextStyle(
+                                color: Colors.grey[500],
+                                fontSize: 10,
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                      memCacheWidth: 300,
+                      memCacheHeight: 200,
                     ),
                   ),
 

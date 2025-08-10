@@ -1,4 +1,4 @@
-// Enhanced Beautiful WastePickupFormUpdated
+// Enhanced Beautiful WastePickupFormUpdated with Today/Schedule Options
 import 'dart:async';
 
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -20,8 +20,6 @@ class WastePickupFormUpdated extends StatefulWidget {
 class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     with TickerProviderStateMixin {
   final _formKey = GlobalKey<FormState>();
-  //final _nameController = TextEditingController();
-  //final _phoneController = TextEditingController();
   final _townController = TextEditingController();
 
   // Animation controllers
@@ -36,6 +34,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   String _locationStatus = "Location not set";
 
   // Date and time variables
+  bool _isPickupToday = true; // New: Track if pickup is today or scheduled
   DateTime? _selectedDate;
   TimeOfDay? _selectedTime;
 
@@ -77,8 +76,6 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     _townController.addListener(() {
       final town = _townController.text.trim();
       if (town.isNotEmpty && town.length >= 3) {
-        // _fetchNearbyCollectors();
-        // Debounce to prevent multiple rapid calls
         _debounceFetch(town);
       }
     });
@@ -97,8 +94,6 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   void dispose() {
     _slideController.dispose();
     _fadeController.dispose();
-    // _nameController.dispose();
-    // _phoneController.dispose();
     _townController.dispose();
     _debounce?.cancel();
     super.dispose();
@@ -110,7 +105,9 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     final DateTime? picked = await showDatePicker(
       context: context,
       initialDate: _selectedDate ?? DateTime.now().add(const Duration(days: 1)),
-      firstDate: DateTime.now(),
+      firstDate: DateTime.now().add(
+        const Duration(days: 1),
+      ), // Start from tomorrow
       lastDate: DateTime.now().add(const Duration(days: 30)),
       builder: (context, child) {
         return Theme(
@@ -136,9 +133,37 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
 
   Future<void> _selectTime() async {
     HapticFeedback.lightImpact();
+
+    // For today, check current time and set minimum time
+    TimeOfDay initialTime;
+    if (_isPickupToday) {
+      final now = DateTime.now();
+      final currentTime = TimeOfDay.fromDateTime(now);
+      final currentMinutes = currentTime.hour * 60 + currentTime.minute;
+
+      // If it's past 4 PM, don't allow today pickup
+      if (currentMinutes >= 16 * 60) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          const SnackBar(
+            backgroundColor: Colors.orange,
+            content: Text(
+              'It\'s too late for today\'s pickup. Please schedule for tomorrow.',
+            ),
+          ),
+        );
+        return;
+      }
+
+      // Set initial time to at least 1 hour from now, but not past 5 PM
+      final oneHourLater = now.add(const Duration(hours: 1));
+      initialTime = TimeOfDay.fromDateTime(oneHourLater);
+    } else {
+      initialTime = _selectedTime ?? const TimeOfDay(hour: 9, minute: 0);
+    }
+
     final TimeOfDay? picked = await showTimePicker(
       context: context,
-      initialTime: _selectedTime ?? const TimeOfDay(hour: 9, minute: 0),
+      initialTime: initialTime,
       builder: (context, child) {
         return Theme(
           data: Theme.of(context).copyWith(
@@ -155,23 +180,44 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     );
 
     if (picked != null && picked != _selectedTime) {
-      // Check if time is between 9AM and 5PM
       final int pickedMinutes = picked.hour * 60 + picked.minute;
       const int minMinutes = 9 * 60; // 9:00 AM
       const int maxMinutes = 17 * 60; // 5:00 PM
 
-      if (pickedMinutes >= minMinutes && pickedMinutes <= maxMinutes) {
-        setState(() {
-          _selectedTime = picked;
-        });
+      if (_isPickupToday) {
+        // For today, ensure time is at least 30 minutes from now
+        final now = DateTime.now();
+        final minTimeToday = now.add(const Duration(minutes: 30));
+        final minTimeTodayMinutes =
+            minTimeToday.hour * 60 + minTimeToday.minute;
+
+        if (pickedMinutes < minTimeTodayMinutes || pickedMinutes > maxMinutes) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              backgroundColor: Colors.red,
+              content: Text(
+                'For today\'s pickup, please select a time at least 30 minutes from now and before 5:00 PM\nCurrent time: ${TimeOfDay.fromDateTime(now).format(context)}',
+              ),
+            ),
+          );
+          return;
+        }
       } else {
-        ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            backgroundColor: Colors.red,
-            content: Text('Please select a time between 9:00 AM and 5:00 PM'),
-          ),
-        );
+        // For scheduled pickup, check normal business hours
+        if (pickedMinutes < minMinutes || pickedMinutes > maxMinutes) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(
+              backgroundColor: Colors.red,
+              content: Text('Please select a time between 9:00 AM and 5:00 PM'),
+            ),
+          );
+          return;
+        }
       }
+
+      setState(() {
+        _selectedTime = picked;
+      });
     }
   }
 
@@ -205,8 +251,6 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         _locationStatus = "📍 Location captured successfully";
         _isLocationLoading = false;
       });
-
-      // HapticFeedback.successFeedback();
     } catch (e) {
       setState(() {
         _locationStatus = "❌ Error: ${e.toString()}";
@@ -291,88 +335,27 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     );
   }
 
-  // Fetch Nearby Collectors
-  // Future<void> _fetchNearbyCollectors() async {
-  //   setState(() {
-  //     _isLoadingCollectors = true;
-  //     _nearbyCollectors.clear();
-  //     _selectedCollectorId = null;
-  //   });
-
-  //   try {
-  //     String userTown = _townController.text.trim().toLowerCase();
-
-  //     if (userTown.isEmpty) {
-  //       throw Exception('Please enter your town to fetch collectors.');
-  //     }
-
-  //     QuerySnapshot collectorsSnapshot = await FirebaseFirestore.instance
-  //         .collection('collectors')
-  //         .where('isActive', isEqualTo: true)
-  //         .where('town', isEqualTo: userTown)
-  //         .get();
-
-  //     List<Map<String, dynamic>> townCollectors = [];
-
-  //     for (QueryDocumentSnapshot doc in collectorsSnapshot.docs) {
-  //       Map<String, dynamic> collectorData = doc.data() as Map<String, dynamic>;
-
-  //       townCollectors.add({
-  //         'id': doc.id,
-  //         'name': collectorData['name'] ?? 'Unknown Collector',
-  //         'phone': collectorData['phone'] ?? '',
-  //         'town': collectorData['town'],
-  //       });
-  //     }
-
-  //     setState(() {
-  //       _nearbyCollectors = townCollectors;
-  //       _isLoadingCollectors = false;
-  //     });
-
-  //     if (_nearbyCollectors.isEmpty) {
-  //       ScaffoldMessenger.of(context).showSnackBar(
-  //         SnackBar(
-  //           content: const Text('No collectors found in your town.'),
-  //           backgroundColor: Colors.orange.shade600,
-  //           behavior: SnackBarBehavior.floating,
-  //           shape: RoundedRectangleBorder(
-  //             borderRadius: BorderRadius.circular(10),
-  //           ),
-  //         ),
-  //       );
-  //     }
-  //   } catch (e) {
-  //     setState(() {
-  //       _isLoadingCollectors = false;
-  //     });
-
-  //     ScaffoldMessenger.of(context).showSnackBar(
-  //       SnackBar(
-  //         content: Text('Failed to fetch collectors: ${e.toString()}'),
-  //         backgroundColor: Colors.red.shade600,
-  //         behavior: SnackBarBehavior.floating,
-  //         shape: RoundedRectangleBorder(
-  //           borderRadius: BorderRadius.circular(10),
-  //         ),
-  //       ),
-  //     );
-  //   }
-  // }
-
   Future<void> _submitPickupRequest() async {
     HapticFeedback.mediumImpact();
 
     if (!_formKey.currentState!.validate()) return;
 
-    if (_selectedDate == null) {
-      _showErrorSnackBar('Please select a pickup date');
-      return;
-    }
-
-    if (_selectedTime == null) {
-      _showErrorSnackBar('Please select a pickup time');
-      return;
+    // Validation for scheduled pickup
+    if (!_isPickupToday) {
+      if (_selectedDate == null) {
+        _showErrorSnackBar('Please select a pickup date');
+        return;
+      }
+      if (_selectedTime == null) {
+        _showErrorSnackBar('Please select a pickup time');
+        return;
+      }
+    } else {
+      // For today pickup, time is required
+      if (_selectedTime == null) {
+        _showErrorSnackBar('Please select a pickup time for today');
+        return;
+      }
     }
 
     if (_currentPosition == null) {
@@ -388,14 +371,14 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     try {
       _showLoadingDialog();
 
-      // 🔸 Fetch user info from Firestore
+      // Fetch user info from Firestore
       final userDoc = await FirebaseFirestore.instance
           .collection('users')
           .doc(widget.userId)
           .get();
 
       if (!userDoc.exists) {
-        Navigator.of(context).pop(); // close loading dialog
+        Navigator.of(context).pop();
         _showErrorSnackBar('User data not found');
         return;
       }
@@ -403,15 +386,27 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
       final userData = userDoc.data()!;
       final userName = userData['name'] ?? 'Unknown';
       final userPhone = userData['phone'] ?? '';
-      //final userTown = userData['town'] ?? '';
 
-      DateTime pickupDateTime = DateTime(
-        _selectedDate!.year,
-        _selectedDate!.month,
-        _selectedDate!.day,
-        _selectedTime!.hour,
-        _selectedTime!.minute,
-      );
+      // Calculate pickup date time
+      DateTime pickupDateTime;
+      if (_isPickupToday) {
+        final today = DateTime.now();
+        pickupDateTime = DateTime(
+          today.year,
+          today.month,
+          today.day,
+          _selectedTime!.hour,
+          _selectedTime!.minute,
+        );
+      } else {
+        pickupDateTime = DateTime(
+          _selectedDate!.year,
+          _selectedDate!.month,
+          _selectedDate!.day,
+          _selectedTime!.hour,
+          _selectedTime!.minute,
+        );
+      }
 
       final selectedCollector = _nearbyCollectors.firstWhere(
         (collector) => collector['id'] == _selectedCollectorId,
@@ -420,7 +415,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
 
       final collectorName = selectedCollector['name'] ?? 'Unknown Collector';
 
-      // 🔸 Save pickup request
+      // Save pickup request
       await FirebaseFirestore.instance.collection('pickup_requests').add({
         'userId': widget.userId,
         'userName': userName,
@@ -431,91 +426,18 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         'collectorId': _selectedCollectorId,
         'collectorName': collectorName,
         'pickupDate': Timestamp.fromDate(pickupDateTime),
+        'isPickupToday': _isPickupToday, // Track if it was scheduled for today
         'status': 'pending',
         'createdAt': FieldValue.serverTimestamp(),
       });
 
-      Navigator.of(context).pop(); // Close loading
+      Navigator.of(context).pop();
       _showSuccessDialog();
     } catch (e) {
-      Navigator.of(context).pop(); // Close loading
+      Navigator.of(context).pop();
       _showErrorSnackBar('Failed to submit request: ${e.toString()}');
     }
   }
-
-  // Submit Pickup Request
-  // Future<void> _submitPickupRequest() async {
-  //   HapticFeedback.mediumImpact();
-
-  //   if (!_formKey.currentState!.validate()) return;
-
-  //   // Validation checks with beautiful snackbars
-  //   // if (_selectedCategories.isEmpty) {
-  //   //   _showErrorSnackBar('Please select at least one waste category');
-  //   //   return;
-  //   // }
-
-  //   if (_selectedDate == null) {
-  //     _showErrorSnackBar('Please select a pickup date');
-  //     return;
-  //   }
-
-  //   if (_selectedTime == null) {
-  //     _showErrorSnackBar('Please select a pickup time');
-  //     return;
-  //   }
-
-  //   if (_currentPosition == null) {
-  //     _showErrorSnackBar('Please set your location first');
-  //     return;
-  //   }
-
-  //   if (_selectedCollectorId == null) {
-  //     _showErrorSnackBar('Please select a collector');
-  //     return;
-  //   }
-
-  //   try {
-  //     // Show beautiful loading dialog
-  //     _showLoadingDialog();
-
-  //     DateTime pickupDateTime = DateTime(
-  //       _selectedDate!.year,
-  //       _selectedDate!.month,
-  //       _selectedDate!.day,
-  //       _selectedTime!.hour,
-  //       _selectedTime!.minute,
-  //     );
-
-  //     final selectedCollector = _nearbyCollectors.firstWhere(
-  //       (collector) => collector['id'] == _selectedCollectorId,
-  //       orElse: () => {},
-  //     );
-  //     final collectorName = selectedCollector['name'] ?? 'Unknown Collector';
-
-  //     await FirebaseFirestore.instance.collection('pickup_requests').add({
-  //       'userId': widget.userId,
-  //       //'userName': _nameController.text.trim(),
-  //       'userPhone': _phoneController.text.trim(),
-  //       'userTown': _townController.text.trim(),
-  //      // 'wasteCategories': _selectedCategories.toList(),
-  //       'userLatitude': _currentPosition!.latitude,
-  //       'userLongitude': _currentPosition!.longitude,
-  //       'collectorId': _selectedCollectorId,
-  //       'collectorName': collectorName,
-  //       'pickupDate': Timestamp.fromDate(pickupDateTime),
-  //       'status': 'pending',
-  //       'createdAt': FieldValue.serverTimestamp(),
-  //     });
-
-  //     Navigator.of(context).pop(); // Close loading dialog
-  //     // HapticFeedback.successFeedback();
-  //     _showSuccessDialog();
-  //   } catch (e) {
-  //     Navigator.of(context).pop(); // Close loading dialog
-  //     _showErrorSnackBar('Failed to submit request: ${e.toString()}');
-  //   }
-  // }
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
@@ -654,14 +576,13 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
 
   void _resetForm() {
     setState(() {
-      // _nameController.clear();
-      //_phoneController.clear();
       _townController.clear();
       _selectedCategories.clear();
       _currentPosition = null;
       _locationStatus = "Location not set";
       _nearbyCollectors.clear();
       _selectedCollectorId = null;
+      _isPickupToday = true;
       _selectedDate = null;
       _selectedTime = null;
     });
@@ -745,14 +666,14 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                           ),
                           const SizedBox(height: 16),
 
-                          // Waste Categories Card
-                          // _buildAnimatedCard(
-                          //   delay: 200,
-                          //   child: _buildWasteCategoriesSection(),
-                          // ),
+                          // NEW: Pickup Type Selection Card
+                          _buildAnimatedCard(
+                            delay: 200,
+                            child: _buildPickupTypeSection(),
+                          ),
                           const SizedBox(height: 16),
 
-                          // Schedule Card
+                          // Schedule Card (Updated)
                           _buildAnimatedCard(
                             delay: 400,
                             child: _buildScheduleSection(),
@@ -852,31 +773,6 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
               ),
             ],
           ),
-          // const SizedBox(height: 24),
-          // _buildStyledTextField(
-          //   controller: _nameController,
-          //   label: 'Full Name',
-          //   icon: Icons.person_outline,
-          //   validator: (value) {
-          //     if (value == null || value.trim().isEmpty) {
-          //       return 'Please enter your name';
-          //     }
-          //     return null;
-          //   },
-          // ),
-          // const SizedBox(height: 16),
-          // _buildStyledTextField(
-          //   controller: _phoneController,
-          //   label: 'Phone Number',
-          //   icon: Icons.phone_outlined,
-          //   keyboardType: TextInputType.phone,
-          //   validator: (value) {
-          //     if (value == null || value.trim().isEmpty) {
-          //       return 'Please enter your phone number';
-          //     }
-          //     return null;
-          //   },
-          // ),
           const SizedBox(height: 16),
           _buildStyledTextField(
             controller: _townController,
@@ -889,6 +785,185 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
               }
               return null;
             },
+          ),
+        ],
+      ),
+    );
+  }
+
+  // NEW: Pickup Type Selection Section
+  Widget _buildPickupTypeSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.indigo.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.today,
+                  color: Colors.indigo.shade600,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'When do you need pickup?',
+                style: TextStyle(
+                  fontSize: 20,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 8),
+          Text(
+            'Choose if you want pickup today or schedule for later',
+            style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+          ),
+          const SizedBox(height: 20),
+          Row(
+            children: [
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    setState(() {
+                      _isPickupToday = true;
+                      _selectedDate =
+                          null; // Clear scheduled date when switching to today
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: _isPickupToday
+                          ? Colors.indigo.shade50
+                          : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: _isPickupToday
+                            ? Colors.indigo.shade600
+                            : Colors.grey.shade300,
+                        width: _isPickupToday ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.today,
+                          size: 32,
+                          color: _isPickupToday
+                              ? Colors.indigo.shade600
+                              : Colors.grey.shade600,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Today',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: _isPickupToday
+                                ? Colors.indigo.shade700
+                                : Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Same-day pickup',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: _isPickupToday
+                                ? Colors.indigo.shade600
+                                : Colors.grey.shade600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 16),
+              Expanded(
+                child: GestureDetector(
+                  onTap: () {
+                    HapticFeedback.lightImpact();
+                    setState(() {
+                      _isPickupToday = false;
+                    });
+                  },
+                  child: AnimatedContainer(
+                    duration: const Duration(milliseconds: 300),
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: !_isPickupToday
+                          ? Colors.indigo.shade50
+                          : Colors.grey.shade50,
+                      borderRadius: BorderRadius.circular(16),
+                      border: Border.all(
+                        color: !_isPickupToday
+                            ? Colors.indigo.shade600
+                            : Colors.grey.shade300,
+                        width: !_isPickupToday ? 2 : 1,
+                      ),
+                    ),
+                    child: Column(
+                      children: [
+                        Icon(
+                          Icons.schedule,
+                          size: 32,
+                          color: !_isPickupToday
+                              ? Colors.indigo.shade600
+                              : Colors.grey.shade600,
+                        ),
+                        const SizedBox(height: 12),
+                        Text(
+                          'Schedule',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.bold,
+                            color: !_isPickupToday
+                                ? Colors.indigo.shade700
+                                : Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Pick date & time',
+                          style: TextStyle(
+                            fontSize: 12,
+                            color: !_isPickupToday
+                                ? Colors.indigo.shade600
+                                : Colors.grey.shade600,
+                          ),
+                          textAlign: TextAlign.center,
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+              ),
+            ],
           ),
         ],
       ),
@@ -929,121 +1004,6 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     );
   }
 
-  // Widget _buildWasteCategoriesSection() {
-  //   return Container(
-  //     padding: const EdgeInsets.all(24),
-  //     decoration: BoxDecoration(
-  //       color: Colors.white,
-  //       borderRadius: BorderRadius.circular(20),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: Colors.black.withOpacity(0.05),
-  //           blurRadius: 10,
-  //           offset: const Offset(0, 5),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Row(
-  //           children: [
-  //             Container(
-  //               padding: const EdgeInsets.all(12),
-  //               decoration: BoxDecoration(
-  //                 color: Colors.green.shade50,
-  //                 borderRadius: BorderRadius.circular(12),
-  //               ),
-  //               child: Icon(
-  //                 Icons.category,
-  //                 color: Colors.green.shade600,
-  //                 size: 24,
-  //               ),
-  //             ),
-  //             const SizedBox(width: 16),
-  //             const Text(
-  //               'Waste Categories',
-  //               style: TextStyle(
-  //                 fontSize: 22,
-  //                 fontWeight: FontWeight.bold,
-  //                 color: Color(0xFF2E2E2E),
-  //               ),
-  //             ),
-  //           ],
-  //         ),
-  //         const SizedBox(height: 8),
-  //         Text(
-  //           'Select the types of waste you want to dispose of',
-  //           style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
-  //         ),
-  //         const SizedBox(height: 20),
-  //         Wrap(
-  //           spacing: 12,
-  //           runSpacing: 12,
-  //           children: _wasteCategories.map((category) {
-  //             final isSelected = _selectedCategories.contains(category['name']);
-  //             return GestureDetector(
-  //               onTap: () {
-  //                 HapticFeedback.lightImpact();
-  //                 setState(() {
-  //                   if (isSelected) {
-  //                     _selectedCategories.remove(category['name']);
-  //                   } else {
-  //                     _selectedCategories.add(category['name']);
-  //                   }
-  //                 });
-  //               },
-  //               child: AnimatedContainer(
-  //                 duration: const Duration(milliseconds: 200),
-  //                 padding: const EdgeInsets.symmetric(
-  //                   horizontal: 16,
-  //                   vertical: 12,
-  //                 ),
-  //                 decoration: BoxDecoration(
-  //                   color: isSelected
-  //                       ? category['color'].withOpacity(0.1)
-  //                       : Colors.grey.shade100,
-  //                   borderRadius: BorderRadius.circular(25),
-  //                   border: Border.all(
-  //                     color: isSelected
-  //                         ? category['color']
-  //                         : Colors.grey.shade300,
-  //                     width: isSelected ? 2 : 1,
-  //                   ),
-  //                 ),
-  //                 child: Row(
-  //                   mainAxisSize: MainAxisSize.min,
-  //                   children: [
-  //                     Icon(
-  //                       category['icon'],
-  //                       size: 18,
-  //                       color: isSelected
-  //                           ? category['color']
-  //                           : Colors.grey.shade600,
-  //                     ),
-  //                     const SizedBox(width: 8),
-  //                     Text(
-  //                       category['name'],
-  //                       style: TextStyle(
-  //                         color: isSelected
-  //                             ? category['color']
-  //                             : Colors.grey.shade700,
-  //                         fontWeight: isSelected
-  //                             ? FontWeight.bold
-  //                             : FontWeight.normal,
-  //                       ),
-  //                     ),
-  //                   ],
-  //                 ),
-  //               ),
-  //             );
-  //           }).toList(),
-  //         ),
-  //       ],
-  //     ),
-  //   );
-  // }
-
   Widget _buildScheduleSection() {
     return Container(
       padding: const EdgeInsets.all(24),
@@ -1070,15 +1030,15 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: Icon(
-                  Icons.schedule,
+                  _isPickupToday ? Icons.access_time : Icons.schedule,
                   color: Colors.orange.shade600,
                   size: 24,
                 ),
               ),
               const SizedBox(width: 16),
-              const Text(
-                'Pickup Schedule',
-                style: TextStyle(
+              Text(
+                _isPickupToday ? 'Pick Time for Today' : 'Schedule Pickup',
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
                   color: Color(0xFF2E2E2E),
@@ -1088,35 +1048,80 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
           ),
           const SizedBox(height: 8),
           Text(
-            'Choose when you want your waste to be collected',
+            _isPickupToday
+                ? 'Select what time you want pickup today'
+                : 'Choose when you want your waste to be collected',
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
-          Row(
-            children: [
-              Expanded(
-                child: _buildScheduleButton(
-                  icon: Icons.calendar_today,
-                  label: _selectedDate == null
-                      ? 'Select Date'
-                      : DateFormat('MMM dd, yyyy').format(_selectedDate!),
-                  onTap: _selectDate,
-                  isSelected: _selectedDate != null,
+
+          if (_isPickupToday) ...[
+            // Show only time selector for today
+            _buildScheduleButton(
+              icon: Icons.access_time,
+              label: _selectedTime == null
+                  ? 'Select Time for Today'
+                  : 'Today at ${_selectedTime!.format(context)}',
+              onTap: _selectTime,
+              isSelected: _selectedTime != null,
+              fullWidth: true,
+            ),
+          ] else ...[
+            // Show both date and time selectors for scheduled pickup
+            Row(
+              children: [
+                Expanded(
+                  child: _buildScheduleButton(
+                    icon: Icons.calendar_today,
+                    label: _selectedDate == null
+                        ? 'Select Date'
+                        : DateFormat('MMM dd, yyyy').format(_selectedDate!),
+                    onTap: _selectDate,
+                    isSelected: _selectedDate != null,
+                  ),
                 ),
-              ),
-              const SizedBox(width: 16),
-              Expanded(
-                child: _buildScheduleButton(
-                  icon: Icons.access_time,
-                  label: _selectedTime == null
-                      ? 'Select Time'
-                      : _selectedTime!.format(context),
-                  onTap: _selectTime,
-                  isSelected: _selectedTime != null,
+                const SizedBox(width: 16),
+                Expanded(
+                  child: _buildScheduleButton(
+                    icon: Icons.access_time,
+                    label: _selectedTime == null
+                        ? 'Select Time'
+                        : _selectedTime!.format(context),
+                    onTap: _selectTime,
+                    isSelected: _selectedTime != null,
+                  ),
                 ),
+              ],
+            ),
+          ],
+
+          // Show helpful info
+          if (_isPickupToday) ...[
+            const SizedBox(height: 12),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.blue.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.blue.shade200),
               ),
-            ],
-          ),
+              child: Row(
+                children: [
+                  Icon(Icons.info, size: 16, color: Colors.blue.shade600),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Pickup must be at least 30 minutes from now and before 5:00 PM',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.blue.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );
@@ -1127,10 +1132,12 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     required String label,
     required VoidCallback onTap,
     required bool isSelected,
+    bool fullWidth = false,
   }) {
     return GestureDetector(
       onTap: onTap,
       child: Container(
+        width: fullWidth ? double.infinity : null,
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
           color: isSelected ? Colors.green.shade50 : Colors.grey.shade50,
@@ -1140,27 +1147,57 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
             width: isSelected ? 2 : 1,
           ),
         ),
-        child: Column(
-          children: [
-            Icon(
-              icon,
-              color: isSelected ? Colors.green.shade600 : Colors.grey.shade600,
-              size: 24,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              label,
-              style: TextStyle(
-                color: isSelected
-                    ? Colors.green.shade600
-                    : Colors.grey.shade700,
-                fontWeight: isSelected ? FontWeight.bold : FontWeight.normal,
-                fontSize: 12,
+        child: fullWidth
+            ? Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Icon(
+                    icon,
+                    color: isSelected
+                        ? Colors.green.shade600
+                        : Colors.grey.shade600,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 8),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.green.shade600
+                          : Colors.grey.shade700,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      fontSize: 14,
+                    ),
+                  ),
+                ],
+              )
+            : Column(
+                children: [
+                  Icon(
+                    icon,
+                    color: isSelected
+                        ? Colors.green.shade600
+                        : Colors.grey.shade600,
+                    size: 24,
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    label,
+                    style: TextStyle(
+                      color: isSelected
+                          ? Colors.green.shade600
+                          : Colors.grey.shade700,
+                      fontWeight: isSelected
+                          ? FontWeight.bold
+                          : FontWeight.normal,
+                      fontSize: 12,
+                    ),
+                    textAlign: TextAlign.center,
+                  ),
+                ],
               ),
-              textAlign: TextAlign.center,
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1522,14 +1559,16 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
             borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: const Row(
+        child: Row(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(Icons.send, color: Colors.white, size: 24),
-            SizedBox(width: 12),
+            const Icon(Icons.send, color: Colors.white, size: 24),
+            const SizedBox(width: 12),
             Text(
-              'Submit Pickup Request',
-              style: TextStyle(
+              _isPickupToday
+                  ? 'Request Pickup Today'
+                  : 'Schedule Pickup Request',
+              style: const TextStyle(
                 fontSize: 18,
                 fontWeight: FontWeight.bold,
                 color: Colors.white,

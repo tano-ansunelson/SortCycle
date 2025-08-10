@@ -9,6 +9,7 @@ import 'package:flutter_application_1/waste_collector/pending_summary.dart';
 //import 'package:flutter_application_1/user_screen/profile_screen.dart';
 import 'package:flutter_application_1/waste_collector/pickup.dart';
 import 'package:flutter_application_1/waste_collector/profile_screen.dart';
+import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 
 class CollectorMainScreen extends StatefulWidget {
@@ -20,6 +21,7 @@ class CollectorMainScreen extends StatefulWidget {
 
 class _CollectorMainScreenState extends State<CollectorMainScreen> {
   int _currentIndex = 1;
+
   @override
   void initState() {
     super.initState();
@@ -35,6 +37,7 @@ class _CollectorMainScreenState extends State<CollectorMainScreen> {
   Widget build(BuildContext context) {
     final currentUser = FirebaseAuth.instance.currentUser;
     final collectorId = currentUser?.uid;
+
     return Scaffold(
       body: IndexedStack(
         index: _currentIndex,

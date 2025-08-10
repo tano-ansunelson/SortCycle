@@ -15,6 +15,7 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
   final _formKey = GlobalKey<FormState>();
   final _usernameController = TextEditingController();
   final _emailController = TextEditingController();
+  final _phoneController = TextEditingController();
 
   final _currentPasswordController = TextEditingController();
   final _newPasswordController = TextEditingController();
@@ -38,6 +39,7 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
       setState(() {
         _usernameController.text = provider.username ?? 'Guest';
         _emailController.text = provider.email ?? '';
+        _phoneController.text = provider.phone ?? '';
       });
     });
   }
@@ -46,6 +48,7 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
   void dispose() {
     _usernameController.dispose();
     _emailController.dispose();
+    _phoneController.dispose();
 
     _currentPasswordController.dispose();
     _newPasswordController.dispose();
@@ -73,6 +76,16 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
     }
     if (!value.contains('@')) {
       return 'Please enter a valid email address';
+    }
+    return null;
+  }
+
+  String? _validatePhone(String? value) {
+    if (value == null || value.isEmpty) {
+      return 'Phone number is required';
+    }
+    if (!RegExp(r'^\+?[0-9]{10,15}$').hasMatch(value)) {
+      return 'Please enter a valid phone number';
     }
     return null;
   }
@@ -149,6 +162,7 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
         await FirebaseFirestore.instance.collection('users').doc(uid).update({
           'name': _usernameController.text.trim(),
           'email': _emailController.text.trim(),
+          'phone': _phoneController.text.trim(),
 
           // optionally keep this
         });
@@ -166,6 +180,7 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
             _currentPasswordController.clear();
             _newPasswordController.clear();
             _confirmPasswordController.clear();
+
             setState(() {
               _isChangingPassword = false;
             });
@@ -327,9 +342,27 @@ class _UserProfileEditPageState extends State<UserProfileEditPage> {
 
                     const SizedBox(height: 16),
 
-                    // Town Field
+                    // Phone Field
+                    TextFormField(
+                      controller: _phoneController,
+                      decoration: InputDecoration(
+                        labelText: 'Phone',
+                        hintText: 'Enter your phone number',
+                        prefixIcon: const Icon(Icons.phone),
+                        border: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        focusedBorder: OutlineInputBorder(
+                          borderRadius: BorderRadius.circular(10),
+                          borderSide: BorderSide(color: Colors.green[700]!),
+                        ),
+                      ),
+                      validator: _validatePhone,
+                    ),
 
-                    // Username Field
+                    const SizedBox(height: 16),
+
+                    // Town Field
                   ],
                 ),
               ),

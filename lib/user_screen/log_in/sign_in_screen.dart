@@ -74,7 +74,9 @@ class _SignInScreenState extends State<SignInScreen>
                   const SizedBox(height: 30),
                   _buildSocialLogin(),
                   const SizedBox(height: 30),
+
                   _buildSignUpLink(),
+                  const SizedBox(height: 30),
                 ],
               ),
             ),
@@ -372,7 +374,7 @@ class _SignInScreenState extends State<SignInScreen>
           ),
           TextButton(
             onPressed: () {
-              Navigator.pushNamed(context, AppRoutes.signUp);
+              Navigator.pushNamed(context, AppRoutes.roleSelection);
             },
             child: const Text(
               'Sign Up',

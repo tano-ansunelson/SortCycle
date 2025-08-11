@@ -327,19 +327,34 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
 
         if (lat.abs() > 90 || lng.abs() > 180) continue;
 
+        // Check if pickup is scheduled for today
+        final isTodayPickup = _isPickupToday(data['pickupDate']);
+        final pickupDateText = _formatPickupDate(data['pickupDate']);
+        
+        // Determine marker color based on status and date
+        BitmapDescriptor markerIcon;
+        if (isTodayPickup) {
+          // Today's pickups get priority colors
+          markerIcon = data['status'] == 'in_progress'
+              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed) // Red for urgent today pickups
+              : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow); // Yellow for today's accepted pickups
+        } else {
+          // Future pickups get standard colors
+          markerIcon = data['status'] == 'in_progress'
+              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange)
+              : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+        }
+
         final marker = Marker(
           markerId: MarkerId(doc.id),
           position: LatLng(lat, lng),
           infoWindow: InfoWindow(
             title: data['userName'] ?? 'Pickup Request',
-            snippet:
-                '${_formatWasteCategories(data['wasteCategories'])} - Tap for details',
+            snippet: isTodayPickup 
+                ? '🔥 TODAY: ${_formatWasteCategories(data['wasteCategories'])} - $pickupDateText'
+                : '📅 ${_formatWasteCategories(data['wasteCategories'])} - $pickupDateText',
           ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            data['status'] == 'in_progress'
-                ? BitmapDescriptor.hueOrange
-                : BitmapDescriptor.hueGreen,
-          ),
+          icon: markerIcon,
           onTap: () => _showRequestDetails(doc.id, data),
         );
 
@@ -621,19 +636,34 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
           continue;
         }
 
+        // Check if pickup is scheduled for today
+        final isTodayPickup = _isPickupToday(data['pickupDate']);
+        final pickupDateText = _formatPickupDate(data['pickupDate']);
+        
+        // Determine marker color based on status and date
+        BitmapDescriptor markerIcon;
+        if (isTodayPickup) {
+          // Today's pickups get priority colors
+          markerIcon = data['status'] == 'in_progress'
+              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed) // Red for urgent today pickups
+              : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow); // Yellow for today's accepted pickups
+        } else {
+          // Future pickups get standard colors
+          markerIcon = data['status'] == 'in_progress'
+              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange)
+              : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+        }
+
         final marker = Marker(
           markerId: MarkerId(doc.id),
           position: LatLng(lat, lng),
           infoWindow: InfoWindow(
             title: data['userName'] ?? 'Pickup Request',
-            snippet:
-                '${_formatWasteCategories(data['wasteCategories'])} - Tap for details',
+            snippet: isTodayPickup 
+                ? '🔥 TODAY: ${_formatWasteCategories(data['wasteCategories'])} - $pickupDateText'
+                : '📅 ${_formatWasteCategories(data['wasteCategories'])} - $pickupDateText',
           ),
-          icon: BitmapDescriptor.defaultMarkerWithHue(
-            data['status'] == 'in_progress'
-                ? BitmapDescriptor.hueOrange
-                : BitmapDescriptor.hueGreen,
-          ),
+          icon: markerIcon,
           onTap: () => _showRequestDetails(doc.id, data),
         );
 
@@ -1060,6 +1090,35 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
               ),
             ],
             const SizedBox(height: 12),
+            
+            // Priority indicator for today's pickups
+            if (_isPickupToday(data['pickupDate'])) ...[
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                decoration: BoxDecoration(
+                  color: Colors.red.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Colors.red, width: 2),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.priority_high, color: Colors.red, size: 20),
+                    const SizedBox(width: 8),
+                    const Text(
+                      '🔥 PRIORITY: TODAY\'S PICKUP',
+                      style: TextStyle(
+                        color: Colors.red,
+                        fontWeight: FontWeight.bold,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: 12),
+            ],
+            
             _buildDetailRow(
               Icons.delete_outline,
               'Waste',
@@ -1207,6 +1266,19 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
       }
     }
     return timestamp.toString();
+  }
+
+  // Helper function to check if pickup is scheduled for today
+  bool _isPickupToday(dynamic timestamp) {
+    if (timestamp == null) return false;
+    if (timestamp is Timestamp) {
+      final date = timestamp.toDate();
+      final now = DateTime.now();
+      final today = DateTime(now.year, now.month, now.day);
+      final pickupDay = DateTime(date.year, date.month, date.day);
+      return pickupDay == today;
+    }
+    return false;
   }
 
   void _navigateToLocation(String requestId, Map<String, dynamic> data) async {
@@ -1849,6 +1921,198 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
                   zoomControlsEnabled: true,
                   compassEnabled: true,
                   mapToolbarEnabled: true,
+                ),
+
+                // Map Legend - Color coding for pickup dates
+                Positioned(
+                  top: 16,
+                  left: 16,
+                  child: Card(
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        mainAxisSize: MainAxisSize.min,
+                        children: [
+                          const Text(
+                            'Pickup Priority',
+                            style: TextStyle(
+                              fontWeight: FontWeight.bold,
+                              fontSize: 14,
+                            ),
+                          ),
+                          const SizedBox(height: 8),
+                          Row(
+                            children: [
+                              Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: Colors.red,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Today - In Progress',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: Colors.yellow,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Today - Accepted',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: Colors.orange,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Future - In Progress',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                          const SizedBox(height: 4),
+                          Row(
+                            children: [
+                              Container(
+                                width: 16,
+                                height: 16,
+                                decoration: BoxDecoration(
+                                  color: Colors.green,
+                                  shape: BoxShape.circle,
+                                ),
+                              ),
+                              const SizedBox(width: 8),
+                              const Text(
+                                'Future - Accepted',
+                                style: TextStyle(fontSize: 12),
+                              ),
+                            ],
+                          ),
+                        ],
+                      ),
+                    ),
+                  ),
+                ),
+
+                // Today's Pickup Summary
+                Positioned(
+                  top: 16,
+                  right: 16,
+                  child: Card(
+                    elevation: 4,
+                    child: Padding(
+                      padding: const EdgeInsets.all(12),
+                      child: StreamBuilder<QuerySnapshot>(
+                        stream: FirebaseFirestore.instance
+                            .collection('pickup_requests')
+                            .where('status', whereIn: ['in_progress', 'accepted'])
+                            .where('collectorId', isEqualTo: widget.collectorId)
+                            .snapshots(),
+                        builder: (context, snapshot) {
+                          if (!snapshot.hasData) {
+                            return const SizedBox(
+                              width: 120,
+                              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                            );
+                          }
+
+                          int todayPickups = 0;
+                          int futurePickups = 0;
+
+                          for (var doc in snapshot.data!.docs) {
+                            final data = doc.data() as Map<String, dynamic>;
+                            if (_isPickupToday(data['pickupDate'])) {
+                              todayPickups++;
+                            } else {
+                              futurePickups++;
+                            }
+                          }
+
+                          return Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              const Text(
+                                'Today\'s Schedule',
+                                style: TextStyle(
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 14,
+                                ),
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.red.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.red),
+                                    ),
+                                    child: Text(
+                                      '$todayPickups Today',
+                                      style: const TextStyle(
+                                        color: Colors.red,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              const SizedBox(height: 4),
+                              Row(
+                                children: [
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    decoration: BoxDecoration(
+                                      color: Colors.blue.withOpacity(0.1),
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(color: Colors.blue),
+                                    ),
+                                    child: Text(
+                                      '$futurePickups Future',
+                                      style: const TextStyle(
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold,
+                                        fontSize: 12,
+                                      ),
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          );
+                        },
+                      ),
+                    ),
+                  ),
                 ),
 
                 // Enhanced nearest location info card

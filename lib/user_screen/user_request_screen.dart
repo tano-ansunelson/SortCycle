@@ -384,6 +384,7 @@ class _RequestCardState extends State<RequestCard>
     //   widget.requestData['wasteCategories'] ?? [],
     // );
     final collectorId = widget.requestData['collectorId'] as String?;
+    final hasCollector = collectorId != null && collectorId.isNotEmpty;
 
     return GestureDetector(
       onTapDown: (_) {
@@ -483,7 +484,7 @@ class _RequestCardState extends State<RequestCard>
                 const SizedBox(height: 16),
 
                 // Collector Info (if assigned)
-                if (collectorId != null)
+                if (hasCollector)
                   FutureBuilder<DocumentSnapshot>(
                     future: FirebaseFirestore.instance
                         .collection('collectors')
@@ -510,6 +511,22 @@ class _RequestCardState extends State<RequestCard>
                       }
                       return const SizedBox.shrink();
                     },
+                  )
+                else
+                  // Show status for requests without collectors
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.orange.shade200),
+                    ),
+                    child: _buildInfoRow(
+                      Icons.schedule_rounded,
+                      'Collector Status',
+                      'Waiting for collector assignment',
+                      Colors.orange.shade600,
+                    ),
                   ),
 
                 const SizedBox(height: 20),
@@ -560,7 +577,7 @@ class _RequestCardState extends State<RequestCard>
                     const SizedBox(width: 12),
 
                     // Chat button (only if collector is assigned)
-                    if (collectorId != null)
+                    if (hasCollector)
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {

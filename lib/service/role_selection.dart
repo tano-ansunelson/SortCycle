@@ -286,6 +286,36 @@ class _RoleSelectionScreenState extends State<RoleSelectionScreen> {
 
               const SizedBox(height: 50),
 
+                             // Admin Access Button - Commented out for mobile app
+               // SizedBox(
+               //   width: 200,
+               //   child: OutlinedButton(
+               //     onPressed: () {
+               //       Navigator.pushNamed(context, AppRoutes.adminLogin);
+               //     },
+               //     style: OutlinedButton.styleFrom(
+               //       foregroundColor: Colors.white70,
+               //       side: const BorderSide(color: Colors.white70, width: 1),
+               //       padding: const EdgeInsets.symmetric(vertical: 12),
+               //       shape: RoundedRectangleBorder(
+               //       borderRadius: BorderRadius.circular(30),
+               //     ),
+               //   ),
+               //   child: const Row(
+               //     mainAxisAlignment: MainAxisAlignment.center,
+               //     children: [
+               //       Icon(Icons.admin_panel_settings, size: 18),
+               //       SizedBox(width: 8),
+               //       Text(
+               //         "Admin Access",
+               //         style: TextStyle(fontSize: 14, fontWeight: FontWeight.w500),
+               //       ),
+               //     ],
+               //   ),
+               // ),
+
+              const SizedBox(height: 50),
+
               // Language Section
               const Text(
                 "🌐 Language",

@@ -12,12 +12,14 @@ import 'package:intl/intl.dart';
 class PickupManagementPage extends StatefulWidget {
   final String collectorId;
   final String collectorName;
+  final String collectorTown;
   //final int initialTabIndex;
 
   const PickupManagementPage({
     super.key,
     required this.collectorId,
     required this.collectorName,
+    required this.collectorTown,
     //this.initialTabIndex=0,
   });
 
@@ -122,7 +124,14 @@ class _PickupManagementPageState extends State<PickupManagementPage>
       stream: FirebaseFirestore.instance
           .collection('pickup_requests')
           .where('status', isEqualTo: 'pending')
-          .where('collectorId', isEqualTo: null) // Unassigned requests
+          .where(
+            'collectorId',
+            whereIn: ['', widget.collectorId],
+          ) // Unassigned requests (empty string)
+          .where(
+            'userTown',
+            isEqualTo: _getCollectorTown(),
+          ) // Only show requests in collector's town
           .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
@@ -704,7 +713,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                 icon: const Icon(Icons.chat, size: 18),
                 label: const Text('Chat'),
                 style: ElevatedButton.styleFrom(
-                  backgroundColor: const Color.fromARGB(255, 91, 3, 244),
+                  backgroundColor: Colors.blue,
                   padding: const EdgeInsets.symmetric(
                     horizontal: 4,
                     vertical: 12,
@@ -959,4 +968,9 @@ class _PickupManagementPageState extends State<PickupManagementPage>
   //   // Here you would integrate with maps/navigation
   //   // For example: launch Google Maps or Apple Maps
   // }
+
+  // Get collector's town from widget parameter
+  String _getCollectorTown() {
+    return widget.collectorTown;
+  }
 }

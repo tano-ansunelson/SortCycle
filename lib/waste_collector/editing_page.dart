@@ -179,7 +179,7 @@ class _CollectorProfileEditPageState extends State<CollectorProfileEditPage> {
             .doc(uid)
             .update({
               'name': _usernameController.text.trim(),
-              'town': _townController.text.trim(),
+              'town': _townController.text.trim().toLowerCase(),
               'email': _emailController.text.trim(),
               'phone': _phoneNumberController.text.trim(),
               // optionally keep this

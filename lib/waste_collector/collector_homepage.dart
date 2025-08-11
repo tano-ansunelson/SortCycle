@@ -9,7 +9,7 @@ import 'package:flutter_application_1/waste_collector/pending_summary.dart';
 //import 'package:flutter_application_1/user_screen/profile_screen.dart';
 import 'package:flutter_application_1/waste_collector/pickup.dart';
 import 'package:flutter_application_1/waste_collector/profile_screen.dart';
-import 'package:logger/logger.dart';
+//import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 
 class CollectorMainScreen extends StatefulWidget {
@@ -25,12 +25,18 @@ class _CollectorMainScreenState extends State<CollectorMainScreen> {
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => Provider.of<CollectorProvider>(
-        context,
-        listen: false,
-      ).fetchCollectorData(),
-    );
+    _fetchCollectorData();
+  }
+
+  void _fetchCollectorData() {
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (mounted) {
+        Provider.of<CollectorProvider>(
+          context,
+          listen: false,
+        ).fetchCollectorData();
+      }
+    });
   }
 
   @override
@@ -42,7 +48,11 @@ class _CollectorMainScreenState extends State<CollectorMainScreen> {
       body: IndexedStack(
         index: _currentIndex,
         children: [
-          PickupManagementPage(collectorId: collectorId!, collectorName: ''),
+          PickupManagementPage(
+            collectorId: collectorId!,
+            collectorName: '',
+            collectorTown: context.watch<CollectorProvider>().town ?? '',
+          ),
           const CollectorHomePage(),
           const CollectorProfileScreen(),
         ],
@@ -52,7 +62,7 @@ class _CollectorMainScreenState extends State<CollectorMainScreen> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.2),
+              color: Colors.grey.withValues(alpha: 0.2),
               spreadRadius: 1,
               blurRadius: 10,
               offset: const Offset(0, -2),
@@ -131,11 +141,12 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
         });
       }
     } catch (e) {
-      print('Error loading active status: $e');
+      debugPrint('Error loading active status: $e');
     }
   }
 
   Future<void> _updateActiveStatus(bool value) async {
+    final scaffoldMessenger = ScaffoldMessenger.of(context);
     try {
       await FirebaseFirestore.instance
           .collection('collectors')
@@ -145,30 +156,34 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
             'lastActiveUpdate': FieldValue.serverTimestamp(),
           });
 
-      setState(() {
-        isActive = value;
-      });
+      if (mounted) {
+        setState(() {
+          isActive = value;
+        });
 
-      // Show feedback to user
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            value
-                ? 'You are now active and available for pickups'
-                : 'You are now inactive',
+        // Show feedback to user
+        scaffoldMessenger.showSnackBar(
+          SnackBar(
+            content: Text(
+              value
+                  ? 'You are now active and available for pickups'
+                  : 'You are now inactive',
+            ),
+            backgroundColor: value ? Colors.green : Colors.orange,
+            duration: const Duration(seconds: 2),
           ),
-          backgroundColor: value ? Colors.green : Colors.orange,
-          duration: const Duration(seconds: 2),
-        ),
-      );
+        );
+      }
     } catch (e) {
-      print('Error updating active status: $e');
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Failed to update status. Please try again.'),
-          backgroundColor: Colors.red,
-        ),
-      );
+      debugPrint('Error updating active status: $e');
+      if (mounted) {
+        scaffoldMessenger.showSnackBar(
+          const SnackBar(
+            content: Text('Failed to update status. Please try again.'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
     }
   }
 
@@ -240,7 +255,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                     value: isActive,
                     onChanged: _updateActiveStatus,
                     activeColor: Colors.green,
-                    activeTrackColor: Colors.green.withOpacity(0.3),
+                    activeTrackColor: Colors.green.withValues(alpha: 0.3),
                     inactiveThumbColor: Colors.grey[400],
                     inactiveTrackColor: Colors.grey[300],
                   ),
@@ -357,7 +372,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF26A69A).withOpacity(0.3),
+              color: const Color(0xFF26A69A).withValues(alpha: 0.3),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -531,12 +546,15 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           icon: Icons.inbox,
           color: Colors.blue,
           onTap: () {
+            final collectorName = context.read<CollectorProvider>().name;
+            final collectorTown = context.read<CollectorProvider>().town;
             Navigator.push(
               context,
               MaterialPageRoute(
                 builder: (context) => PickupManagementPage(
                   collectorId: collectorId,
-                  collectorName: '',
+                  collectorName: collectorName ?? '',
+                  collectorTown: collectorTown ?? '',
                 ),
               ),
             );
@@ -595,7 +613,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           borderRadius: BorderRadius.circular(12),
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withOpacity(0.1),
+              color: Colors.grey.withValues(alpha: 0.1),
               spreadRadius: 1,
               blurRadius: 4,
               offset: const Offset(0, 2),
@@ -607,7 +625,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withOpacity(0.1),
+                color: color.withValues(alpha: 0.1),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: color, size: 20),
@@ -668,7 +686,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                 borderRadius: BorderRadius.circular(12),
                 boxShadow: [
                   BoxShadow(
-                    color: Colors.grey.withOpacity(0.1),
+                    color: Colors.grey.withValues(alpha: 0.1),
                     spreadRadius: 1,
                     blurRadius: 4,
                     offset: const Offset(0, 2),
@@ -680,7 +698,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.green.withOpacity(0.1),
+                      color: Colors.green.withValues(alpha: 0.1),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(

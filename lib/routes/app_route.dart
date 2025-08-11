@@ -31,4 +31,8 @@ abstract class AppRoutes {
   static const markethomescreen = '/markethomescreen';
   static const collectormapscreen = '/collectormapscreen';
   static const pickuphistory = '/pickuphistory';
+  
+           // Admin routes
+         static const adminLogin = '/admin/login';
+         static const adminDashboard = '/admin/dashboard';
 }

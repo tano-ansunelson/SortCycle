@@ -307,9 +307,18 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         _isLoadingCollectors = false;
       });
 
-      if (_nearbyCollectors.isEmpty) {
+      // Auto-select the first collector if available
+      if (_nearbyCollectors.isNotEmpty) {
+        setState(() {
+          _selectedCollectorId = _nearbyCollectors.first['id'];
+        });
         _showSnackBar(
-          'No collectors found in your town.',
+          'Collector automatically selected: ${_nearbyCollectors.first['name']}',
+          Colors.green.shade600,
+        );
+      } else {
+        _showSnackBar(
+          'No active collectors found in your town. Your request will be queued and assigned when a collector becomes available.',
           Colors.orange.shade600,
         );
       }
@@ -363,10 +372,8 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
       return;
     }
 
-    if (_selectedCollectorId == null) {
-      _showErrorSnackBar('Please select a collector');
-      return;
-    }
+    // Collector selection is now optional - will be auto-assigned if available
+    // _selectedCollectorId can be null if no collectors are available
 
     try {
       _showLoadingDialog();
@@ -408,23 +415,28 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         );
       }
 
-      final selectedCollector = _nearbyCollectors.firstWhere(
-        (collector) => collector['id'] == _selectedCollectorId,
-        orElse: () => {},
-      );
-
-      final collectorName = selectedCollector['name'] ?? 'Unknown Collector';
+      // Prepare collector data
+      String? collectorId = _selectedCollectorId;
+      String? collectorName;
+      
+      if (_selectedCollectorId != null) {
+        final selectedCollector = _nearbyCollectors.firstWhere(
+          (collector) => collector['id'] == _selectedCollectorId,
+          orElse: () => {},
+        );
+        collectorName = selectedCollector['name'] ?? 'Unknown Collector';
+      }
 
       // Save pickup request
       await FirebaseFirestore.instance.collection('pickup_requests').add({
         'userId': widget.userId,
         'userName': userName,
         'userPhone': userPhone,
-        'userTown': _townController.text.trim(),
+        'userTown': _townController.text.trim().toLowerCase(),
         'userLatitude': _currentPosition!.latitude,
         'userLongitude': _currentPosition!.longitude,
-        'collectorId': _selectedCollectorId,
-        'collectorName': collectorName,
+        'collectorId': collectorId ?? '', // Empty string if no collector
+        'collectorName': collectorName ?? '', // Empty string if no collector
         'pickupDate': Timestamp.fromDate(pickupDateTime),
         'isPickupToday': _isPickupToday, // Track if it was scheduled for today
         'status': 'pending',
@@ -491,6 +503,8 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   }
 
   void _showSuccessDialog() {
+    final bool hasCollector = _selectedCollectorId != null;
+    
     showDialog(
       context: context,
       builder: (context) => Dialog(
@@ -503,23 +517,29 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
               Container(
                 padding: const EdgeInsets.all(16),
                 decoration: BoxDecoration(
-                  color: Colors.green.shade50,
+                  color: hasCollector ? Colors.green.shade50 : Colors.orange.shade50,
                   shape: BoxShape.circle,
                 ),
                 child: Icon(
-                  Icons.check_circle,
+                  hasCollector ? Icons.check_circle : Icons.schedule,
                   size: 48,
-                  color: Colors.green.shade600,
+                  color: hasCollector ? Colors.green.shade600 : Colors.orange.shade600,
                 ),
               ),
               const SizedBox(height: 16),
-              const Text(
-                'Success!',
-                style: TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+              Text(
+                hasCollector ? 'Success!' : 'Request Queued!',
+                style: TextStyle(
+                  fontSize: 24, 
+                  fontWeight: FontWeight.bold,
+                  color: hasCollector ? Colors.green.shade800 : Colors.orange.shade800,
+                ),
               ),
               const SizedBox(height: 8),
               Text(
-                'Your pickup request has been submitted successfully. You can track its status in the requests tab.',
+                hasCollector 
+                  ? 'Your pickup request has been submitted successfully and assigned to a collector. You can track its status in the requests tab.'
+                  : 'Your pickup request has been queued successfully. It will be automatically assigned to a collector when one becomes available in your area.',
                 textAlign: TextAlign.center,
                 style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
               ),
@@ -555,7 +575,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                         );
                       },
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: Colors.green.shade600,
+                        backgroundColor: hasCollector ? Colors.green.shade600 : Colors.orange.shade600,
                         foregroundColor: Colors.white,
                         padding: const EdgeInsets.symmetric(vertical: 12),
                         shape: RoundedRectangleBorder(
@@ -1358,7 +1378,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
               ),
               const SizedBox(width: 16),
               const Text(
-                'Select Collector',
+                'Collector Assignment',
                 style: TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.bold,
@@ -1369,7 +1389,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
           ),
           const SizedBox(height: 8),
           Text(
-            'Choose from available collectors in your area',
+            'Collectors will be automatically assigned based on availability',
             style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
           ),
           const SizedBox(height: 20),
@@ -1398,24 +1418,49 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
             )
           else if (_nearbyCollectors.isEmpty)
             Container(
-              padding: const EdgeInsets.all(32),
+              padding: const EdgeInsets.all(24),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
               child: Column(
                 children: [
-                  Icon(Icons.search_off, size: 48, color: Colors.grey.shade400),
+                  Icon(Icons.schedule, size: 48, color: Colors.orange.shade600),
                   const SizedBox(height: 16),
                   Text(
-                    'No collectors found',
+                    'No Active Collectors Available',
                     style: TextStyle(
                       fontSize: 16,
-                      fontWeight: FontWeight.w500,
-                      color: Colors.grey.shade600,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.orange.shade800,
                     ),
                   ),
                   const SizedBox(height: 8),
                   Text(
-                    'Please enter your town to find collectors',
-                    style: TextStyle(fontSize: 14, color: Colors.grey.shade500),
+                    'Your request will be queued and automatically assigned when a collector becomes available in your area.',
+                    style: TextStyle(
+                      fontSize: 14, 
+                      color: Colors.orange.shade700,
+                      height: 1.4,
+                    ),
                     textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                    decoration: BoxDecoration(
+                      color: Colors.orange.shade100,
+                      borderRadius: BorderRadius.circular(20),
+                    ),
+                    child: Text(
+                      'Request will be queued',
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: Colors.orange.shade800,
+                      ),
+                    ),
                   ),
                 ],
               ),
@@ -1487,39 +1532,38 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                                 Text(
                                   collector['name'] ?? 'Unknown Collector',
                                   style: TextStyle(
-                                    fontWeight: FontWeight.bold,
                                     fontSize: 16,
+                                    fontWeight: FontWeight.w600,
                                     color: isSelected
-                                        ? Colors.purple.shade700
-                                        : Colors.black87,
+                                        ? Colors.purple.shade800
+                                        : Colors.grey.shade800,
                                   ),
                                 ),
                                 const SizedBox(height: 4),
                                 Text(
-                                  collector['town'] ?? '',
+                                  collector['phone'] ?? 'No phone',
                                   style: TextStyle(
                                     fontSize: 14,
-                                    color: Colors.grey.shade600,
+                                    color: isSelected
+                                        ? Colors.purple.shade600
+                                        : Colors.grey.shade600,
                                   ),
                                 ),
-                                if (collector['phone']?.isNotEmpty == true) ...[
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    collector['phone'],
-                                    style: TextStyle(
-                                      fontSize: 12,
-                                      color: Colors.grey.shade500,
-                                    ),
-                                  ),
-                                ],
                               ],
                             ),
                           ),
                           if (isSelected)
-                            Icon(
-                              Icons.check_circle,
-                              color: Colors.purple.shade600,
-                              size: 24,
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: Colors.purple.shade600,
+                                shape: BoxShape.circle,
+                              ),
+                              child: const Icon(
+                                Icons.check,
+                                color: Colors.white,
+                                size: 20,
+                              ),
                             ),
                         ],
                       ),
@@ -1528,6 +1572,32 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                 }).toList(),
               ),
             ),
+          if (_nearbyCollectors.isNotEmpty) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.green.shade50,
+                borderRadius: BorderRadius.circular(8),
+                border: Border.all(color: Colors.green.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.info_outline, size: 16, color: Colors.green.shade700),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      'Collector automatically selected. You can change the selection if needed.',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
         ],
       ),
     );

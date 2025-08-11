@@ -284,6 +284,58 @@ class _WelcomeScreenState extends State<WelcomeScreen>
 
                       const SizedBox(height: 30),
 
+                                               // Admin Access Button - Commented out for mobile app
+                         // FadeTransition(
+                         //   opacity: _fadeAnimation,
+                         //   child: Container(
+                         //     width: double.infinity,
+                         //     height: 50,
+                         //     decoration: BoxDecoration(
+                         //       borderRadius: BorderRadius.circular(16),
+                         //       border: Border.all(
+                         //         color: Colors.white.withOpacity(0.3),
+                         //         width: 1.5,
+                         //       ),
+                         //       color: Colors.transparent,
+                         //     ),
+                         //     child: Material(
+                         //       color: Colors.transparent,
+                         //       child: InkWell(
+                         //         borderRadius: BorderRadius.circular(16),
+                         //         onTap: () {
+                         //           HapticFeedback.lightImpact();
+                         //           Navigator.pushNamed(
+                         //             context,
+                         //             AppRoutes.adminLogin,
+                         //           );
+                         //         },
+                         //         child: const Center(
+                         //           child: Row(
+                         //             mainAxisAlignment: MainAxisAlignment.center,
+                         //             children: [
+                         //               Icon(
+                         //               Icons.admin_panel_settings,
+                         //               color: Colors.white70,
+                         //               size: 20,
+                         //             ),
+                         //             SizedBox(width: 8),
+                         //             Text(
+                         //               'Admin Access',
+                         //               style: TextStyle(
+                         //               fontSize: 16,
+                         //               fontWeight: FontWeight.w500,
+                         //               color: Colors.white70,
+                         //               letterSpacing: 0.3,
+                         //             ),
+                         //           ),
+                         //         ),
+                         //       ),
+                         //     ),
+                         //   ),
+                         // ),
+
+                      const SizedBox(height: 30),
+
                       // Bottom info
                       FadeTransition(
                         opacity: _fadeAnimation,

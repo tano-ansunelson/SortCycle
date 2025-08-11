@@ -2,7 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/routes/app_route.dart';
-import 'package:flutter_application_1/service/email_verification.dart';
+//import 'package:flutter_application_1/service/email_verification.dart';
 
 class SignUpScreen extends StatefulWidget {
   final String role;

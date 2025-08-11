@@ -31,6 +31,10 @@ import 'package:flutter_application_1/user_screen/profile_screen.dart';
 import 'package:flutter_application_1/service/role_selection.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+// Admin imports - only loaded when needed
+// import 'package:flutter_application_1/admin/providers/admin_provider.dart';
+// import 'package:flutter_application_1/admin/screens/admin_login_screen.dart';
+// import 'package:flutter_application_1/admin/screens/admin_dashboard.dart';
 
 import 'firebase_options.dart';
 
@@ -53,6 +57,8 @@ void main() async {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => CollectorProvider()),
         ChangeNotifierProvider(create: (_) => SortScoreProvider()),
+        // AdminProvider commented out for mobile app
+        // ChangeNotifierProvider(create: (_) => AdminProvider()),
       ],
       child: const MyApp(),
     ),
@@ -194,7 +200,12 @@ class _MyAppState extends State<MyApp> {
         final collectorId = args['collectorId'] as String?;
         if (collectorId != null) {
           return _createRoute(
-            PickupManagementPage(collectorId: collectorId, collectorName: ''),
+            PickupManagementPage(
+              collectorId: collectorId,
+              collectorName: '',
+              collectorTown:
+                  '', // This will be updated when the route is called from collector homepage
+            ),
           );
         } else {
           return _createRoute(
@@ -222,6 +233,11 @@ class _MyAppState extends State<MyApp> {
       case AppRoutes.collectormapscreen:
         final collectorId = args['collectorId'];
         return _createRoute(CollectorMapScreen(collectorId: collectorId));
+      // Admin routes commented out for mobile app
+      // case AppRoutes.adminLogin:
+      //   return _createRoute(const AdminLoginScreen());
+      // case AppRoutes.adminDashboard:
+      //   return _createRoute(const AdminDashboard());
       default:
         return _createRoute(
           Scaffold(

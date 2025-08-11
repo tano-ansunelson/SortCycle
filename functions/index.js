@@ -606,7 +606,7 @@ exports.manualAssignCollectors = functions.https.onRequest(async (req, res) => {
 });
 
 // 🔄 Periodic function to handle unassigned requests
-exports.handleUnassignedRequests = onSchedule("every 10 minutes", async () => {
+exports.handleUnassignedRequests = onSchedule("every 2 minutes", async () => {
   try {
     console.log("🔍 Checking for unassigned pickup requests...");
     

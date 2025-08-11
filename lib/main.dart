@@ -4,31 +4,32 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
-import 'package:flutter_application_1/chat_page/chat_page.dart';
-import 'package:flutter_application_1/chat_page/chatlist_page.dart';
-import 'package:flutter_application_1/ecomarketplace/homescreen.dart';
-import 'package:flutter_application_1/provider/provider.dart';
-import 'package:flutter_application_1/routes/app_route.dart';
-import 'package:flutter_application_1/service/component/leaderboard.dart';
-import 'package:flutter_application_1/user_screen/about_screen.dart';
-import 'package:flutter_application_1/user_screen/edit_profile.dart';
+import 'package:flutter_application_1/mobile_app/chat_page/chat_page.dart';
+import 'package:flutter_application_1/mobile_app/chat_page/chatlist_page.dart';
+import 'package:flutter_application_1/mobile_app/ecomarketplace/homescreen.dart';
+import 'package:flutter_application_1/mobile_app/provider/provider.dart';
+import 'package:flutter_application_1/mobile_app/provider/notification_provider.dart';
+import 'package:flutter_application_1/mobile_app/routes/app_route.dart';
+import 'package:flutter_application_1/mobile_app/service/component/leaderboard.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/about_screen.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/edit_profile.dart';
 //import 'package:flutter_application_1/user_screen/forms.dart';
-import 'package:flutter_application_1/user_screen/log_in/sign_in_screen.dart';
-import 'package:flutter_application_1/user_screen/pickup_history_service.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/log_in/sign_in_screen.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/pickup_history_service.dart';
 
-import 'package:flutter_application_1/user_screen/waste_form.dart';
-import 'package:flutter_application_1/waste_collector/collectorMapScreen.dart';
-import 'package:flutter_application_1/waste_collector/collector_about.dart';
-import 'package:flutter_application_1/waste_collector/collector_signup.dart';
-import 'package:flutter_application_1/waste_collector/editing_page.dart';
-import 'package:flutter_application_1/waste_collector/collector_homepage.dart';
-import 'package:flutter_application_1/waste_collector/pickup.dart';
-import 'package:flutter_application_1/waste_collector/profile_screen.dart';
-import 'package:flutter_application_1/service/welcome_screen.dart';
-import 'package:flutter_application_1/user_screen/bottombar.dart';
-import 'package:flutter_application_1/user_screen/log_in/sign_up.dart';
-import 'package:flutter_application_1/user_screen/profile_screen.dart';
-import 'package:flutter_application_1/service/role_selection.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/waste_form.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/collectorMapScreen.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/collector_about.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/collector_signup.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/editing_page.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/collector_homepage.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/pickup.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/profile_screen.dart';
+import 'package:flutter_application_1/mobile_app/service/welcome_screen.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/bottombar.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/log_in/sign_up.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/profile_screen.dart';
+import 'package:flutter_application_1/mobile_app/service/role_selection.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 // Admin imports - only loaded when needed
@@ -57,6 +58,7 @@ void main() async {
         ChangeNotifierProvider(create: (_) => UserProvider()),
         ChangeNotifierProvider(create: (_) => CollectorProvider()),
         ChangeNotifierProvider(create: (_) => SortScoreProvider()),
+        ChangeNotifierProvider(create: (_) => NotificationProvider()),
         // AdminProvider commented out for mobile app
         // ChangeNotifierProvider(create: (_) => AdminProvider()),
       ],

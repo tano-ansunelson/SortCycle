@@ -79,19 +79,9 @@ class _MarketHomeScreen extends State<MarketHomeScreen> {
             icon: const Icon(Icons.more_vert),
             onSelected: (value) {
               if (value == 'add_item') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const AddItemScreen(),
-                  ),
-                );
+                Navigator.pushNamed(context, '/add-item');
               } else if (value == 'my_listings') {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (context) => const MyListingsScreen(),
-                  ),
-                );
+                Navigator.pushNamed(context, '/my-listings');
               }
             },
             itemBuilder: (context) => [
@@ -340,12 +330,13 @@ class _MarketHomeScreen extends State<MarketHomeScreen> {
 
     return GestureDetector(
       onTap: () {
-        Navigator.push(
+        Navigator.pushNamed(
           context,
-          MaterialPageRoute(
-            builder: (context) =>
-                ItemDetailScreen(itemId: itemId, itemData: data),
-          ),
+          '/item-detail',
+          arguments: {
+            'itemId': itemId,
+            'itemData': data,
+          },
         );
       },
       child: Card(

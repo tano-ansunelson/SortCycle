@@ -173,17 +173,15 @@ class ChatListPage extends StatelessWidget {
                           ],
                         ),
                         onTap: () {
-                          Navigator.push(
+                          Navigator.pushNamed(
                             context,
-                            MaterialPageRoute(
-                              builder: (_) => ChatPage(
-                                collectorId: chat['collectorId'],
-                                collectorName:
-                                    chat['collectorName'] ?? 'Collector',
-                                requestId: chat['requestId'],
-                                userName: chat['userName'] ?? 'User',
-                              ),
-                            ),
+                            '/chat',
+                            arguments: {
+                              'collectorId': chat['collectorId'],
+                              'collectorName': chat['collectorName'] ?? 'Collector',
+                              'requestId': chat['requestId'],
+                              'userName': chat['userName'] ?? 'User',
+                            },
                           );
                         },
                       ),

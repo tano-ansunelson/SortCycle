@@ -1,5 +1,4 @@
-// ignore: unused_import
-import 'dart:ffi';
+
 
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
@@ -306,7 +305,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               ),
               const Spacer(),
               Text(
-                'GH₵ ${_calculateEarning(wasteCategories)}',
+                'GH₵ ${request['totalAmount']?.toString() ?? _calculateEarning(wasteCategories)}',
                 style: const TextStyle(
                   color: Colors.green,
                   fontWeight: FontWeight.bold,
@@ -377,9 +376,24 @@ class _PickupManagementPageState extends State<PickupManagementPage>
             style: TextStyle(color: Colors.grey[700], fontSize: 13),
           ),
           const SizedBox(height: 4),
+          
+          // Payment Details
+          if (request['binCount'] != null && request['pricePerBin'] != null)
+            Row(
+              children: [
+                Icon(Icons.payment, color: Colors.grey[500], size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  '${request['binCount']} bins × GH₵${request['pricePerBin']} = GH₵${request['totalAmount']}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+              ],
+            ),
+          const SizedBox(height: 4),
+          
           Text(
             'Requested ${_getTimeAgo(createdAt)}',
-            style: TextStyle(color: Colors.grey[500], fontSize: 12),
+            style: TextStyle(color: Colors.green[500], fontSize: 12),
           ),
           const SizedBox(height: 16),
 
@@ -407,17 +421,15 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Navigator.push(
+                    Navigator.pushNamed(
                       context,
-                      MaterialPageRoute(
-                        builder: (_) => ChatPage(
-                          collectorId: widget.collectorId,
-                          requestId: requestId,
-                          collectorName:
-                              request['collectorName'] ?? 'Collector',
-                          userName: request['userName'] ?? 'User',
-                        ),
-                      ),
+                      '/chat',
+                      arguments: {
+                        'collectorId': widget.collectorId,
+                        'requestId': requestId,
+                        'collectorName': request['collectorName'] ?? 'Collector',
+                        'userName': request['userName'] ?? 'User',
+                      },
                     );
                   },
                   icon: const Icon(Icons.chat, size: 18),
@@ -510,14 +522,14 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                   status.toUpperCase(),
                   style: const TextStyle(
                     // color: statusColor[700],
-                    fontWeight: FontWeight.w500,
+                    fontWeight: FontWeight.bold,
                     fontSize: 11,
                   ),
                 ),
               ),
               const Spacer(),
               Text(
-                'GH₵ ${_calculateEarning(wasteCategories)}',
+                'GH₵ ${request['totalAmount']?.toString() ?? _calculateEarning(wasteCategories)}',
                 style: const TextStyle(
                   color: Colors.green,
                   fontWeight: FontWeight.bold,
@@ -587,6 +599,21 @@ class _PickupManagementPageState extends State<PickupManagementPage>
             style: TextStyle(color: Colors.grey[700], fontSize: 13),
           ),
           const SizedBox(height: 4),
+          
+          // Payment Details
+          if (request['binCount'] != null && request['pricePerBin'] != null)
+            Row(
+              children: [
+                Icon(Icons.payment, color: Colors.grey[500], size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  '${request['binCount']} bins × GH₵${request['pricePerBin']} = GH₵${request['totalAmount']}',
+                  style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+              ],
+            ),
+          const SizedBox(height: 4),
+          
           Text(
             'Updated ${_getTimeAgo(updatedAt)}',
             style: TextStyle(color: Colors.grey[500], fontSize: 12),
@@ -626,16 +653,15 @@ class _PickupManagementPageState extends State<PickupManagementPage>
             Expanded(
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.push(
+                  Navigator.pushNamed(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatPage(
-                        collectorId: widget.collectorId,
-                        requestId: requestId,
-                        collectorName: request['collectorName'] ?? 'Collector',
-                        userName: request['userName'] ?? 'User',
-                      ),
-                    ),
+                    '/chat',
+                    arguments: {
+                      'collectorId': widget.collectorId,
+                      'requestId': requestId,
+                      'collectorName': request['collectorName'] ?? 'Collector',
+                      'userName': request['userName'] ?? 'User',
+                    },
                   );
                 },
                 icon: const Icon(Icons.navigation, size: 18),
@@ -698,16 +724,15 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               fit: FlexFit.tight,
               child: ElevatedButton.icon(
                 onPressed: () {
-                  Navigator.push(
+                  Navigator.pushNamed(
                     context,
-                    MaterialPageRoute(
-                      builder: (_) => ChatPage(
-                        collectorId: widget.collectorId,
-                        requestId: requestId,
-                        collectorName: request['collectorName'] ?? 'Collector',
-                        userName: request['userName'] ?? 'User',
-                      ),
-                    ),
+                    '/chat',
+                    arguments: {
+                      'collectorId': widget.collectorId,
+                      'requestId': requestId,
+                      'collectorName': request['collectorName'] ?? 'Collector',
+                      'userName': request['userName'] ?? 'User',
+                    },
                   );
                 },
                 icon: const Icon(Icons.chat, size: 18),
@@ -894,10 +919,15 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                 message =
                     '${widget.collectorName} is on the way to collect your waste';
                 break;
-              case 'completed':
-                title = '🎉 Pickup Completed';
+              case 'pending_confirmation':
+                title = '🔍 Confirm Pickup Completion';
                 message =
-                    'Your waste has been successfully collected by ${widget.collectorName}';
+                    '${widget.collectorName} has marked your pickup as completed. Please confirm to release payment.';
+                break;
+              case 'completed':
+                title = '🎉 Pickup Completed & Confirmed';
+                message =
+                    'Your waste pickup has been confirmed and payment has been released to ${widget.collectorName}';
                 break;
               case 'cancelled':
                 title = '❌ Pickup Request Cancelled';
@@ -919,6 +949,8 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                   'status': newStatus,
                   'userTown': requestData['userTown'],
                   'pickupDate': requestData['pickupDate'],
+                  'totalAmount': requestData['totalAmount'],
+                  'binCount': requestData['binCount'],
                 },
                 'isRead': false,
                 'createdAt': FieldValue.serverTimestamp(),
@@ -1005,7 +1037,9 @@ class _PickupManagementPageState extends State<PickupManagementPage>
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Complete Pickup'),
-        content: const Text('Mark this pickup as completed?'),
+        content: const Text(
+          'Mark this pickup as completed?\n\n⚠️ User will be notified to confirm completion before payment is released.',
+        ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(context),
@@ -1014,7 +1048,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _updateRequestStatus(requestId, 'completed');
+              _updateRequestStatus(requestId, 'pending_confirmation');
             },
             child: const Text('Complete'),
           ),

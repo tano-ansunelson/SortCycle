@@ -581,19 +581,15 @@ class _RequestCardState extends State<RequestCard>
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
-                            Navigator.push(
+                            Navigator.pushNamed(
                               context,
-                              MaterialPageRoute(
-                                builder: (_) => ChatPage(
-                                  collectorId: collectorId,
-                                  collectorName:
-                                      widget.requestData['collectorName'] ??
-                                      'Collector',
-                                  requestId: widget.requestId,
-                                  userName:
-                                      widget.requestData['userName'] ?? 'User',
-                                ),
-                              ),
+                              '/chat',
+                              arguments: {
+                                'collectorId': collectorId,
+                                'collectorName': widget.requestData['collectorName'] ?? 'Collector',
+                                'requestId': widget.requestId,
+                                'userName': widget.requestData['userName'] ?? 'User',
+                              },
                             );
                           },
                           icon: const Icon(Icons.chat_bubble_outline, size: 18),

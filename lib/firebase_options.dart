@@ -2,7 +2,7 @@
 // ignore_for_file: type=lint
 import 'package:firebase_core/firebase_core.dart' show FirebaseOptions;
 import 'package:flutter/foundation.dart'
-    show defaultTargetPlatform, kIsWeb, TargetPlatform;
+    show defaultTargetPlatform, TargetPlatform;
 
 /// Default [FirebaseOptions] for use with your Firebase apps.
 ///
@@ -16,9 +16,6 @@ import 'package:flutter/foundation.dart'
 /// ```
 class DefaultFirebaseOptions {
   static FirebaseOptions get currentPlatform {
-    if (kIsWeb) {
-      return web;
-    }
     switch (defaultTargetPlatform) {
       case TargetPlatform.android:
         return android;
@@ -43,14 +40,7 @@ class DefaultFirebaseOptions {
     }
   }
 
-  static const FirebaseOptions web = FirebaseOptions(
-    apiKey: 'AIzaSyCRMcxs7jBaSaY-xi27pg8-j4w5yK1ihaA',
-    appId: '1:349162962030:web:your-web-app-id-here',
-    messagingSenderId: '349162962030',
-    projectId: 'ecoclassify-d9e76',
-    storageBucket: 'ecoclassify-d9e76.firebasestorage.app',
-    authDomain: 'ecoclassify-d9e76.firebaseapp.com',
-  );
+
 
   static const FirebaseOptions android = FirebaseOptions(
     apiKey: 'AIzaSyCRMcxs7jBaSaY-xi27pg8-j4w5yK1ihaA',

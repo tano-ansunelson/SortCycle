@@ -1,8 +1,11 @@
+// ignore_for_file: unused_import
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/mobile_app/provider/provider.dart';
 import 'package:flutter_application_1/mobile_app/provider/notification_provider.dart';
+//import 'package:flutter_application_1/mobile_app/provider/sort_score_provider.dart';
 import 'package:flutter_application_1/mobile_app/routes/app_route.dart';
 //import 'package:flutter_application_1/routes/app_route.dart';
 import 'package:flutter_application_1/mobile_app/service/greetings.dart';
@@ -10,6 +13,7 @@ import 'package:flutter_application_1/mobile_app/waste_collector/pending_summary
 //import 'package:flutter_application_1/user_screen/profile_screen.dart';
 import 'package:flutter_application_1/mobile_app/waste_collector/pickup.dart';
 import 'package:flutter_application_1/mobile_app/waste_collector/profile_screen.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/notification_page.dart';
 //import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 
@@ -286,7 +290,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                       color: Colors.black87,
                     ),
                     onPressed: () {
-                      // Navigate to notifications
+                      Navigator.pushNamed(context, '/collector-notifications');
                     },
                   ),
                   if (notificationProvider.unreadCount > 0)
@@ -483,76 +487,226 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
         ),
         borderRadius: BorderRadius.circular(16),
       ),
-      child: const Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            mainAxisAlignment: MainAxisAlignment.spaceBetween,
-            children: [
-              Text(
-                'Today\'s Earnings',
-                style: TextStyle(
-                  color: Colors.white,
-                  fontSize: 16,
-                  fontWeight: FontWeight.w500,
-                ),
-              ),
-              Icon(Icons.monetization_on, color: Colors.white),
-            ],
-          ),
-          SizedBox(height: 8),
-          Text(
-            'GH₵ 245.00',
-            style: TextStyle(
-              color: Colors.white,
-              fontSize: 28,
-              fontWeight: FontWeight.bold,
-            ),
-          ),
-          SizedBox(height: 16),
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+      child: StreamBuilder<QuerySnapshot>(
+        stream: FirebaseFirestore.instance
+            .collection('pickup_requests')
+            .where('collectorId', isEqualTo: collectorId)
+            .where(
+              'status',
+              whereIn: [
+                'pending',
+                'in_progress',
+                'completed',
+                'pending_confirmation',
+              ],
+            )
+            .snapshots(),
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return const Text(
+              'Error loading earnings',
+              style: TextStyle(color: Colors.white),
+            );
+          }
+
+          if (!snapshot.hasData) {
+            return const Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'This Week',
-                      style: TextStyle(color: Colors.white70, fontSize: 12),
-                    ),
-                    Text(
-                      'GH₵ 1,240',
+                      'Today\'s Earnings',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                    Icon(Icons.monetization_on, color: Colors.white),
+                  ],
+                ),
+                SizedBox(height: 8),
+                Text(
+                  'GH₵ 0.00',
+                  style: TextStyle(
+                    color: Colors.white,
+                    fontSize: 28,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
+                SizedBox(height: 16),
+                Row(
+                  children: [
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'This Week',
+                            style: TextStyle(
+                              color: Colors.white70,
+                              fontSize: 12,
+                            ),
+                          ),
+                          Text(
+                            'GH₵ 0.00',
+                            style: TextStyle(
+                              color: Colors.white,
+                              fontSize: 16,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
                 ),
+              ],
+            );
+          }
+
+          // Calculate earnings
+          double todayEarnings = 0.0;
+          double weekEarnings = 0.0;
+          double pendingAmount = 0.0;
+          double pendingConfirmationAmount = 0.0;
+
+          final now = DateTime.now();
+          final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
+          final startOfDay = DateTime(now.year, now.month, now.day);
+
+          for (final doc in snapshot.data!.docs) {
+            final data = doc.data() as Map<String, dynamic>;
+            final totalAmount = (data['totalAmount'] ?? 0.0).toDouble();
+            final status = data['status'] ?? '';
+            final createdAt = data['createdAt'] as Timestamp?;
+
+            if (createdAt != null) {
+              final createdDate = createdAt.toDate();
+
+              // Today's earnings (from requests created today)
+              if (createdDate.isAfter(startOfDay)) {
+                if (status == 'completed') {
+                  todayEarnings += totalAmount;
+                } else if (status == 'pending' || status == 'in_progress') {
+                  pendingAmount += totalAmount;
+                } else if (status == 'pending_confirmation') {
+                  pendingConfirmationAmount += totalAmount;
+                }
+              }
+
+              // This week's earnings
+              if (createdDate.isAfter(startOfWeek)) {
+                if (status == 'completed') {
+                  weekEarnings += totalAmount;
+                }
+              }
+            }
+          }
+
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              const Row(
+                mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                children: [
+                  Text(
+                    'Today\'s Earnings',
+                    style: TextStyle(
+                      color: Colors.white,
+                      fontSize: 16,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                  Icon(Icons.monetization_on, color: Colors.white),
+                ],
               ),
-              // Expanded(
-              //   child: Column(
-              //     crossAxisAlignment: CrossAxisAlignment.start,
-              //     children: [
-              //       Text(
-              //         'This Month',
-              //         style: TextStyle(color: Colors.white70, fontSize: 12),
-              //       ),
-              //       Text(
-              //         'GH₵ 4,890',
-              //         style: TextStyle(
-              //           color: Colors.white,
-              //           fontSize: 16,
-              //           fontWeight: FontWeight.w600,
-              //         ),
-              //       ),
-              //     ],
-              //   ),
-              // ),
+              const SizedBox(height: 8),
+              Text(
+                'GH₵ ${todayEarnings.toStringAsFixed(2)}',
+                style: const TextStyle(
+                  color: Colors.white,
+                  fontSize: 28,
+                  fontWeight: FontWeight.bold,
+                ),
+              ),
+              if (pendingAmount > 0 || pendingConfirmationAmount > 0) ...[
+                const SizedBox(height: 8),
+                if (pendingAmount > 0)
+                  Text(
+                    'Pending: GH₵ ${pendingAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: Colors.white70,
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                if (pendingConfirmationAmount > 0)
+                  Text(
+                    'Awaiting Confirmation: GH₵ ${pendingConfirmationAmount.toStringAsFixed(2)}',
+                    style: const TextStyle(
+                      color: Color(0xFFFFE082),
+                      fontSize: 14,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+              ],
+              const SizedBox(height: 16),
+              Row(
+                children: [
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        const Text(
+                          'This Week',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        Text(
+                          'GH₵ ${weekEarnings.toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.end,
+                      children: [
+                        const Text(
+                          'Pending Release',
+                          style: TextStyle(color: Colors.white70, fontSize: 12),
+                        ),
+                        Text(
+                          'GH₵ ${(pendingAmount + pendingConfirmationAmount).toStringAsFixed(2)}',
+                          style: const TextStyle(
+                            color: Colors.white,
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                        if (pendingConfirmationAmount > 0)
+                          Text(
+                            '(${pendingConfirmationAmount.toStringAsFixed(2)} awaiting)',
+                            style: const TextStyle(
+                              color: Color(0xFFFFE082),
+                              fontSize: 10,
+                            ),
+                          ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
             ],
-          ),
-        ],
+          );
+        },
       ),
     );
   }
@@ -571,17 +725,10 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           icon: Icons.inbox,
           color: Colors.blue,
           onTap: () {
-            final collectorName = context.read<CollectorProvider>().name;
-            final collectorTown = context.read<CollectorProvider>().town;
-            Navigator.push(
+            Navigator.pushNamed(
               context,
-              MaterialPageRoute(
-                builder: (context) => PickupManagementPage(
-                  collectorId: collectorId,
-                  collectorName: collectorName ?? '',
-                  collectorTown: collectorTown ?? '',
-                ),
-              ),
+              AppRoutes.pickup,
+              arguments: {'collectorId': collectorId},
             );
           },
         ),
@@ -677,7 +824,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
       stream: FirebaseFirestore.instance
           .collection('pickup_requests')
           .where('collectorId', isEqualTo: collectorId)
-          .where('status', isEqualTo: 'completed')
+          .where('status', whereIn: ['completed', 'pending_confirmation'])
           .limit(4)
           .snapshots(),
       builder: (context, snapshot) {
@@ -755,15 +902,39 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                             //   ),
                             // ),
                             const Spacer(),
-                            Text(
-                              pickup['earning'] != null
-                                  ? 'GH₵ ${pickup['earning']}'
-                                  : '',
-                              style: const TextStyle(
-                                fontWeight: FontWeight.bold,
-                                color: Colors.green,
-                                fontSize: 14,
-                              ),
+                            Column(
+                              crossAxisAlignment: CrossAxisAlignment.end,
+                              children: [
+                                Text(
+                                  pickup['earning'] != null
+                                      ? 'GH₵ ${pickup['earning']}'
+                                      : '',
+                                  style: const TextStyle(
+                                    fontWeight: FontWeight.bold,
+                                    color: Colors.green,
+                                    fontSize: 14,
+                                  ),
+                                ),
+                                if (pickup['status'] == 'pending_confirmation')
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 6,
+                                      vertical: 2,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade100,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Text(
+                                      'Awaiting Confirmation',
+                                      style: TextStyle(
+                                        color: Colors.orange.shade700,
+                                        fontSize: 10,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                    ),
+                                  ),
+                              ],
                             ),
                           ],
                         ),

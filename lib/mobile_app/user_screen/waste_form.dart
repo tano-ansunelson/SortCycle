@@ -45,6 +45,12 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   String? _selectedCollectorId;
   bool _isLoadingCollectors = false;
 
+  // NEW: Payment and bin selection variables
+  int _selectedBinCount = 1;
+  bool _isPaymentCompleted = false;
+  static const double _pricePerBin = 20.0; // $20 per bin
+  static const int _maxBinCount = 10; // Maximum number of bins allowed
+
   @override
   void initState() {
     super.initState();
@@ -445,6 +451,13 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                 _isPickupToday, // Track if it was scheduled for today
             'status': 'pending',
             'createdAt': FieldValue.serverTimestamp(),
+            // NEW: Payment and bin information
+            'binCount': _selectedBinCount,
+            'pricePerBin': _pricePerBin,
+            'totalAmount': _selectedBinCount * _pricePerBin,
+            'paymentStatus': 'paid',
+            'paymentHeld': true, // Payment is held until completion
+            'paymentReleased': false, // Payment not yet released to collector
           });
 
       // Create notification for the collector if one is selected
@@ -495,6 +508,162 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         behavior: SnackBarBehavior.floating,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
         margin: const EdgeInsets.all(16),
+      ),
+    );
+  }
+
+  // NEW: Handle submit with payment
+  Future<void> _handleSubmitWithPayment() async {
+    HapticFeedback.mediumImpact();
+
+    // First validate the form
+    if (!_formKey.currentState!.validate()) return;
+
+    // Validation for scheduled pickup
+    if (!_isPickupToday) {
+      if (_selectedDate == null) {
+        _showErrorSnackBar('Please select a pickup date');
+        return;
+      }
+      if (_selectedTime == null) {
+        _showErrorSnackBar('Please select a pickup time');
+        return;
+      }
+    } else {
+      // For today pickup, time is required
+      if (_selectedTime == null) {
+        _showErrorSnackBar('Please select a pickup time for today');
+        return;
+      }
+    }
+
+    if (_currentPosition == null) {
+      _showErrorSnackBar('Please set your location first');
+      return;
+    }
+
+    // Now process payment
+    await _simulatePayment();
+  }
+
+  // NEW: Payment simulation method
+  Future<void> _simulatePayment() async {
+    HapticFeedback.mediumImpact();
+
+    // Show payment processing dialog
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              CircularProgressIndicator(
+                valueColor: AlwaysStoppedAnimation<Color>(
+                  Colors.orange.shade600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                "Processing Payment...",
+                style: TextStyle(fontSize: 16, fontWeight: FontWeight.w500),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                "Simulating payment processing",
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    // Simulate payment processing delay
+    await Future.delayed(const Duration(seconds: 2));
+
+    // Close loading dialog
+    Navigator.of(context).pop();
+
+    // Show payment success dialog
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        child: Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.green.shade50,
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.check_circle,
+                  size: 48,
+                  color: Colors.green.shade600,
+                ),
+              ),
+              const SizedBox(height: 16),
+              const Text(
+                'Payment Successful!',
+                style: TextStyle(
+                  fontSize: 24,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E),
+                ),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Your payment of \$${(_selectedBinCount * _pricePerBin).toStringAsFixed(2)} has been processed successfully.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 14, color: Colors.grey.shade600),
+              ),
+              const SizedBox(height: 8),
+              Text(
+                'Payment will be held and released to the collector upon request completion.',
+                textAlign: TextAlign.center,
+                style: TextStyle(fontSize: 12, color: Colors.grey.shade500),
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                width: double.infinity,
+                child: ElevatedButton(
+                  onPressed: () async {
+                    Navigator.of(context).pop();
+                    setState(() {
+                      _isPaymentCompleted = true;
+                    });
+
+                    // Automatically submit the request after payment
+                    await _submitPickupRequest();
+                  },
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: Colors.green.shade600,
+                    padding: const EdgeInsets.symmetric(vertical: 16),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                  ),
+                  child: const Text(
+                    'Continue',
+                    style: TextStyle(
+                      fontSize: 16,
+                      fontWeight: FontWeight.w600,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }
@@ -603,11 +772,11 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                       onPressed: () {
                         Navigator.of(context).pop();
                         _resetForm();
-                        Navigator.of(context).push(
-                          MaterialPageRoute(
-                            builder: (context) =>
-                                UserRequestsScreen(userId: widget.userId),
-                          ),
+                        Navigator.of(context).pushNamed(
+                          '/user-requests',
+                          arguments: {
+                            'userId': widget.userId,
+                          },
                         );
                       },
                       style: ElevatedButton.styleFrom(
@@ -643,6 +812,8 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
       _isPickupToday = true;
       _selectedDate = null;
       _selectedTime = null;
+      // NEW: Reset payment variables
+      _selectedBinCount = 1;
     });
   }
 
@@ -733,15 +904,21 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
 
                           // Schedule Card (Updated)
                           _buildAnimatedCard(
-                            delay: 400,
+                            delay: 500,
                             child: _buildScheduleSection(),
+                          ),
+                          const SizedBox(height: 16),
+                          // NEW: Bin Selection and Payment Card
+                          _buildAnimatedCard(
+                            delay: 300,
+                            child: _buildBinSelectionAndPaymentSection(),
                           ),
 
                           const SizedBox(height: 16),
 
                           // Location Card
                           _buildAnimatedCard(
-                            delay: 600,
+                            delay: 700,
                             child: _buildLocationSection(),
                           ),
 
@@ -749,7 +926,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
 
                           // Collector Selection Card
                           _buildAnimatedCard(
-                            delay: 800,
+                            delay: 900,
                             child: _buildCollectorSection(),
                           ),
 
@@ -757,7 +934,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
 
                           // Submit Button
                           _buildAnimatedCard(
-                            delay: 1000,
+                            delay: 1100,
                             child: _buildSubmitButton(),
                           ),
 
@@ -1648,10 +1825,225 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     );
   }
 
+  Widget _buildBinSelectionAndPaymentSection() {
+    final totalCost = _selectedBinCount * _pricePerBin;
+
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.orange.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.delete_sweep,
+                  color: Colors.orange.shade600,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'Bin Selection',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Bin Selection
+          Text(
+            'How many bins need to be emptied?',
+            style: TextStyle(
+              fontSize: 16,
+              fontWeight: FontWeight.w600,
+              color: Colors.grey.shade800,
+            ),
+          ),
+          const SizedBox(height: 16),
+
+          // Bin Counter
+          Container(
+            padding: const EdgeInsets.all(20),
+            decoration: BoxDecoration(
+              color: Colors.orange.shade50,
+              borderRadius: BorderRadius.circular(16),
+              border: Border.all(color: Colors.orange.shade200),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                // Decrease Button
+                GestureDetector(
+                  onTap: () {
+                    if (_selectedBinCount > 1) {
+                      setState(() {
+                        _selectedBinCount--;
+                      });
+                    }
+                  },
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: _selectedBinCount > 1
+                          ? Colors.orange.shade600
+                          : Colors.grey.shade300,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.remove,
+                      color: _selectedBinCount > 1
+                          ? Colors.white
+                          : Colors.grey.shade500,
+                      size: 24,
+                    ),
+                  ),
+                ),
+
+                const SizedBox(width: 24),
+
+                // Bin Count Display
+                Column(
+                  children: [
+                    Text(
+                      '$_selectedBinCount',
+                      style: TextStyle(
+                        fontSize: 48,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.orange.shade700,
+                      ),
+                    ),
+                    Text(
+                      'Bin${_selectedBinCount > 1 ? 's' : ''}',
+                      style: TextStyle(
+                        fontSize: 16,
+                        color: Colors.orange.shade600,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ],
+                ),
+
+                const SizedBox(width: 24),
+
+                // Increase Button
+                GestureDetector(
+                  onTap: () {
+                    if (_selectedBinCount < _maxBinCount) {
+                      setState(() {
+                        _selectedBinCount++;
+                      });
+                    }
+                  },
+                  child: Container(
+                    width: 48,
+                    height: 48,
+                    decoration: BoxDecoration(
+                      color: _selectedBinCount < _maxBinCount
+                          ? Colors.orange.shade600
+                          : Colors.grey.shade300,
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.add,
+                      color: _selectedBinCount < _maxBinCount
+                          ? Colors.white
+                          : Colors.grey.shade500,
+                      size: 24,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+
+          const SizedBox(height: 20),
+
+          // Cost Display
+          Container(
+            padding: const EdgeInsets.all(16),
+            decoration: BoxDecoration(
+              color: Colors.green.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.green.shade200),
+            ),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      'Total Cost',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.grey.shade600,
+                      ),
+                    ),
+                    Text(
+                      '\$${totalCost.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 24,
+                        fontWeight: FontWeight.bold,
+                        color: Colors.green.shade700,
+                      ),
+                    ),
+                  ],
+                ),
+                Column(
+                  crossAxisAlignment: CrossAxisAlignment.end,
+                  children: [
+                    Text(
+                      'Rate: \$${_pricePerBin.toStringAsFixed(2)} per bin',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                    Text(
+                      '${_selectedBinCount} × \$${_pricePerBin.toStringAsFixed(2)}',
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Colors.grey.shade500,
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSubmitButton() {
+    final totalCost = _selectedBinCount * _pricePerBin;
+
     return Container(
       width: double.infinity,
-      height: 56,
+      height: 70,
       decoration: BoxDecoration(
         borderRadius: BorderRadius.circular(16),
         gradient: LinearGradient(
@@ -1666,7 +2058,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         ],
       ),
       child: ElevatedButton(
-        onPressed: _submitPickupRequest,
+        onPressed: _handleSubmitWithPayment,
         style: ElevatedButton.styleFrom(
           backgroundColor: Colors.transparent,
           shadowColor: Colors.transparent,
@@ -1674,19 +2066,33 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
             borderRadius: BorderRadius.circular(16),
           ),
         ),
-        child: Row(
+        child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            const Icon(Icons.send, color: Colors.white, size: 24),
-            const SizedBox(width: 12),
+            Row(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(Icons.send, color: Colors.white, size: 24),
+                const SizedBox(width: 12),
+                Text(
+                  _isPickupToday
+                      ? 'Request Pickup Today'
+                      : 'Schedule Pickup Request',
+                  style: const TextStyle(
+                    fontSize: 18,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.white,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 4),
             Text(
-              _isPickupToday
-                  ? 'Request Pickup Today'
-                  : 'Schedule Pickup Request',
+              'Pay \$${totalCost.toStringAsFixed(2)} • ${_selectedBinCount} bin${_selectedBinCount > 1 ? 's' : ''}',
               style: const TextStyle(
-                fontSize: 18,
-                fontWeight: FontWeight.bold,
+                fontSize: 14,
                 color: Colors.white,
+                fontWeight: FontWeight.w500,
               ),
             ),
           ],

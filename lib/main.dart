@@ -6,9 +6,17 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/mobile_app/chat_page/chat_page.dart';
 import 'package:flutter_application_1/mobile_app/chat_page/chatlist_page.dart';
+import 'package:flutter_application_1/mobile_app/ecomarketplace/add_items.dart';
+import 'package:flutter_application_1/mobile_app/ecomarketplace/buyerform.dart';
 import 'package:flutter_application_1/mobile_app/ecomarketplace/homescreen.dart';
+//import 'package:flutter_application_1/mobile_app/ecomarketplace/add_item_screen.dart';
+import 'package:flutter_application_1/mobile_app/ecomarketplace/my_listing_page.dart';
+//import 'package:flutter_application_1/mobile_app/ecomarketplace/my_listings_screen.dart';
+import 'package:flutter_application_1/mobile_app/ecomarketplace/itemdetails.dart';
+//import 'package:flutter_application_1/mobile_app/ecomarketplace/buyer_form_screen.dart';
 import 'package:flutter_application_1/mobile_app/provider/provider.dart';
 import 'package:flutter_application_1/mobile_app/provider/notification_provider.dart';
+//import 'package:flutter_application_1/mobile_app/provider/sort_score_provider.dart';
 import 'package:flutter_application_1/mobile_app/routes/app_route.dart';
 import 'package:flutter_application_1/mobile_app/service/component/leaderboard.dart';
 import 'package:flutter_application_1/mobile_app/user_screen/about_screen.dart';
@@ -25,6 +33,10 @@ import 'package:flutter_application_1/mobile_app/waste_collector/editing_page.da
 import 'package:flutter_application_1/mobile_app/waste_collector/collector_homepage.dart';
 import 'package:flutter_application_1/mobile_app/waste_collector/pickup.dart';
 import 'package:flutter_application_1/mobile_app/waste_collector/profile_screen.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/notification_page.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/notification_page.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/user_tracking_collector.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/user_request_screen.dart';
 import 'package:flutter_application_1/mobile_app/service/welcome_screen.dart';
 import 'package:flutter_application_1/mobile_app/user_screen/bottombar.dart';
 import 'package:flutter_application_1/mobile_app/user_screen/log_in/sign_up.dart';
@@ -32,7 +44,7 @@ import 'package:flutter_application_1/mobile_app/user_screen/profile_screen.dart
 import 'package:flutter_application_1/mobile_app/service/role_selection.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-// Admin imports - only loaded when needed
+// Admin imports - only loaded when neededflu
 // import 'package:flutter_application_1/admin/providers/admin_provider.dart';
 // import 'package:flutter_application_1/admin/screens/admin_login_screen.dart';
 // import 'package:flutter_application_1/admin/screens/admin_dashboard.dart';
@@ -218,6 +230,47 @@ class _MyAppState extends State<MyApp> {
         }
       case AppRoutes.collectorProfile:
         return _createRoute(const CollectorProfileScreen());
+      case '/collector-notifications':
+        return _createRoute(const CollectorNotificationPage());
+      case '/user-notifications':
+        return _createRoute(const UserNotificationPage());
+      case '/user-tracking':
+        return _createRoute(
+          UserCollectorTrackingScreen(
+            requestId: args['requestId'] ?? '',
+            userId: args['userId'] ?? '',
+          ),
+        );
+      case '/chat':
+        return _createRoute(
+          ChatPage(
+            collectorId: args['collectorId'] ?? '',
+            requestId: args['requestId'] ?? '',
+            collectorName: args['collectorName'] ?? 'Collector',
+            userName: args['userName'] ?? 'User',
+          ),
+        );
+      case '/user-requests':
+        return _createRoute(UserRequestsScreen(userId: args['userId'] ?? ''));
+      case '/add-item':
+        return _createRoute(const AddItemScreen());
+      case '/my-listings':
+        return _createRoute(const MyListingsScreen());
+      case '/item-detail':
+        return _createRoute(
+          ItemDetailScreen(
+            itemId: args['itemId'] ?? '',
+            itemData: args['itemData'] ?? {},
+          ),
+        );
+      case '/buyer-form':
+        return _createRoute(
+          BuyerFormScreen(
+            itemData: args['itemData'] ?? {},
+            itemId: args['itemId'] ?? '',
+            sellerId: args['sellerId'] ?? '',
+          ),
+        );
       case AppRoutes.collectorProfileEditPage:
         return _createRoute(const CollectorProfileEditPage());
       case AppRoutes.userProfileEditPage:

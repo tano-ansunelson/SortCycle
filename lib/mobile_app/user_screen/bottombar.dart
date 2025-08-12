@@ -6,7 +6,7 @@ import 'package:flutter_application_1/mobile_app/user_screen/new_homepage.dart';
 import 'package:flutter_application_1/mobile_app/user_screen/profile_screen.dart';
 
 import 'package:flutter_application_1/mobile_app/user_screen/user_request_screen.dart';
-import 'package:logger/web.dart';
+import 'package:logger/logger.dart';
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({super.key});
@@ -20,6 +20,8 @@ class _HomeScreenState extends State<HomeScreen> {
   final log = Logger();
   @override
   Widget build(BuildContext context) {
+    //final rank = context.watch<SortScoreProvider>().rank;
+
     final List<Widget> screens = [
       UserRequestsScreen(userId: FirebaseAuth.instance.currentUser?.uid ?? ''),
 

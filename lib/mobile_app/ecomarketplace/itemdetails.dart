@@ -140,15 +140,14 @@ class _ItemDetailScreenState extends State<ItemDetailScreen> {
       return;
     }
 
-    final result = await Navigator.push(
+    final result = await Navigator.pushNamed(
       context,
-      MaterialPageRoute(
-        builder: (context) => BuyerFormScreen(
-          itemData: widget.itemData,
-          itemId: widget.itemId,
-          sellerId: ownerId,
-        ),
-      ),
+      '/buyer-form',
+      arguments: {
+        'itemData': widget.itemData,
+        'itemId': widget.itemId,
+        'sellerId': ownerId,
+      },
     );
 
     if (result == true) {

@@ -1,11 +1,15 @@
-// ignore: unused_import
+// ignore_for_file: unused_import, duplicate_ignore
+
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/mobile_app/provider/provider.dart';
 import 'package:flutter_application_1/mobile_app/provider/notification_provider.dart';
+//import 'package:flutter_application_1/mobile_app/provider/sort_score_provider.dart';
 import 'package:flutter_application_1/mobile_app/routes/app_route.dart';
+// ignore: unused_import
 import 'package:flutter_application_1/mobile_app/user_screen/user_tracking_collector.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/notification_page.dart';
 import 'package:provider/provider.dart';
 
 class HomePage extends StatefulWidget {
@@ -170,11 +174,12 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: IconButton(
-                                        onPressed: () {},
-                                        // onPressed: (){} => Navigator.pushNamed(
-                                        //   context,
-                                        //   '/notifications',
-                                        // ),
+                                        onPressed: () {
+                                          Navigator.pushNamed(
+                                            context,
+                                            '/user-notifications',
+                                          );
+                                        },
                                         icon: const Icon(
                                           Icons.notifications_outlined,
                                           color: Colors.white,
@@ -589,14 +594,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                   '',
                   onTap: hasInProgress
                       ? () {
-                          Navigator.push(
+                          Navigator.pushNamed(
                             context,
-                            MaterialPageRoute(
-                              builder: (context) => UserCollectorTrackingScreen(
-                                requestId: inProgressRequest!.id,
-                                userId: currentUserId,
-                              ),
-                            ),
+                            '/user-tracking',
+                            arguments: {
+                              'requestId': inProgressRequest!.id,
+                              'userId': currentUserId,
+                            },
                           );
                         }
                       : null,

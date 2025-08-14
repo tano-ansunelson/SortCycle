@@ -42,7 +42,7 @@ class _AddItemScreenState extends State<AddItemScreen> {
     'Other',
   ];
 
-  final List<String> conditions = ['New', 'Like New', 'Good', 'Fair', 'Free'];
+  final List<String> conditions = ['New', 'Exchange', 'Fair', 'Free'];
 
   @override
   void dispose() {

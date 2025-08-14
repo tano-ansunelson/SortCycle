@@ -1,5 +1,3 @@
-
-
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/mobile_app/chat_page/chat_page.dart';
@@ -46,6 +44,252 @@ class _PickupManagementPageState extends State<PickupManagementPage>
     super.dispose();
   }
 
+  void _showTodaySchedule() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => _buildTodayScheduleModal(),
+    );
+  }
+
+  Widget _buildTodayScheduleModal() {
+    return Container(
+      height: MediaQuery.of(context).size.height * 0.7,
+      decoration: const BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
+      ),
+      child: Column(
+        children: [
+          // Handle bar
+          Container(
+            margin: const EdgeInsets.only(top: 12),
+            width: 40,
+            height: 4,
+            decoration: BoxDecoration(
+              color: Colors.grey[300],
+              borderRadius: BorderRadius.circular(2),
+            ),
+          ),
+          // Header
+          Padding(
+            padding: const EdgeInsets.all(20),
+            child: Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                const Text(
+                  'Today\'s Schedule',
+                  style: TextStyle(
+                    fontSize: 20,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.black87,
+                  ),
+                ),
+                Text(
+                  DateFormat('EEEE, MMMM d').format(DateTime.now()),
+                  style: TextStyle(
+                    fontSize: 14,
+                    color: Colors.grey[600],
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Schedule content
+          Expanded(
+            child: StreamBuilder<QuerySnapshot>(
+              stream: FirebaseFirestore.instance
+                  .collection('pickup_requests')
+                  .where('collectorId', isEqualTo: widget.collectorId)
+                  .where('pickupDate', isGreaterThanOrEqualTo: DateTime.now().copyWith(hour: 0, minute: 0, second: 0, millisecond: 0, microsecond: 0))
+                  .where('pickupDate', isLessThanOrEqualTo: DateTime.now().copyWith(hour: 23, minute: 59, second: 59, millisecond: 999, microsecond: 999))
+                  .orderBy('pickupDate')
+                  .snapshots(),
+              builder: (context, snapshot) {
+                if (snapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final todayRequests = snapshot.data?.docs ?? [];
+
+                if (todayRequests.isEmpty) {
+                  return Center(
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.event_busy,
+                          size: 64,
+                          color: Colors.grey[400],
+                        ),
+                        const SizedBox(height: 16),
+                        Text(
+                          'No pickups scheduled for today',
+                          style: TextStyle(
+                            fontSize: 18,
+                            color: Colors.grey[600],
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Enjoy your day off!',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: Colors.grey[500],
+                          ),
+                        ),
+                      ],
+                    ),
+                  );
+                }
+
+                return ListView.builder(
+                  padding: const EdgeInsets.symmetric(horizontal: 20),
+                  itemCount: todayRequests.length,
+                  itemBuilder: (context, index) {
+                    final request = todayRequests[index].data() as Map<String, dynamic>;
+                    final pickupTime = request['pickupDate']?.toDate();
+                    final formattedTime = pickupTime != null
+                        ? DateFormat('h:mm a').format(pickupTime)
+                        : 'Unknown time';
+                    
+                    final status = request['status'] ?? 'pending';
+                    final statusColor = _getStatusColor(status);
+                    final statusText = _getStatusText(status);
+
+                    return Container(
+                      margin: const EdgeInsets.only(bottom: 12),
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        borderRadius: BorderRadius.circular(12),
+                        border: Border.all(
+                          color: Colors.grey.shade200,
+                          width: 1,
+                        ),
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.grey.withValues(alpha: 0.1),
+                            spreadRadius: 1,
+                            blurRadius: 4,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Row(
+                        children: [
+                          // Time indicator
+                          Container(
+                            width: 4,
+                            height: 60,
+                            decoration: BoxDecoration(
+                              color: statusColor,
+                              borderRadius: BorderRadius.circular(2),
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          // Request details
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                Row(
+                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  children: [
+                                    Text(
+                                      formattedTime,
+                                      style: const TextStyle(
+                                        fontSize: 16,
+                                        fontWeight: FontWeight.bold,
+                                        color: Colors.black87,
+                                      ),
+                                    ),
+                                    Container(
+                                      padding: const EdgeInsets.symmetric(
+                                        horizontal: 8,
+                                        vertical: 4,
+                                      ),
+                                      decoration: BoxDecoration(
+                                        color: statusColor.withValues(alpha: 0.1),
+                                        borderRadius: BorderRadius.circular(12),
+                                      ),
+                                      child: Text(
+                                        statusText,
+                                        style: TextStyle(
+                                          fontSize: 12,
+                                          fontWeight: FontWeight.w600,
+                                          color: statusColor,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                const SizedBox(height: 8),
+                                Text(
+                                  request['userName'] ?? 'Unknown User',
+                                  style: const TextStyle(
+                                    fontSize: 14,
+                                    fontWeight: FontWeight.w600,
+                                    color: Colors.black87,
+                                  ),
+                                ),
+                                const SizedBox(height: 4),
+                                Text(
+                                  request['userTown'] ?? 'Unknown Location',
+                                  style: TextStyle(
+                                    fontSize: 13,
+                                    color: Colors.grey[600],
+                                  ),
+                                ),
+                                if (request['wasteCategories'] != null) ...[
+                                  const SizedBox(height: 4),
+                                  Wrap(
+                                    spacing: 4,
+                                    children: (request['wasteCategories'] as List<dynamic>)
+                                        .take(3)
+                                        .map((category) => Container(
+                                              padding: const EdgeInsets.symmetric(
+                                                horizontal: 6,
+                                                vertical: 2,
+                                              ),
+                                              decoration: BoxDecoration(
+                                                color: Colors.blue.shade50,
+                                                borderRadius: BorderRadius.circular(8),
+                                              ),
+                                              child: Text(
+                                                category.toString(),
+                                                style: TextStyle(
+                                                  fontSize: 10,
+                                                  color: Colors.blue.shade700,
+                                                  fontWeight: FontWeight.w500,
+                                                ),
+                                              ),
+                                            ))
+                                        .toList(),
+                                  ),
+                                ],
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                );
+              },
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     return Scaffold(
@@ -59,6 +303,20 @@ class _PickupManagementPageState extends State<PickupManagementPage>
           'Pickup Management',
           style: TextStyle(color: Colors.black87, fontWeight: FontWeight.bold),
         ),
+        actions: [
+          // Calendar Icon
+          IconButton(
+            icon: const Icon(
+              Icons.calendar_today,
+              color: Colors.blue,
+            ),
+            onPressed: () {
+              _showTodaySchedule();
+            },
+            tooltip: 'Today\'s Schedule',
+          ),
+          const SizedBox(width: 8),
+        ],
         bottom: TabBar(
           controller: _tabController,
           labelColor: Colors.blue,
@@ -376,7 +634,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
             style: TextStyle(color: Colors.grey[700], fontSize: 13),
           ),
           const SizedBox(height: 4),
-          
+
           // Payment Details
           if (request['binCount'] != null && request['pricePerBin'] != null)
             Row(
@@ -390,7 +648,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               ],
             ),
           const SizedBox(height: 4),
-          
+
           Text(
             'Requested ${_getTimeAgo(createdAt)}',
             style: TextStyle(color: Colors.green[500], fontSize: 12),
@@ -427,7 +685,8 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                       arguments: {
                         'collectorId': widget.collectorId,
                         'requestId': requestId,
-                        'collectorName': request['collectorName'] ?? 'Collector',
+                        'collectorName':
+                            request['collectorName'] ?? 'Collector',
                         'userName': request['userName'] ?? 'User',
                       },
                     );
@@ -599,7 +858,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
             style: TextStyle(color: Colors.grey[700], fontSize: 13),
           ),
           const SizedBox(height: 4),
-          
+
           // Payment Details
           if (request['binCount'] != null && request['pricePerBin'] != null)
             Row(
@@ -613,7 +872,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               ],
             ),
           const SizedBox(height: 4),
-          
+
           Text(
             'Updated ${_getTimeAgo(updatedAt)}',
             style: TextStyle(color: Colors.grey[500], fontSize: 12),
@@ -753,26 +1012,46 @@ class _PickupManagementPageState extends State<PickupManagementPage>
         );
 
       case 'completed':
-        return Container(
-          padding: const EdgeInsets.all(12),
-          decoration: BoxDecoration(
-            color: Colors.green.withOpacity(0.1),
-            borderRadius: BorderRadius.circular(8),
-          ),
-          child: const Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(Icons.check_circle, color: Colors.green, size: 20),
-              SizedBox(width: 8),
-              Text(
-                'PICKUP COMPLETED',
-                style: TextStyle(
-                  color: Colors.green,
-                  fontWeight: FontWeight.bold,
+        return Row(
+          children: [
+            Expanded(
+              child: Container(
+                padding: const EdgeInsets.all(10),
+                decoration: BoxDecoration(
+                  color: Colors.green.withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(8),
+                ),
+                child: const Row(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Icon(Icons.check_circle, color: Colors.green, size: 16),
+                    SizedBox(width: 8),
+                    Text(
+                      ' COMPLETED',
+                      style: TextStyle(
+                        color: Colors.green,
+                        fontWeight: FontWeight.bold,
+                      ),
+                    ),
+                  ],
                 ),
               ),
-            ],
-          ),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: ElevatedButton.icon(
+                onPressed: () => _showDeleteDialog(requestId),
+                icon: const Icon(Icons.delete, size: 18),
+                label: const Text('Delete'),
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+              ),
+            ),
+          ],
         );
 
       default:
@@ -861,19 +1140,32 @@ class _PickupManagementPageState extends State<PickupManagementPage>
   }
 
   Color _getStatusColor(String status) {
-    switch (status.toLowerCase()) {
-      case 'pending':
+    switch (status) {
+      case 'pending_confirmation':
         return Colors.orange;
-      case 'accepted':
+      case 'confirmed':
         return Colors.blue;
-      case 'in_progress':
-        return Colors.purple;
       case 'completed':
         return Colors.green;
       case 'cancelled':
         return Colors.red;
       default:
         return Colors.grey;
+    }
+  }
+
+  String _getStatusText(String status) {
+    switch (status) {
+      case 'pending_confirmation':
+        return 'Pending';
+      case 'confirmed':
+        return 'Confirmed';
+      case 'completed':
+        return 'Completed';
+      case 'cancelled':
+        return 'Cancelled';
+      default:
+        return 'Unknown';
     }
   }
 
@@ -980,6 +1272,29 @@ class _PickupManagementPageState extends State<PickupManagementPage>
     }
   }
 
+  Future<void> _deleteRequest(String requestId) async {
+    try {
+      await FirebaseFirestore.instance
+          .collection('pickup_requests')
+          .doc(requestId)
+          .delete();
+
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('Completed request deleted successfully'),
+          backgroundColor: Colors.green,
+        ),
+      );
+    } catch (e) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text('Failed to delete request: ${e.toString()}'),
+          backgroundColor: Colors.red,
+        ),
+      );
+    }
+  }
+
   // Dialog Methods
   void _showAcceptDialog(String requestId) {
     showDialog(
@@ -1051,6 +1366,32 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               _updateRequestStatus(requestId, 'pending_confirmation');
             },
             child: const Text('Complete'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showDeleteDialog(String requestId) {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Delete Completed Request'),
+        content: const Text(
+          'Are you sure you want to delete this completed pickup request?\n\nThis action cannot be undone.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          ElevatedButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _deleteRequest(requestId);
+            },
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.red),
+            child: const Text('Delete'),
           ),
         ],
       ),

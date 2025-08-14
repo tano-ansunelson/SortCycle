@@ -66,7 +66,7 @@ class _PickupHistoryScreenState extends State<PickupHistoryScreen>
             .collection('pickup_requests')
             .where('userId', isEqualTo: widget.userId)
             .where('status', isEqualTo: 'completed')
-            .orderBy('updatedAt', descending: true)
+            .orderBy('userConfirmedAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
           if (snapshot.connectionState == ConnectionState.waiting) {
@@ -529,8 +529,8 @@ class _HistoryCardState extends State<HistoryCard>
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
-                    // Chat button (only if collector is assigned)
-                    if (collectorId != null)
+                    // Chat button (only if collector is assigned and not cancelled)
+                    if (collectorId != null && widget.requestData['status'] != 'cancelled')
                       Expanded(
                         child: ElevatedButton.icon(
                           onPressed: () {
@@ -539,9 +539,12 @@ class _HistoryCardState extends State<HistoryCard>
                               '/chat',
                               arguments: {
                                 'collectorId': collectorId,
-                                'collectorName': widget.requestData['collectorName'] ?? 'Collector',
+                                'collectorName':
+                                    widget.requestData['collectorName'] ??
+                                    'Collector',
                                 'requestId': widget.requestId,
-                                'userName': widget.requestData['userName'] ?? 'User',
+                                'userName':
+                                    widget.requestData['userName'] ?? 'User',
                               },
                             );
                           },

@@ -27,21 +27,21 @@ class _AboutPageState extends State<AboutPage> with TickerProviderStateMixin {
       'SortCycle aims to raise environmental awareness and promote responsible waste disposal through technology. Every correct classification and recycling action helps build a cleaner and more sustainable future.';
 
   static const List<FeatureItem> _features = [
-    FeatureItem(
-      icon: Icons.camera_alt,
-      title: 'Smart Classification',
-      description: 'Classify waste instantly using your camera or gallery.',
-    ),
+    // FeatureItem(
+    //   icon: Icons.camera_alt,
+    //   title: 'Smart Classification',
+    //   description: 'Classify waste instantly using your camera or gallery.',
+    // ),
     FeatureItem(
       icon: Icons.tips_and_updates,
       title: 'Recycling Tips',
       description: 'Receive tailored recycling tips for each item.',
     ),
-    FeatureItem(
-      icon: Icons.eco,
-      title: 'Environmental Impact',
-      description: 'Understand the environmental impact of each item.',
-    ),
+    // FeatureItem(
+    //   icon: Icons.eco,
+    //   title: 'Environmental Impact',
+    //   description: 'Understand the environmental impact of each item.',
+    // ),
     FeatureItem(
       icon: Icons.local_shipping,
       title: 'Pickup Tracking',

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_application_1/mobile_app/chat_page/chat_page.dart';
+//import 'package:flutter_application_1/mobile_app/chat_page/chat_page.dart';
 import 'package:flutter_application_1/mobile_app/routes/app_route.dart';
 import 'package:intl/intl.dart';
 
@@ -586,9 +586,12 @@ class _RequestCardState extends State<RequestCard>
                               '/chat',
                               arguments: {
                                 'collectorId': collectorId,
-                                'collectorName': widget.requestData['collectorName'] ?? 'Collector',
+                                'collectorName':
+                                    widget.requestData['collectorName'] ??
+                                    'Collector',
                                 'requestId': widget.requestId,
-                                'userName': widget.requestData['userName'] ?? 'User',
+                                'userName':
+                                    widget.requestData['userName'] ?? 'User',
                               },
                             );
                           },

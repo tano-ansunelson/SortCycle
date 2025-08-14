@@ -13,8 +13,6 @@ class SummaryCardsRow extends StatelessWidget {
         Expanded(child: PendingSummaryCard(collectorId: collectorId)),
         const SizedBox(width: 12),
         Expanded(child: TodayPickupSummaryCard(collectorId: collectorId)),
-        const SizedBox(width: 12),
-        // Expanded(child: TotalPickupSummaryCard(collectorId: collectorId)),
       ],
     );
   }
@@ -31,7 +29,15 @@ class PendingSummaryCard extends StatelessWidget {
       stream: FirebaseFirestore.instance
           .collection('pickup_requests')
           .where('collectorId', isEqualTo: collectorId)
-          .where('status', whereIn: ['pending', 'in_progress', 'accepted'])
+          .where(
+            'status',
+            whereIn: [
+              'in_progress',
+              'accepted',
+              'pending',
+              'pending_confirmation',
+            ],
+          )
           .snapshots(),
       builder: (context, snapshot) {
         String count = '...';
@@ -63,6 +69,7 @@ class CollectorTotalPickupsText extends StatelessWidget {
       stream: FirebaseFirestore.instance
           .collection('pickup_requests')
           .where('collectorId', isEqualTo: collectorId)
+          .where('status', isEqualTo: 'completed')
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.hasError) {
@@ -153,9 +160,12 @@ class TodayPickupSummaryCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Get local time for start and end of today
     final now = DateTime.now();
     final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = startOfDay.add(const Duration(days: 1));
+    final endOfDay = startOfDay
+        .add(const Duration(days: 1))
+        .subtract(const Duration(milliseconds: 1));
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
@@ -169,19 +179,26 @@ class TodayPickupSummaryCard extends StatelessWidget {
         if (snapshot.hasError) {
           count = 'Err';
         } else if (snapshot.hasData) {
-          // Filter documents for today's date in code
+          print(
+            'DEBUG: Total completed requests found: ${snapshot.data!.docs.length}',
+          );
+
           final todayDocs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            final updatedAt = data['updatedAt'];
-
+            final updatedAt = data['userConfirmedAt'];
             if (updatedAt is Timestamp) {
-              final updateDate = updatedAt.toDate();
-              return updateDate.isAfter(startOfDay) &&
-                  updateDate.isBefore(endOfDay);
+              final updatedDate = updatedAt.toDate();
+              final isToday =
+                  updatedDate.isAfter(startOfDay) &&
+                  updatedDate.isBefore(endOfDay);
+
+              return isToday;
             }
+
             return false;
           }).toList();
 
+          print('DEBUG: Today\'s completed pickups: ${todayDocs.length}');
           count = todayDocs.length.toString();
         }
 

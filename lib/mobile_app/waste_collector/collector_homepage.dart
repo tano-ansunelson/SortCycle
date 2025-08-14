@@ -16,6 +16,7 @@ import 'package:flutter_application_1/mobile_app/waste_collector/profile_screen.
 import 'package:flutter_application_1/mobile_app/waste_collector/notification_page.dart';
 //import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:intl/intl.dart';
 
 class CollectorMainScreen extends StatefulWidget {
   const CollectorMainScreen({super.key});
@@ -217,14 +218,14 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
         title: Row(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            Text(
-              'Hi,',
-              style: TextStyle(
-                fontSize: 14,
-                color: Colors.grey[600],
-                fontWeight: FontWeight.bold,
-              ),
-            ),
+            // Text(
+            //   'Hi,',
+            //   style: TextStyle(
+            //     fontSize: 14,
+            //     color: Colors.grey[600],
+            //     fontWeight: FontWeight.bold,
+            //   ),
+            // ),
             Text(
               " ${collectorName ?? 'Guest'}",
               style: const TextStyle(
@@ -343,20 +344,10 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
               // Summary Cards Row
               SummaryCardsRow(collectorId: collectorId),
 
-              // Row(
-              //   children: [
-              //     Expanded(
-              //       child: _buildSummaryCard(
-              //         title: 'Today\'s Pickups',
-              //         count: '8',
-              //         icon: Icons.local_shipping,
-              //         color: Colors.blue,
-              //       ),
-              //     ),
-              //     const SizedBox(width: 12),
-              //     const Expanded(child: PendingSummaryCard()),
-              //   ],
-              // ),
+              const SizedBox(height: 16),
+
+              // Calendar Widget
+              _buildCalendarWidget(collectorId),
               const SizedBox(height: 16),
 
               // Earnings Card
@@ -476,6 +467,401 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
   //   );
   // }
 
+  Widget _buildCalendarWidget(String collectorId) {
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.grey.withValues(alpha: 0.1),
+            spreadRadius: 1,
+            blurRadius: 4,
+            offset: const Offset(0, 2),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              const Text(
+                'Weekly Pickup Schedule',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              Text(
+                DateFormat('MMM yyyy').format(DateTime.now()),
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+          _buildWeeklyCalendar(collectorId),
+          const SizedBox(height: 16),
+          _buildTodaySummary(collectorId),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildWeeklyCalendar(String collectorId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('pickup_requests')
+          .where('collectorId', isEqualTo: collectorId)
+          .where(
+            'status',
+            whereIn: ['pending_confirmation', 'confirmed', 'completed'],
+          )
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final allRequests = snapshot.data?.docs ?? [];
+        final weeklyData = _getWeeklyPickupData(allRequests);
+
+        return Row(
+          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+          children: weeklyData.map((dayData) {
+            final isToday = dayData['date'].isAtSameMomentAs(
+              DateTime.now().copyWith(
+                hour: 0,
+                minute: 0,
+                second: 0,
+                millisecond: 0,
+                microsecond: 0,
+              ),
+            );
+            final hasPickups = dayData['count'] > 0;
+
+            return Expanded(
+              child: Container(
+                margin: const EdgeInsets.symmetric(horizontal: 2),
+                padding: const EdgeInsets.symmetric(
+                  vertical: 12,
+                  horizontal: 4,
+                ),
+                decoration: BoxDecoration(
+                  color: isToday
+                      ? Colors.blue.shade50
+                      : hasPickups
+                      ? Colors.green.shade50
+                      : Colors.grey.shade50,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(
+                    color: isToday
+                        ? Colors.blue.shade300
+                        : hasPickups
+                        ? Colors.green.shade300
+                        : Colors.grey.shade300,
+                    width: isToday ? 2 : 1,
+                  ),
+                ),
+                child: Column(
+                  children: [
+                    Text(
+                      dayData['dayName'],
+                      style: TextStyle(
+                        fontSize: 12,
+                        fontWeight: FontWeight.w600,
+                        color: isToday
+                            ? Colors.blue.shade700
+                            : Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    Text(
+                      dayData['dayNumber'].toString(),
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.bold,
+                        color: isToday
+                            ? Colors.blue.shade700
+                            : hasPickups
+                            ? Colors.green.shade700
+                            : Colors.grey.shade700,
+                      ),
+                    ),
+                    const SizedBox(height: 4),
+                    if (hasPickups)
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 6,
+                          vertical: 2,
+                        ),
+                        decoration: BoxDecoration(
+                          color: isToday
+                              ? Colors.blue.shade200
+                              : Colors.green.shade200,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
+                        child: Text(
+                          '${dayData['count']}',
+                          style: TextStyle(
+                            fontSize: 12,
+                            fontWeight: FontWeight.bold,
+                            color: isToday
+                                ? Colors.blue.shade800
+                                : Colors.green.shade800,
+                          ),
+                        ),
+                      ),
+                  ],
+                ),
+              ),
+            );
+          }).toList(),
+        );
+      },
+    );
+  }
+
+  Widget _buildTodaySummary(String collectorId) {
+    return StreamBuilder<QuerySnapshot>(
+      stream: FirebaseFirestore.instance
+          .collection('pickup_requests')
+          .where('collectorId', isEqualTo: collectorId)
+          .where(
+            'status',
+            whereIn: ['pending_confirmation', 'confirmed', 'completed'],
+          )
+          .snapshots(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final allRequests = snapshot.data?.docs ?? [];
+        final now = DateTime.now();
+        final startOfToday = DateTime(now.year, now.month, now.day);
+        final endOfToday = startOfToday
+            .add(const Duration(days: 1))
+            .subtract(const Duration(milliseconds: 1));
+
+        // Calculate counts for today's activities
+        int pendingCount = 0;
+        // int confirmedCount = 0;
+        int completedCount = 0;
+
+        // Debug: Print total requests found
+        //print('DEBUG: Total requests found: ${allRequests.length}');
+
+        // Simple approach: Count all requests by status first
+        for (final doc in allRequests) {
+          final data = doc.data() as Map<String, dynamic>?;
+          if (data != null) {
+            final status = data['status'] as String?;
+            if (status == 'pending_confirmation') {
+              pendingCount++;
+            } else if (status == 'completed') {
+              completedCount++;
+            }
+          }
+        }
+
+        // Reset counts for detailed approach
+        pendingCount = 0;
+        //confirmedCount = 0;
+        completedCount = 0;
+
+        for (final doc in allRequests) {
+          final data = doc.data() as Map<String, dynamic>?;
+          if (data != null) {
+            final status = data['status'] as String?;
+            final pickupDate = data['pickupDate'] as Timestamp?;
+            final userConfirmedAt = data['userConfirmedAt'] as Timestamp?;
+
+            // Debug: Print each request details
+
+            // Check if this request is relevant for today
+            bool isRelevantForToday = false;
+
+            // Check pickup date - if pickup is scheduled for today
+            if (pickupDate != null) {
+              final pickupDateTime = pickupDate.toDate();
+              if (pickupDateTime.isAfter(startOfToday) &&
+                  pickupDateTime.isBefore(endOfToday)) {
+                isRelevantForToday = true;
+                // print('DEBUG: Pickup scheduled for today: $pickupDateTime');
+              }
+            }
+
+            // Check if it was completed today
+            if (status == 'completed' && userConfirmedAt != null) {
+              final completedDateTime = userConfirmedAt.toDate();
+              if (completedDateTime.isAfter(startOfToday) &&
+                  completedDateTime.isBefore(endOfToday)) {
+                isRelevantForToday = true;
+                // print('DEBUG: Completed today: $completedDateTime');
+              }
+            }
+
+            if (isRelevantForToday) {
+              // print('DEBUG: Request is relevant for today, status: $status');
+              if (status == 'pending') {
+                pendingCount++;
+              } else if (status == 'completed') {
+                completedCount++;
+              }
+            }
+          }
+        }
+
+        return Container(
+          padding: const EdgeInsets.all(16),
+          decoration: BoxDecoration(
+            color: Colors.grey.shade50,
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(color: Colors.grey.shade200),
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text(
+                'Today\'s Summary',
+                style: TextStyle(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w600,
+                  color: Colors.grey.shade700,
+                ),
+              ),
+              const SizedBox(height: 12),
+              Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  _buildStatusItem('Pending', pendingCount, Colors.orange),
+                  // _buildStatusItem('Confirmed', confirmedCount, Colors.blue),
+                  _buildStatusItem('Completed', completedCount, Colors.green),
+                ],
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  Widget _buildStatusItem(String label, int count, Color color) {
+    return Column(
+      children: [
+        Text(
+          count.toString(),
+          style: TextStyle(
+            fontSize: 20,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(
+          label,
+          style: TextStyle(
+            fontSize: 12,
+            color: Colors.grey.shade600,
+            fontWeight: FontWeight.w500,
+          ),
+        ),
+      ],
+    );
+  }
+
+  List<Map<String, dynamic>> _getWeeklyPickupData(
+    List<QueryDocumentSnapshot> requests,
+  ) {
+    final List<Map<String, dynamic>> weeklyData = [];
+    final now = DateTime.now();
+
+    // Add null safety check
+    if (requests.isEmpty) {
+      // Return empty weekly data if no requests
+      for (int i = -3; i <= 3; i++) {
+        final date = now.add(Duration(days: i));
+        final startOfDay = date.copyWith(
+          hour: 0,
+          minute: 0,
+          second: 0,
+          millisecond: 0,
+          microsecond: 0,
+        );
+
+        weeklyData.add({
+          'date': startOfDay,
+          'dayName': DateFormat('E').format(date),
+          'dayNumber': date.day,
+          'count': 0,
+        });
+      }
+      return weeklyData;
+    }
+
+    for (int i = -3; i <= 3; i++) {
+      final date = now.add(Duration(days: i));
+      final startOfDay = date.copyWith(
+        hour: 0,
+        minute: 0,
+        second: 0,
+        millisecond: 0,
+        microsecond: 0,
+      );
+      final endOfDay = date.copyWith(
+        hour: 23,
+        minute: 59,
+        second: 59,
+        millisecond: 999,
+        microsecond: 999,
+      );
+
+      final dayRequests = requests.where((doc) {
+        final data = doc.data() as Map<String, dynamic>?;
+        if (data == null) return false;
+
+        final pickupDate = data['pickupDate']?.toDate();
+        final userConfirmedAt = data['userConfirmedAt']?.toDate();
+
+        // Check if this request is relevant for this day
+        bool isRelevantForDay = false;
+
+        // Check pickup date - if pickup is scheduled for this day
+        if (pickupDate != null) {
+          if (pickupDate.isAfter(startOfDay) && pickupDate.isBefore(endOfDay)) {
+            isRelevantForDay = true;
+          }
+        }
+
+        // Check if it was completed on this day
+        if (data['status'] == 'completed' && userConfirmedAt != null) {
+          if (userConfirmedAt.isAfter(startOfDay) &&
+              userConfirmedAt.isBefore(endOfDay)) {
+            isRelevantForDay = true;
+          }
+        }
+
+        return isRelevantForDay;
+      }).toList();
+
+      weeklyData.add({
+        'date': startOfDay,
+        'dayName': DateFormat('E').format(date),
+        'dayNumber': date.day,
+        'count': dayRequests.length,
+      });
+    }
+
+    return weeklyData;
+  }
+
   Widget _buildEarningsCard() {
     return Container(
       padding: const EdgeInsets.all(20),
@@ -517,7 +903,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
-                      'Today\'s Earnings',
+                      'Total Earnings',
                       style: TextStyle(
                         color: Colors.white,
                         fontSize: 16,
@@ -544,7 +930,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Text(
-                            'This Week',
+                            'This Month',
                             style: TextStyle(
                               color: Colors.white70,
                               fontSize: 12,
@@ -568,40 +954,44 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           }
 
           // Calculate earnings
-          double todayEarnings = 0.0;
-          double weekEarnings = 0.0;
+          double totalEarnings = 0.0;
+          double monthEarnings = 0.0;
           double pendingAmount = 0.0;
           double pendingConfirmationAmount = 0.0;
 
           final now = DateTime.now();
-          final startOfWeek = now.subtract(Duration(days: now.weekday - 1));
-          final startOfDay = DateTime(now.year, now.month, now.day);
 
           for (final doc in snapshot.data!.docs) {
             final data = doc.data() as Map<String, dynamic>;
             final totalAmount = (data['totalAmount'] ?? 0.0).toDouble();
             final status = data['status'] ?? '';
             final createdAt = data['createdAt'] as Timestamp?;
+            final userConfirmedAt = data['userConfirmedAt'] as Timestamp?;
 
             if (createdAt != null) {
               final createdDate = createdAt.toDate();
 
-              // Today's earnings (from requests created today)
-              if (createdDate.isAfter(startOfDay)) {
-                if (status == 'completed') {
-                  todayEarnings += totalAmount;
-                } else if (status == 'pending' || status == 'in_progress') {
-                  pendingAmount += totalAmount;
-                } else if (status == 'pending_confirmation') {
-                  pendingConfirmationAmount += totalAmount;
-                }
+              // For completed requests, check when they were actually completed
+              DateTime? completionDate;
+              if (status == 'completed' && userConfirmedAt != null) {
+                completionDate = userConfirmedAt.toDate();
               }
 
-              // This week's earnings
-              if (createdDate.isAfter(startOfWeek)) {
-                if (status == 'completed') {
-                  weekEarnings += totalAmount;
-                }
+              // Total earnings (all completed requests)
+              if (status == 'completed') {
+                totalEarnings += totalAmount;
+              } else if (status == 'pending' || status == 'in_progress') {
+                pendingAmount += totalAmount;
+              } else if (status == 'pending_confirmation') {
+                pendingConfirmationAmount += totalAmount;
+              }
+
+              // This month's earnings (from requests completed this month)
+              if (status == 'completed' &&
+                  completionDate != null &&
+                  completionDate.month == now.month &&
+                  completionDate.year == now.year) {
+                monthEarnings += totalAmount;
               }
             }
           }
@@ -613,7 +1003,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                 mainAxisAlignment: MainAxisAlignment.spaceBetween,
                 children: [
                   Text(
-                    'Today\'s Earnings',
+                    'Total Earnings',
                     style: TextStyle(
                       color: Colors.white,
                       fontSize: 16,
@@ -625,7 +1015,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
               ),
               const SizedBox(height: 8),
               Text(
-                'GH₵ ${todayEarnings.toStringAsFixed(2)}',
+                'GH₵ ${totalEarnings.toStringAsFixed(2)}',
                 style: const TextStyle(
                   color: Colors.white,
                   fontSize: 28,
@@ -661,11 +1051,11 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         const Text(
-                          'This Week',
+                          'This Month',
                           style: TextStyle(color: Colors.white70, fontSize: 12),
                         ),
                         Text(
-                          'GH₵ ${weekEarnings.toStringAsFixed(2)}',
+                          'GH₵ ${monthEarnings.toStringAsFixed(2)}',
                           style: const TextStyle(
                             color: Colors.white,
                             fontSize: 16,
@@ -906,8 +1296,8 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                               crossAxisAlignment: CrossAxisAlignment.end,
                               children: [
                                 Text(
-                                  pickup['earning'] != null
-                                      ? 'GH₵ ${pickup['earning']}'
+                                  pickup['totalAmount'] != null
+                                      ? 'GH₵ ${pickup['totalAmount']}'
                                       : '',
                                   style: const TextStyle(
                                     fontWeight: FontWeight.bold,
@@ -977,5 +1367,18 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
         );
       },
     );
+  }
+
+  String timeAgo(DateTime dateTime) {
+    final now = DateTime.now();
+    final difference = now.difference(dateTime);
+
+    if (difference.inMinutes < 60) {
+      return '${difference.inMinutes} minutes ago';
+    } else if (difference.inHours < 24) {
+      return '${difference.inHours} hours ago';
+    } else {
+      return '${difference.inDays} days ago';
+    }
   }
 }

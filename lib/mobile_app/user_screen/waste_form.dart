@@ -7,6 +7,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_application_1/mobile_app/user_screen/user_request_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart' show DateFormat;
+import 'dart:math'; // Added for Random
 
 class WastePickupFormUpdated extends StatefulWidget {
   final String userId;
@@ -313,13 +314,18 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         _isLoadingCollectors = false;
       });
 
-      // Auto-select the first collector if available
+      // Auto-select a random collector if available
       if (_nearbyCollectors.isNotEmpty) {
+        // Randomly select a collector instead of always picking the first one
+        final random = Random();
+        final randomIndex = random.nextInt(_nearbyCollectors.length);
+        final selectedCollector = _nearbyCollectors[randomIndex];
+        
         setState(() {
-          _selectedCollectorId = _nearbyCollectors.first['id'];
+          _selectedCollectorId = selectedCollector['id'];
         });
         _showSnackBar(
-          'Collector automatically selected: ${_nearbyCollectors.first['name']}',
+          'Collector randomly selected: ${selectedCollector['name']}',
           Colors.green.shade600,
         );
       } else {
@@ -774,9 +780,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                         _resetForm();
                         Navigator.of(context).pushNamed(
                           '/user-requests',
-                          arguments: {
-                            'userId': widget.userId,
-                          },
+                          arguments: {'userId': widget.userId},
                         );
                       },
                       style: ElevatedButton.styleFrom(

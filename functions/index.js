@@ -199,7 +199,6 @@ exports.reassignCollectorOnDuePickup = functions.pubsub.schedule("every 5 minute
         .where("town", "==", requestData.userTown)
         .where("isActive", "==", true)
         .where(admin.firestore.FieldPath.documentId(), "!=", requestData.collectorId)
-        .limit(1)
         .get();
 
       if (collectorsSnapshot.empty) {
@@ -207,8 +206,12 @@ exports.reassignCollectorOnDuePickup = functions.pubsub.schedule("every 5 minute
         continue;
       }
 
-      const newCollector = collectorsSnapshot.docs[0];
+      // Randomly select a collector instead of always picking the first one
+      const randomIndex = Math.floor(Math.random() * collectorsSnapshot.size);
+      const newCollector = collectorsSnapshot.docs[randomIndex];
       const newCollectorId = newCollector.id;
+
+      console.log(`🎯 Randomly selected new collector ${newCollectorId} from ${collectorsSnapshot.size} available collectors for request ${doc.id}`);
 
       // 3️⃣ Update request with new collector and extend pickupDate by 2 hours
       const newPickupDate = admin.firestore.Timestamp.fromDate(
@@ -363,7 +366,6 @@ exports.handleCollectorInactive = functions.firestore
         .where("isActive", "==", true)
         .where("town", "==", collectorTown)
         .where(admin.firestore.FieldPath.documentId(), "!=", collectorId)
-        .limit(1)
         .get();
 
       if (otherCollectors.empty) {
@@ -382,10 +384,13 @@ exports.handleCollectorInactive = functions.firestore
         return null;
       }
 
-      // Reassign to another active collector
-      const newCollector = otherCollectors.docs[0];
+      // Randomly select another active collector instead of always picking the first one
+      const randomIndex = Math.floor(Math.random() * otherCollectors.size);
+      const newCollector = otherCollectors.docs[randomIndex];
       const newCollectorId = newCollector.id;
       const newCollectorName = newCollector.data().name || "Unknown Collector";
+
+      console.log(`🎯 Randomly selected new collector ${newCollectorId} (${newCollectorName}) from ${otherCollectors.size} available collectors in ${collectorTown}`);
 
       const batch = admin.firestore().batch();
       assignedRequests.docs.forEach(doc => {
@@ -430,7 +435,6 @@ exports.autoAssignCollectorOnRequest = functions.firestore
         .collection("collectors")
         .where("isActive", "==", true)
         .where("town", "==", userTown)
-        .limit(1)
         .get();
 
       // Debug: Log the query details
@@ -439,11 +443,13 @@ exports.autoAssignCollectorOnRequest = functions.firestore
       console.log(`📊 Found ${collectorsSnapshot.size} active collectors in ${userTown}`);
 
       if (!collectorsSnapshot.empty) {
-        const collector = collectorsSnapshot.docs[0];
+        // Randomly select a collector instead of always picking the first one
+        const randomIndex = Math.floor(Math.random() * collectorsSnapshot.size);
+        const collector = collectorsSnapshot.docs[randomIndex];
         const collectorId = collector.id;
         const collectorData = collector.data();
 
-        console.log(`🎯 Found active collector ${collectorId} (${collectorData.name}) in ${userTown}`);
+        console.log(`🎯 Randomly selected collector ${collectorId} (${collectorData.name}) from ${collectorsSnapshot.size} available collectors in ${userTown}`);
 
         // Update the request with the collector
         await snap.ref.update({

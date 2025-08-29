@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import 'package:flutter_application_1/mobile_app/chat_page/chat_page.dart';
+
+///import 'package:flutter_application_1/mobile_app/chat_page/chat_page.dart';
 // ignore: unused_import
 import 'package:flutter_application_1/mobile_app/chat_page/chatlist_page.dart';
 import 'package:flutter_application_1/mobile_app/routes/app_route.dart';
@@ -106,8 +107,26 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               stream: FirebaseFirestore.instance
                   .collection('pickup_requests')
                   .where('collectorId', isEqualTo: widget.collectorId)
-                  .where('pickupDate', isGreaterThanOrEqualTo: DateTime.now().copyWith(hour: 0, minute: 0, second: 0, millisecond: 0, microsecond: 0))
-                  .where('pickupDate', isLessThanOrEqualTo: DateTime.now().copyWith(hour: 23, minute: 59, second: 59, millisecond: 999, microsecond: 999))
+                  .where(
+                    'pickupDate',
+                    isGreaterThanOrEqualTo: DateTime.now().copyWith(
+                      hour: 0,
+                      minute: 0,
+                      second: 0,
+                      millisecond: 0,
+                      microsecond: 0,
+                    ),
+                  )
+                  .where(
+                    'pickupDate',
+                    isLessThanOrEqualTo: DateTime.now().copyWith(
+                      hour: 23,
+                      minute: 59,
+                      second: 59,
+                      millisecond: 999,
+                      microsecond: 999,
+                    ),
+                  )
                   .orderBy('pickupDate')
                   .snapshots(),
               builder: (context, snapshot) {
@@ -153,12 +172,13 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                   padding: const EdgeInsets.symmetric(horizontal: 20),
                   itemCount: todayRequests.length,
                   itemBuilder: (context, index) {
-                    final request = todayRequests[index].data() as Map<String, dynamic>;
+                    final request =
+                        todayRequests[index].data() as Map<String, dynamic>;
                     final pickupTime = request['pickupDate']?.toDate();
                     final formattedTime = pickupTime != null
                         ? DateFormat('h:mm a').format(pickupTime)
                         : 'Unknown time';
-                    
+
                     final status = request['status'] ?? 'pending';
                     final statusColor = _getStatusColor(status);
                     final statusText = _getStatusText(status);
@@ -200,7 +220,8 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
                                 Row(
-                                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                                  mainAxisAlignment:
+                                      MainAxisAlignment.spaceBetween,
                                   children: [
                                     Text(
                                       formattedTime,
@@ -216,7 +237,9 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                                         vertical: 4,
                                       ),
                                       decoration: BoxDecoration(
-                                        color: statusColor.withValues(alpha: 0.1),
+                                        color: statusColor.withValues(
+                                          alpha: 0.1,
+                                        ),
                                         borderRadius: BorderRadius.circular(12),
                                       ),
                                       child: Text(
@@ -251,27 +274,33 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                                   const SizedBox(height: 4),
                                   Wrap(
                                     spacing: 4,
-                                    children: (request['wasteCategories'] as List<dynamic>)
-                                        .take(3)
-                                        .map((category) => Container(
-                                              padding: const EdgeInsets.symmetric(
-                                                horizontal: 6,
-                                                vertical: 2,
-                                              ),
-                                              decoration: BoxDecoration(
-                                                color: Colors.blue.shade50,
-                                                borderRadius: BorderRadius.circular(8),
-                                              ),
-                                              child: Text(
-                                                category.toString(),
-                                                style: TextStyle(
-                                                  fontSize: 10,
-                                                  color: Colors.blue.shade700,
-                                                  fontWeight: FontWeight.w500,
+                                    children:
+                                        (request['wasteCategories']
+                                                as List<dynamic>)
+                                            .take(3)
+                                            .map(
+                                              (category) => Container(
+                                                padding:
+                                                    const EdgeInsets.symmetric(
+                                                      horizontal: 6,
+                                                      vertical: 2,
+                                                    ),
+                                                decoration: BoxDecoration(
+                                                  color: Colors.blue.shade50,
+                                                  borderRadius:
+                                                      BorderRadius.circular(8),
+                                                ),
+                                                child: Text(
+                                                  category.toString(),
+                                                  style: TextStyle(
+                                                    fontSize: 10,
+                                                    color: Colors.blue.shade700,
+                                                    fontWeight: FontWeight.w500,
+                                                  ),
                                                 ),
                                               ),
-                                            ))
-                                        .toList(),
+                                            )
+                                            .toList(),
                                   ),
                                 ],
                               ],
@@ -306,10 +335,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
         actions: [
           // Calendar Icon
           IconButton(
-            icon: const Icon(
-              Icons.calendar_today,
-              color: Colors.blue,
-            ),
+            icon: const Icon(Icons.calendar_today, color: Colors.blue),
             onPressed: () {
               _showTodaySchedule();
             },
@@ -454,7 +480,10 @@ class _PickupManagementPageState extends State<PickupManagementPage>
       stream: FirebaseFirestore.instance
           .collection('pickup_requests')
           .where('collectorId', isEqualTo: widget.collectorId)
-          .orderBy('createdAt', descending: true)
+          .orderBy(
+            'pickupDate',
+            descending: false,
+          ) // Order by pickup date ascending
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -499,6 +528,10 @@ class _PickupManagementPageState extends State<PickupManagementPage>
           );
         }
 
+        // Group requests by date
+        final requests = snapshot.data!.docs;
+        final groupedRequests = _groupRequestsByDate(requests);
+
         return RefreshIndicator(
           onRefresh: () async {
             // The stream will automatically refresh
@@ -506,11 +539,10 @@ class _PickupManagementPageState extends State<PickupManagementPage>
           },
           child: ListView.builder(
             padding: const EdgeInsets.all(16),
-            itemCount: snapshot.data!.docs.length,
+            itemCount: groupedRequests.length,
             itemBuilder: (context, index) {
-              final doc = snapshot.data!.docs[index];
-              final request = doc.data() as Map<String, dynamic>;
-              return _buildYourPickupCard(doc.id, request);
+              final dateGroup = groupedRequests[index];
+              return _buildDateGroupCard(dateGroup);
             },
           ),
         );
@@ -1409,5 +1441,189 @@ class _PickupManagementPageState extends State<PickupManagementPage>
   // Get collector's town from widget parameter
   String _getCollectorTown() {
     return widget.collectorTown;
+  }
+
+  // Group requests by pickup date
+  List<MapEntry<DateTime, List<QueryDocumentSnapshot>>> _groupRequestsByDate(
+    List<QueryDocumentSnapshot> requests,
+  ) {
+    final Map<DateTime, List<QueryDocumentSnapshot>> grouped = {};
+
+    for (final doc in requests) {
+      final request = doc.data() as Map<String, dynamic>;
+      final pickupDate = request['pickupDate'];
+
+      if (pickupDate != null) {
+        DateTime date;
+        if (pickupDate is Timestamp) {
+          date = pickupDate.toDate();
+        } else if (pickupDate is DateTime) {
+          date = pickupDate;
+        } else {
+          continue; // Skip invalid dates
+        }
+
+        // Create a date key with only year, month, and day (no time)
+        final dateKey = DateTime(date.year, date.month, date.day);
+
+        if (grouped.containsKey(dateKey)) {
+          grouped[dateKey]!.add(doc);
+        } else {
+          grouped[dateKey] = [doc];
+        }
+      }
+    }
+
+    // Sort by date and convert to list
+    final sortedEntries = grouped.entries.toList()
+      ..sort((a, b) => a.key.compareTo(b.key));
+
+    return sortedEntries;
+  }
+
+  // Build a date group card that contains all requests for a specific date
+  Widget _buildDateGroupCard(
+    MapEntry<DateTime, List<QueryDocumentSnapshot>> dateGroup,
+  ) {
+    final date = dateGroup.key;
+    final requests = dateGroup.value;
+    final isToday = _isToday(date);
+    final isTomorrow = _isTomorrow(date);
+
+    return Container(
+      margin: const EdgeInsets.only(bottom: 20),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Date header
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            decoration: BoxDecoration(
+              color: isToday
+                  ? Colors.blue.shade50
+                  : isTomorrow
+                  ? Colors.orange.shade50
+                  : Colors.grey.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(
+                color: isToday
+                    ? Colors.blue.shade200
+                    : isTomorrow
+                    ? Colors.orange.shade200
+                    : Colors.grey.shade200,
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(
+                  isToday
+                      ? Icons.today
+                      : isTomorrow
+                      ? Icons.event
+                      : Icons.calendar_today,
+                  color: isToday
+                      ? Colors.blue.shade600
+                      : isTomorrow
+                      ? Colors.orange.shade600
+                      : Colors.grey.shade600,
+                  size: 20,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        _getDateLabel(date),
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                          color: isToday
+                              ? Colors.blue.shade700
+                              : isTomorrow
+                              ? Colors.orange.shade700
+                              : Colors.grey.shade700,
+                        ),
+                      ),
+                      Text(
+                        '${requests.length} pickup${requests.length > 1 ? 's' : ''} scheduled',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: isToday
+                              ? Colors.blue.shade600
+                              : isTomorrow
+                              ? Colors.orange.shade600
+                              : Colors.grey.shade600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: isToday
+                        ? Colors.blue.shade100
+                        : isTomorrow
+                        ? Colors.orange.shade100
+                        : Colors.grey.shade100,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    DateFormat('EEE').format(date),
+                    style: TextStyle(
+                      fontSize: 12,
+                      fontWeight: FontWeight.bold,
+                      color: isToday
+                          ? Colors.blue.shade700
+                          : isTomorrow
+                          ? Colors.orange.shade700
+                          : Colors.grey.shade700,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Requests for this date
+          ...requests.map((doc) {
+            final request = doc.data() as Map<String, dynamic>;
+            return _buildYourPickupCard(doc.id, request);
+          }).toList(),
+        ],
+      ),
+    );
+  }
+
+  // Check if a date is today
+  bool _isToday(DateTime date) {
+    final now = DateTime.now();
+    return date.year == now.year &&
+        date.month == now.month &&
+        date.day == now.day;
+  }
+
+  // Check if a date is tomorrow
+  bool _isTomorrow(DateTime date) {
+    final tomorrow = DateTime.now().add(const Duration(days: 1));
+    return date.year == tomorrow.year &&
+        date.month == tomorrow.month &&
+        date.day == tomorrow.day;
+  }
+
+  // Get a user-friendly date label
+  String _getDateLabel(DateTime date) {
+    if (_isToday(date)) {
+      return 'Today';
+    } else if (_isTomorrow(date)) {
+      return 'Tomorrow';
+    } else {
+      return DateFormat('EEEE, MMMM d, yyyy').format(date);
+    }
   }
 }

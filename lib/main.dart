@@ -42,6 +42,7 @@ import 'package:flutter_application_1/mobile_app/user_screen/bottombar.dart';
 import 'package:flutter_application_1/mobile_app/user_screen/log_in/sign_up.dart';
 import 'package:flutter_application_1/mobile_app/user_screen/profile_screen.dart';
 import 'package:flutter_application_1/mobile_app/service/role_selection.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/scheduling_week.dart';
 import 'package:provider/provider.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 // Admin imports - only loaded when neededflu
@@ -279,6 +280,21 @@ class _MyAppState extends State<MyApp> {
         return _createRoute(const AboutPage());
       case AppRoutes.markethomescreen:
         return _createRoute(const MarketHomeScreen());
+      case AppRoutes.weeklyScheduling:
+        final collectorId = args['collectorId'] as String?;
+        if (collectorId != null) {
+          // Create WeeklySchedulingPage with default suggested towns
+          return _createRoute(WeeklySchedulingPage(
+            collectorId: collectorId,
+            // The suggestedTowns will use the default value from the constructor
+          ));
+        } else {
+          return _createRoute(
+            const Scaffold(
+              body: Center(child: Text('Collector ID is missing')),
+            ),
+          );
+        }
       case AppRoutes.chatlistpage:
         return _createRoute(const ChatListPage());
       case AppRoutes.collectorabout:

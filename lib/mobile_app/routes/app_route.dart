@@ -31,6 +31,5 @@ abstract class AppRoutes {
   static const markethomescreen = '/markethomescreen';
   static const collectormapscreen = '/collectormapscreen';
   static const pickuphistory = '/pickuphistory';
-  
-
+  static const String weeklyScheduling = '/weekly-scheduling';
 }

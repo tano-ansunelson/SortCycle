@@ -19,7 +19,7 @@ class _CollectorSignup extends State<CollectorSignup>
   final emailController = TextEditingController();
   final passwordController = TextEditingController();
   final phoneController = TextEditingController();
-  final townController = TextEditingController();
+  //final townController = TextEditingController();
 
   bool _obscurePassword = true;
   bool _isLoading = false;
@@ -57,7 +57,7 @@ class _CollectorSignup extends State<CollectorSignup>
     emailController.dispose();
     passwordController.dispose();
     phoneController.dispose();
-    townController.dispose();
+    //townController.dispose();
     super.dispose();
   }
 
@@ -194,8 +194,8 @@ class _CollectorSignup extends State<CollectorSignup>
               const SizedBox(height: 20),
               _buildPasswordField(),
               const SizedBox(height: 20),
-              _buildTownField(),
-              const SizedBox(height: 20),
+              // _buildTownField(),
+              // const SizedBox(height: 20),
               _buildPhoneField(),
               // const SizedBox(height: 20),
               // _buildLocationButton(),
@@ -270,14 +270,14 @@ class _CollectorSignup extends State<CollectorSignup>
     );
   }
 
-  Widget _buildTownField() {
-    return TextFormField(
-      controller: townController,
-      decoration: _buildInputDecoration('Town', Icons.location_city_outlined),
-      validator: (value) =>
-          value == null || value.trim().isEmpty ? 'Please enter town' : null,
-    );
-  }
+  // Widget _buildTownField() {
+  //   return TextFormField(
+  //     controller: townController,
+  //     decoration: _buildInputDecoration('Town', Icons.location_city_outlined),
+  //     validator: (value) =>
+  //         value == null || value.trim().isEmpty ? 'Please enter town' : null,
+  //   );
+  // }
 
   Widget _buildPhoneField() {
     return TextFormField(
@@ -386,7 +386,7 @@ class _CollectorSignup extends State<CollectorSignup>
           'email': emailController.text.trim(),
           'role': widget.role,
           'phone': phoneController.text.trim(),
-          'town': townController.text.trim().toLowerCase(),
+          // 'town': townController.text.trim().toLowerCase(),
           'isActive': false,
           'createdAt': FieldValue.serverTimestamp(),
         });

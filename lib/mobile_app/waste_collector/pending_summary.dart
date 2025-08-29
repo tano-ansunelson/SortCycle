@@ -12,7 +12,7 @@ class SummaryCardsRow extends StatelessWidget {
       children: [
         Expanded(child: PendingSummaryCard(collectorId: collectorId)),
         const SizedBox(width: 12),
-        Expanded(child: TodayPickupSummaryCard(collectorId: collectorId)),
+        Expanded(child: MissedRequestsSummaryCard(collectorId: collectorId)),
       ],
     );
   }
@@ -153,25 +153,21 @@ class CompletionRateText extends StatelessWidget {
   }
 }
 
-class TodayPickupSummaryCard extends StatelessWidget {
+class MissedRequestsSummaryCard extends StatelessWidget {
   final String collectorId;
 
-  const TodayPickupSummaryCard({super.key, required this.collectorId});
+  const MissedRequestsSummaryCard({super.key, required this.collectorId});
 
   @override
   Widget build(BuildContext context) {
-    // Get local time for start and end of today
+    // Get current time
     final now = DateTime.now();
-    final startOfDay = DateTime(now.year, now.month, now.day);
-    final endOfDay = startOfDay
-        .add(const Duration(days: 1))
-        .subtract(const Duration(milliseconds: 1));
 
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('pickup_requests')
           .where('collectorId', isEqualTo: collectorId)
-          .where('status', isEqualTo: 'completed')
+          .where('status', whereIn: ['pending', 'in_progress', 'accepted'])
           .snapshots(),
       builder: (context, snapshot) {
         String count = '...';
@@ -180,33 +176,38 @@ class TodayPickupSummaryCard extends StatelessWidget {
           count = 'Err';
         } else if (snapshot.hasData) {
           print(
-            'DEBUG: Total completed requests found: ${snapshot.data!.docs.length}',
+            'DEBUG: Total pending/in_progress/accepted requests found: ${snapshot.data!.docs.length}',
           );
 
-          final todayDocs = snapshot.data!.docs.where((doc) {
+          final missedDocs = snapshot.data!.docs.where((doc) {
             final data = doc.data() as Map<String, dynamic>;
-            final updatedAt = data['userConfirmedAt'];
-            if (updatedAt is Timestamp) {
-              final updatedDate = updatedAt.toDate();
-              final isToday =
-                  updatedDate.isAfter(startOfDay) &&
-                  updatedDate.isBefore(endOfDay);
-
-              return isToday;
+            final pickupDate = data['pickupDate'];
+            
+            if (pickupDate is Timestamp) {
+              final scheduledDate = pickupDate.toDate();
+              
+              // Check if the scheduled pickup date has passed (is in the past)
+              // and the request is not completed
+              final isPastDate = scheduledDate.isBefore(now);
+              
+              // Don't count as missed if collector has completed but user hasn't confirmed
+              // (status would be 'pending_confirmation' which is not in our whereIn clause)
+              
+              return isPastDate;
             }
 
             return false;
           }).toList();
 
-          print('DEBUG: Today\'s completed pickups: ${todayDocs.length}');
-          count = todayDocs.length.toString();
+          print('DEBUG: Missed requests: ${missedDocs.length}');
+          count = missedDocs.length.toString();
         }
 
         return _buildSummaryCard(
-          title: 'Today\'s Pickups',
+          title: 'Missed Requests',
           count: count,
-          icon: Icons.local_shipping,
-          color: Colors.blue,
+          icon: Icons.schedule,
+          color: Colors.red,
         );
       },
     );

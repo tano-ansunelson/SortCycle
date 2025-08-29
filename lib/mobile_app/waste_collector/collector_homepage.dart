@@ -14,6 +14,7 @@ import 'package:flutter_application_1/mobile_app/waste_collector/pending_summary
 import 'package:flutter_application_1/mobile_app/waste_collector/pickup.dart';
 import 'package:flutter_application_1/mobile_app/waste_collector/profile_screen.dart';
 import 'package:flutter_application_1/mobile_app/waste_collector/notification_page.dart';
+
 //import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
 import 'package:intl/intl.dart';
@@ -68,7 +69,7 @@ class _CollectorMainScreenState extends State<CollectorMainScreen> {
           color: Colors.white,
           boxShadow: [
             BoxShadow(
-              color: Colors.grey.withValues(alpha: 0.2),
+              color: Colors.grey.withAlpha((0.2 * 255).toInt()),
               spreadRadius: 1,
               blurRadius: 10,
               offset: const Offset(0, -2),
@@ -345,14 +346,13 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
               SummaryCardsRow(collectorId: collectorId),
 
               const SizedBox(height: 16),
+              // Earnings Card
+              _buildEarningsCard(),
+              const SizedBox(height: 24),
 
               // Calendar Widget
               _buildCalendarWidget(collectorId),
               const SizedBox(height: 16),
-
-              // Earnings Card
-              _buildEarningsCard(),
-              const SizedBox(height: 24),
 
               // Quick Actions
               const Text(
@@ -392,7 +392,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           ),
           boxShadow: [
             BoxShadow(
-              color: const Color(0xFF26A69A).withValues(alpha: 0.3),
+              color: const Color(0xFF26A69A).withAlpha((0.3 * 255).toInt()),
               blurRadius: 12,
               offset: const Offset(0, 6),
             ),
@@ -421,52 +421,6 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
     );
   }
 
-  // Widget _buildSummaryCard({
-  //   required String title,
-  //   required String count,
-  //   required IconData icon,
-  //   required Color color,
-  // }) {
-  //   return Container(
-  //     padding: const EdgeInsets.all(16),
-  //     decoration: BoxDecoration(
-  //       color: Colors.white,
-  //       borderRadius: BorderRadius.circular(12),
-  //       boxShadow: [
-  //         BoxShadow(
-  //           color: Colors.grey.withOpacity(0.1),
-  //           spreadRadius: 1,
-  //           blurRadius: 4,
-  //           offset: const Offset(0, 2),
-  //         ),
-  //       ],
-  //     ),
-  //     child: Column(
-  //       crossAxisAlignment: CrossAxisAlignment.start,
-  //       children: [
-  //         Container(
-  //           padding: const EdgeInsets.all(8),
-  //           decoration: BoxDecoration(
-  //             color: color.withOpacity(0.1),
-  //             borderRadius: BorderRadius.circular(8),
-  //           ),
-  //           child: Icon(icon, color: color, size: 24),
-  //         ),
-  //         const SizedBox(height: 12),
-  //         Text(
-  //           count,
-  //           style: const TextStyle(
-  //             fontSize: 24,
-  //             fontWeight: FontWeight.bold,
-  //             color: Colors.black87,
-  //           ),
-  //         ),
-  //         Text(title, style: TextStyle(fontSize: 12, color: Colors.grey[600])),
-  //       ],
-  //     ),
-  //   );
-  // }
-
   Widget _buildCalendarWidget(String collectorId) {
     return Container(
       padding: const EdgeInsets.all(16),
@@ -475,7 +429,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
         borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withValues(alpha: 0.1),
+            color: Colors.grey.withAlpha((0.1 * 255).toInt()),
             spreadRadius: 1,
             blurRadius: 4,
             offset: const Offset(0, 2),
@@ -496,13 +450,17 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                   color: Colors.black87,
                 ),
               ),
-              Text(
-                DateFormat('MMM yyyy').format(DateTime.now()),
-                style: TextStyle(
-                  fontSize: 14,
-                  color: Colors.grey[600],
-                  fontWeight: FontWeight.w500,
-                ),
+              Row(
+                children: [
+                  Text(
+                    DateFormat('MMM yyyy').format(DateTime.now()),
+                    style: TextStyle(
+                      fontSize: 14,
+                      color: Colors.grey[600],
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
               ),
             ],
           ),
@@ -516,118 +474,698 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
   }
 
   Widget _buildWeeklyCalendar(String collectorId) {
-    return StreamBuilder<QuerySnapshot>(
+    return StreamBuilder<DocumentSnapshot>(
       stream: FirebaseFirestore.instance
-          .collection('pickup_requests')
-          .where('collectorId', isEqualTo: collectorId)
-          .where(
-            'status',
-            whereIn: ['pending_confirmation', 'confirmed', 'completed'],
-          )
+          .collection('weekly_schedules')
+          .doc(collectorId)
           .snapshots(),
-      builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
-          return const Center(child: CircularProgressIndicator());
-        }
+      builder: (context, scheduleSnapshot) {
+        return StreamBuilder<QuerySnapshot>(
+          stream: FirebaseFirestore.instance
+              .collection('pickup_requests')
+              .where('collectorId', isEqualTo: collectorId)
+              .where(
+                'status',
+                whereIn: ['pending', 'in_progress', 'pending_confirmation'],
+              )
+              .snapshots(),
+          builder: (context, snapshot) {
+            if (scheduleSnapshot.connectionState == ConnectionState.waiting ||
+                snapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator());
+            }
 
-        final allRequests = snapshot.data?.docs ?? [];
-        final weeklyData = _getWeeklyPickupData(allRequests);
+            // Get collector's schedule from weekly_schedules collection
+            final scheduleData =
+                scheduleSnapshot.data?.data() as Map<String, dynamic>?;
+            final schedule =
+                scheduleData?['schedule'] as Map<String, dynamic>? ?? {};
 
-        return Row(
-          mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-          children: weeklyData.map((dayData) {
-            final isToday = dayData['date'].isAtSameMomentAs(
-              DateTime.now().copyWith(
-                hour: 0,
-                minute: 0,
-                second: 0,
-                millisecond: 0,
-                microsecond: 0,
-              ),
-            );
-            final hasPickups = dayData['count'] > 0;
+            final allRequests = snapshot.data?.docs ?? [];
+            final weeklyData = _getWeeklyPickupData(allRequests, schedule);
 
-            return Expanded(
-              child: Container(
-                margin: const EdgeInsets.symmetric(horizontal: 2),
-                padding: const EdgeInsets.symmetric(
-                  vertical: 12,
-                  horizontal: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: isToday
-                      ? Colors.blue.shade50
-                      : hasPickups
-                      ? Colors.green.shade50
-                      : Colors.grey.shade50,
-                  borderRadius: BorderRadius.circular(8),
-                  border: Border.all(
-                    color: isToday
-                        ? Colors.blue.shade300
-                        : hasPickups
-                        ? Colors.green.shade300
-                        : Colors.grey.shade300,
-                    width: isToday ? 2 : 1,
-                  ),
-                ),
-                child: Column(
-                  children: [
-                    Text(
-                      dayData['dayName'],
+            return Column(
+              children: [
+                // Dynamic calendar - show scheduled dates in a flexible layout
+                if (weeklyData.isNotEmpty) ...[
+                  // Header showing the date range
+                  Container(
+                    padding: const EdgeInsets.symmetric(vertical: 8),
+                    child: Text(
+                      'Scheduled Dates',
                       style: TextStyle(
-                        fontSize: 12,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
-                        color: isToday
-                            ? Colors.blue.shade700
-                            : Colors.grey.shade700,
+                        color: Colors.grey.shade700,
                       ),
+                      textAlign: TextAlign.center,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      dayData['dayNumber'].toString(),
-                      style: TextStyle(
-                        fontSize: 16,
-                        fontWeight: FontWeight.bold,
-                        color: isToday
-                            ? Colors.blue.shade700
-                            : hasPickups
-                            ? Colors.green.shade700
-                            : Colors.grey.shade700,
-                      ),
-                    ),
-                    const SizedBox(height: 4),
-                    if (hasPickups)
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 6,
-                          vertical: 2,
+                  ),
+                  // Use Wrap instead of GridView to avoid overflow
+                  Wrap(
+                    spacing: 8.0,
+                    runSpacing: 8.0,
+                    alignment: WrapAlignment.spaceEvenly,
+                    children: weeklyData.map((dayData) {
+                      final isToday = dayData['date'].isAtSameMomentAs(
+                        DateTime.now().copyWith(
+                          hour: 0,
+                          minute: 0,
+                          second: 0,
+                          millisecond: 0,
+                          microsecond: 0,
                         ),
-                        decoration: BoxDecoration(
-                          color: isToday
-                              ? Colors.blue.shade200
-                              : Colors.green.shade200,
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          '${dayData['count']}',
-                          style: TextStyle(
-                            fontSize: 12,
-                            fontWeight: FontWeight.bold,
-                            color: isToday
-                                ? Colors.blue.shade800
-                                : Colors.green.shade800,
+                      );
+
+                      // Check if collector has scheduled towns for this date
+                      final dateKey = DateFormat(
+                        'yyyy-MM-dd',
+                      ).format(dayData['date']);
+                      final scheduledTowns =
+                          schedule[dateKey] as List<dynamic>? ?? [];
+                      final hasScheduledTowns = scheduledTowns.isNotEmpty;
+
+                      // Only show pickup count for days with scheduled towns
+                      final hasPickups =
+                          hasScheduledTowns && dayData['count'] > 0;
+
+                      return Tooltip(
+                        message: hasScheduledTowns
+                            ? 'Scheduled towns: ${scheduledTowns.join(', ')}${hasPickups ? '\nPickup requests: ${dayData['count']}' : ''}'
+                            : 'No towns scheduled',
+                        child: GestureDetector(
+                          onTap: () => _showScheduledTownsDialog(
+                            context,
+                            dayData['date'],
+                            scheduledTowns,
+                            dayData['count'],
+                            collectorId,
+                          ),
+                          child: Container(
+                            width:
+                                80, // Fixed width instead of using aspect ratio
+                            padding: const EdgeInsets.symmetric(
+                              vertical: 12,
+                              horizontal: 8,
+                            ),
+                            decoration: BoxDecoration(
+                              color: isToday
+                                  ? Colors.blue.shade50
+                                  : hasScheduledTowns
+                                  ? Colors.orange.shade50
+                                  : Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(
+                                color: isToday
+                                    ? Colors.blue.shade300
+                                    : hasScheduledTowns
+                                    ? Colors.orange.shade300
+                                    : Colors.grey.shade300,
+                                width: isToday ? 2 : 1,
+                              ),
+                            ),
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Text(
+                                  dayData['dayNumber'].toString(),
+                                  style: TextStyle(
+                                    fontSize: 16,
+                                    fontWeight: FontWeight.bold,
+                                    color: isToday
+                                        ? Colors.blue.shade700
+                                        : hasScheduledTowns
+                                        ? Colors.orange.shade700
+                                        : Colors.grey.shade700,
+                                  ),
+                                ),
+                                const SizedBox(height: 2),
+                                // Show day name (abbreviated)
+                                Text(
+                                  dayData['dayName'],
+                                  style: TextStyle(
+                                    fontSize: 10,
+                                    color: Colors.grey.shade600,
+                                  ),
+                                ),
+                                // Show scheduled towns count
+                                if (hasScheduledTowns) ...[
+                                  const SizedBox(height: 4),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.orange.shade200,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.location_on,
+                                          size: 8,
+                                          color: Colors.orange.shade800,
+                                        ),
+                                        const SizedBox(width: 1),
+                                        Text(
+                                          '${scheduledTowns.length}',
+                                          style: const TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Color.fromARGB(
+                                              255,
+                                              70,
+                                              65,
+                                              62,
+                                            ),
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ] else ...[
+                                  // Add minimal space to maintain consistent height when no scheduled towns
+                                  const SizedBox(height: 4),
+                                  const SizedBox(
+                                    height: 16,
+                                  ), // Reduced height to match badge more closely
+                                ],
+                                // Show pickup request count only for scheduled days
+                                if (hasPickups) ...[
+                                  const SizedBox(height: 2),
+                                  Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 4,
+                                      vertical: 1,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: Colors.green.shade200,
+                                      borderRadius: BorderRadius.circular(8),
+                                    ),
+                                    child: Row(
+                                      mainAxisSize: MainAxisSize.min,
+                                      children: [
+                                        Icon(
+                                          Icons.local_shipping,
+                                          size: 8,
+                                          color: Colors.green.shade800,
+                                        ),
+                                        const SizedBox(width: 1),
+                                        Text(
+                                          '${dayData['count']}',
+                                          style: TextStyle(
+                                            fontSize: 9,
+                                            fontWeight: FontWeight.bold,
+                                            color: Colors.green.shade800,
+                                          ),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ] else ...[
+                                  // Add minimal space to maintain consistent height when no pickups
+                                  const SizedBox(height: 2),
+                                  const SizedBox(
+                                    height: 14,
+                                  ), // Reduced height to match badge more closely
+                                ],
+                              ],
+                            ),
                           ),
                         ),
-                      ),
-                  ],
-                ),
-              ),
+                      );
+                    }).toList(),
+                  ),
+                ],
+              ],
             );
-          }).toList(),
+          },
         );
       },
     );
   }
+
+  void _showScheduledTownsDialog(
+    BuildContext context,
+    DateTime selectedDate,
+    List<dynamic> scheduledTowns,
+    int pickupCount,
+    String collectorId,
+  ) {
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text(
+                DateFormat('EEEE, MMM dd, yyyy').format(selectedDate),
+                style: const TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.black87,
+                ),
+              ),
+              const SizedBox(height: 4),
+              Text(
+                'Pickup Schedule',
+                style: TextStyle(
+                  fontSize: 14,
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w500,
+                ),
+              ),
+            ],
+          ),
+          content: Container(
+            width: double.maxFinite,
+            constraints: const BoxConstraints(maxHeight: 300),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                // Scheduled Towns Section
+                if (scheduledTowns.isNotEmpty) ...[
+                  Row(
+                    children: [
+                      Icon(
+                        Icons.location_on,
+                        size: 20,
+                        color: Colors.orange[700],
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        'Scheduled Towns (${scheduledTowns.length})',
+                        style: const TextStyle(
+                          fontSize: 16,
+                          fontWeight: FontWeight.w600,
+                          color: Colors.black87,
+                        ),
+                      ),
+                    ],
+                  ),
+                  const SizedBox(height: 12),
+                  Container(
+                    constraints: const BoxConstraints(maxHeight: 150),
+                    child: SingleChildScrollView(
+                      child: Column(
+                        children: scheduledTowns.map<Widget>((town) {
+                          return Container(
+                            margin: const EdgeInsets.only(bottom: 8),
+                            padding: const EdgeInsets.all(12),
+                            decoration: BoxDecoration(
+                              color: Colors.orange[50],
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(
+                                color: Colors.orange[200]!,
+                                width: 1,
+                              ),
+                            ),
+                            child: Row(
+                              children: [
+                                Icon(
+                                  Icons.place,
+                                  size: 16,
+                                  color: Colors.orange[700],
+                                ),
+                                const SizedBox(width: 8),
+                                Expanded(
+                                  child: Text(
+                                    town.toString(),
+                                    style: TextStyle(
+                                      fontSize: 14,
+                                      color: Colors.orange[800],
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                ],
+
+                // Pickup Requests Section
+                Row(
+                  children: [
+                    Icon(
+                      Icons.local_shipping,
+                      size: 20,
+                      color: Colors.green[700],
+                    ),
+                    const SizedBox(width: 8),
+                    const Text(
+                      'Pickup Requests',
+                      style: TextStyle(
+                        fontSize: 16,
+                        fontWeight: FontWeight.w600,
+                        color: Colors.black87,
+                      ),
+                    ),
+                  ],
+                ),
+                const SizedBox(height: 12),
+                Container(
+                  padding: const EdgeInsets.all(12),
+                  decoration: BoxDecoration(
+                    color: pickupCount > 0 ? Colors.green[50] : Colors.grey[50],
+                    borderRadius: BorderRadius.circular(8),
+                    border: Border.all(
+                      color: pickupCount > 0
+                          ? Colors.green[200]!
+                          : Colors.grey[200]!,
+                      width: 1,
+                    ),
+                  ),
+                  child: Row(
+                    children: [
+                      Icon(
+                        pickupCount > 0
+                            ? Icons.check_circle
+                            : Icons.info_outline,
+                        size: 16,
+                        color: pickupCount > 0
+                            ? Colors.green[700]
+                            : Colors.grey[600],
+                      ),
+                      const SizedBox(width: 8),
+                      Text(
+                        pickupCount > 0
+                            ? '$pickupCount pickup request${pickupCount > 1 ? 's' : ''} available'
+                            : 'No pickup requests for this date',
+                        style: TextStyle(
+                          fontSize: 14,
+                          color: pickupCount > 0
+                              ? Colors.green[800]
+                              : Colors.grey[700],
+                          fontWeight: FontWeight.w500,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+
+                if (scheduledTowns.isEmpty) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.grey[50],
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.grey[200]!, width: 1),
+                    ),
+                    child: Row(
+                      children: [
+                        Icon(
+                          Icons.info_outline,
+                          size: 16,
+                          color: Colors.grey[600],
+                        ),
+                        const SizedBox(width: 8),
+                        const Expanded(
+                          child: Text(
+                            'No towns scheduled for this date',
+                            style: TextStyle(
+                              fontSize: 14,
+                              color: Colors.grey,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ],
+            ),
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(),
+              child: Text(
+                'Close',
+                style: TextStyle(
+                  color: Colors.grey[600],
+                  fontWeight: FontWeight.w600,
+                ),
+              ),
+            ),
+            if (scheduledTowns.isNotEmpty)
+              ElevatedButton(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  // Navigate to pickup requests for this date
+                  Navigator.pushNamed(
+                    context,
+                    AppRoutes.pickup,
+                    arguments: {
+                      'collectorId': collectorId,
+                      'filterDate': selectedDate,
+                    },
+                  );
+                },
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.green[600],
+                  foregroundColor: Colors.white,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                ),
+                child: const Text(
+                  'View Requests',
+                  style: TextStyle(fontWeight: FontWeight.w600),
+                ),
+              ),
+          ],
+        );
+      },
+    );
+  }
+
+  // Widget _buildWeeklyCalendar(String collectorId) {
+  //   return StreamBuilder<DocumentSnapshot>(
+  //     stream: FirebaseFirestore.instance
+  //         .collection('weekly_schedules')
+  //         .doc(collectorId)
+  //         .snapshots(),
+  //     builder: (context, scheduleSnapshot) {
+  //       return StreamBuilder<QuerySnapshot>(
+  //         stream: FirebaseFirestore.instance
+  //             .collection('pickup_requests')
+  //             .where('collectorId', isEqualTo: collectorId)
+  //             .where(
+  //               'status',
+  //               whereIn: ['pending', 'in_progress', 'pending_confirmation'],
+  //             )
+  //             .snapshots(),
+  //         builder: (context, snapshot) {
+  //           if (scheduleSnapshot.connectionState == ConnectionState.waiting ||
+  //               snapshot.connectionState == ConnectionState.waiting) {
+  //             return const Center(child: CircularProgressIndicator());
+  //           }
+
+  //           // Get collector's schedule from weekly_schedules collection
+  //           final scheduleData =
+  //               scheduleSnapshot.data?.data() as Map<String, dynamic>?;
+  //           final schedule =
+  //               scheduleData?['schedule'] as Map<String, dynamic>? ?? {};
+
+  //           final allRequests = snapshot.data?.docs ?? [];
+  //           final weeklyData = _getWeeklyPickupData(allRequests, schedule);
+
+  //           return Column(
+  //             children: [
+  //               // Dynamic calendar - show scheduled dates in a flexible layout
+  //               if (weeklyData.isNotEmpty) ...[
+  //                 // Header showing the date range
+  //                 Container(
+  //                   padding: const EdgeInsets.symmetric(vertical: 8),
+  //                   child: Text(
+  //                     'Scheduled Dates',
+  //                     style: TextStyle(
+  //                       fontSize: 14,
+  //                       fontWeight: FontWeight.w600,
+  //                       color: Colors.grey.shade700,
+  //                     ),
+  //                     textAlign: TextAlign.center,
+  //                   ),
+  //                 ),
+  //                 // Use Wrap instead of GridView to avoid overflow
+  //                 Wrap(
+  //                   spacing: 8.0,
+  //                   runSpacing: 8.0,
+  //                   alignment: WrapAlignment.spaceEvenly,
+  //                   children: weeklyData.map((dayData) {
+  //                     final isToday = dayData['date'].isAtSameMomentAs(
+  //                       DateTime.now().copyWith(
+  //                         hour: 0,
+  //                         minute: 0,
+  //                         second: 0,
+  //                         millisecond: 0,
+  //                         microsecond: 0,
+  //                       ),
+  //                     );
+
+  //                     // Check if collector has scheduled towns for this date
+  //                     final dateKey = DateFormat(
+  //                       'yyyy-MM-dd',
+  //                     ).format(dayData['date']);
+  //                     final scheduledTowns =
+  //                         schedule[dateKey] as List<dynamic>? ?? [];
+  //                     final hasScheduledTowns = scheduledTowns.isNotEmpty;
+
+  //                     // Only show pickup count for days with scheduled towns
+  //                     final hasPickups =
+  //                         hasScheduledTowns && dayData['count'] > 0;
+
+  //                     return Tooltip(
+  //                       message: hasScheduledTowns
+  //                           ? 'Scheduled towns: ${scheduledTowns.join(', ')}${hasPickups ? '\nPickup requests: ${dayData['count']}' : ''}'
+  //                           : 'No towns scheduled',
+  //                       child: Container(
+  //                         width:
+  //                             80, // Fixed width instead of using aspect ratio
+  //                         padding: const EdgeInsets.symmetric(
+  //                           vertical: 12,
+  //                           horizontal: 8,
+  //                         ),
+  //                         decoration: BoxDecoration(
+  //                           color: isToday
+  //                               ? Colors.blue.shade50
+  //                               : hasScheduledTowns
+  //                               ? Colors.orange.shade50
+  //                               : Colors.grey.shade50,
+  //                           borderRadius: BorderRadius.circular(12),
+  //                           border: Border.all(
+  //                             color: isToday
+  //                                 ? Colors.blue.shade300
+  //                                 : hasScheduledTowns
+  //                                 ? Colors.orange.shade300
+  //                                 : Colors.grey.shade300,
+  //                             width: isToday ? 2 : 1,
+  //                           ),
+  //                         ),
+  //                         child: Column(
+  //                           mainAxisSize: MainAxisSize
+  //                               .min, // Important: let content determine height
+  //                           children: [
+  //                             Text(
+  //                               dayData['dayNumber'].toString(),
+  //                               style: TextStyle(
+  //                                 fontSize: 16,
+  //                                 fontWeight: FontWeight.bold,
+  //                                 color: isToday
+  //                                     ? Colors.blue.shade700
+  //                                     : hasScheduledTowns
+  //                                     ? Colors.orange.shade700
+  //                                     : Colors.grey.shade700,
+  //                               ),
+  //                             ),
+  //                             const SizedBox(height: 2),
+  //                             // Show day name (abbreviated)
+  //                             Text(
+  //                               dayData['dayName'],
+  //                               style: TextStyle(
+  //                                 fontSize: 10,
+  //                                 color: Colors.grey.shade600,
+  //                               ),
+  //                             ),
+  //                             // Show scheduled towns count
+  //                             if (hasScheduledTowns) ...[
+  //                               const SizedBox(height: 4),
+  //                               Container(
+  //                                 padding: const EdgeInsets.symmetric(
+  //                                   horizontal: 4,
+  //                                   vertical: 1,
+  //                                 ),
+  //                                 decoration: BoxDecoration(
+  //                                   color: Colors.orange.shade200,
+  //                                   borderRadius: BorderRadius.circular(8),
+  //                                 ),
+  //                                 child: Row(
+  //                                   mainAxisSize: MainAxisSize.min,
+  //                                   children: [
+  //                                     Icon(
+  //                                       Icons.location_on,
+  //                                       size: 8,
+  //                                       color: Colors.orange.shade800,
+  //                                     ),
+  //                                     const SizedBox(width: 1),
+  //                                     Text(
+  //                                       '${scheduledTowns.length}',
+  //                                       style: const TextStyle(
+  //                                         fontSize: 9,
+  //                                         fontWeight: FontWeight.bold,
+  //                                         color: Color.fromARGB(
+  //                                           255,
+  //                                           70,
+  //                                           65,
+  //                                           62,
+  //                                         ),
+  //                                       ),
+  //                                     ),
+  //                                   ],
+  //                                 ),
+  //                               ),
+  //                             ],
+  //                             // Show pickup request count only for scheduled days
+  //                             if (hasPickups) ...[
+  //                               const SizedBox(height: 2),
+  //                               Container(
+  //                                 padding: const EdgeInsets.symmetric(
+  //                                   horizontal: 4,
+  //                                   vertical: 1,
+  //                                 ),
+  //                                 decoration: BoxDecoration(
+  //                                   color: Colors.green.shade200,
+  //                                   borderRadius: BorderRadius.circular(8),
+  //                                 ),
+  //                                 child: Row(
+  //                                   mainAxisSize: MainAxisSize.min,
+  //                                   children: [
+  //                                     Icon(
+  //                                       Icons.local_shipping,
+  //                                       size: 8,
+  //                                       color: Colors.green.shade800,
+  //                                     ),
+  //                                     const SizedBox(width: 1),
+  //                                     Text(
+  //                                       '${dayData['count']}',
+  //                                       style: TextStyle(
+  //                                         fontSize: 9,
+  //                                         fontWeight: FontWeight.bold,
+  //                                         color: Colors.green.shade800,
+  //                                       ),
+  //                                     ),
+  //                                   ],
+  //                                 ),
+  //                               ),
+  //                             ],
+  //                           ],
+  //                         ),
+  //                       ),
+  //                     );
+  //                   }).toList(),
+  //                 ),
+  //               ],
+  //             ],
+  //           );
+  //         },
+  //       );
+  //     },
+  //   );
+  // }
 
   Widget _buildTodaySummary(String collectorId) {
     return StreamBuilder<QuerySnapshot>(
@@ -636,7 +1174,12 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           .where('collectorId', isEqualTo: collectorId)
           .where(
             'status',
-            whereIn: ['pending_confirmation', 'confirmed', 'completed'],
+            whereIn: [
+              'pending_confirmation',
+              'in_progress',
+              // 'accepted',
+              'completed',
+            ],
           )
           .snapshots(),
       builder: (context, snapshot) {
@@ -664,7 +1207,9 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           final data = doc.data() as Map<String, dynamic>?;
           if (data != null) {
             final status = data['status'] as String?;
-            if (status == 'pending_confirmation') {
+            if (status == 'pending_confirmation' ||
+                status == 'in_progress' ||
+                status == 'accepted') {
               pendingCount++;
             } else if (status == 'completed') {
               completedCount++;
@@ -711,7 +1256,9 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
 
             if (isRelevantForToday) {
               // print('DEBUG: Request is relevant for today, status: $status');
-              if (status == 'pending') {
+              if (status == 'pending_confirmation' ||
+                  status == 'in_progress' ||
+                  status == 'accepted') {
                 pendingCount++;
               } else if (status == 'completed') {
                 completedCount++;
@@ -779,35 +1326,45 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
 
   List<Map<String, dynamic>> _getWeeklyPickupData(
     List<QueryDocumentSnapshot> requests,
+    Map<String, dynamic> schedule,
   ) {
     final List<Map<String, dynamic>> weeklyData = [];
     final now = DateTime.now();
+    final today = DateTime(now.year, now.month, now.day);
 
-    // Add null safety check
-    if (requests.isEmpty) {
-      // Return empty weekly data if no requests
-      for (int i = -3; i <= 3; i++) {
-        final date = now.add(Duration(days: i));
-        final startOfDay = date.copyWith(
-          hour: 0,
-          minute: 0,
-          second: 0,
-          millisecond: 0,
-          microsecond: 0,
-        );
+    // Get all scheduled dates from the collector's schedule
+    final scheduledDates = <DateTime>{};
 
-        weeklyData.add({
-          'date': startOfDay,
-          'dayName': DateFormat('E').format(date),
-          'dayNumber': date.day,
-          'count': 0,
-        });
+    // Add today to always show current day
+    scheduledDates.add(today);
+
+    // Add only current and future dates from the schedule
+    for (final entry in schedule.entries) {
+      final dateKey = entry.key;
+      final towns = entry.value as List<dynamic>?;
+
+      if (towns != null && towns.isNotEmpty) {
+        try {
+          final date = DateFormat('yyyy-MM-dd').parse(dateKey);
+          final scheduleDate = DateTime(date.year, date.month, date.day);
+
+          // Only add dates that are today or in the future
+          if (scheduleDate.isAfter(today) ||
+              scheduleDate.isAtSameMomentAs(today)) {
+            scheduledDates.add(scheduleDate);
+          }
+        } catch (e) {
+          // Skip invalid date formats
+          continue;
+        }
       }
-      return weeklyData;
     }
 
-    for (int i = -3; i <= 3; i++) {
-      final date = now.add(Duration(days: i));
+    // Sort dates chronologically
+    final sortedDates = scheduledDates.toList()..sort();
+
+    // Generate calendar data only for scheduled dates
+    for (final date in sortedDates) {
       final startOfDay = date.copyWith(
         hour: 0,
         minute: 0,
@@ -965,34 +1522,29 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
             final data = doc.data() as Map<String, dynamic>;
             final totalAmount = (data['totalAmount'] ?? 0.0).toDouble();
             final status = data['status'] ?? '';
-            final createdAt = data['createdAt'] as Timestamp?;
             final userConfirmedAt = data['userConfirmedAt'] as Timestamp?;
 
-            if (createdAt != null) {
-              final createdDate = createdAt.toDate();
+            // For completed requests, check when they were actually completed
+            DateTime? completionDate;
+            if (status == 'completed' && userConfirmedAt != null) {
+              completionDate = userConfirmedAt.toDate();
+            }
 
-              // For completed requests, check when they were actually completed
-              DateTime? completionDate;
-              if (status == 'completed' && userConfirmedAt != null) {
-                completionDate = userConfirmedAt.toDate();
-              }
+            // Total earnings (all completed requests)
+            if (status == 'completed') {
+              totalEarnings += totalAmount;
+            } else if (status == 'pending' || status == 'in_progress') {
+              pendingAmount += totalAmount;
+            } else if (status == 'pending_confirmation') {
+              pendingConfirmationAmount += totalAmount;
+            }
 
-              // Total earnings (all completed requests)
-              if (status == 'completed') {
-                totalEarnings += totalAmount;
-              } else if (status == 'pending' || status == 'in_progress') {
-                pendingAmount += totalAmount;
-              } else if (status == 'pending_confirmation') {
-                pendingConfirmationAmount += totalAmount;
-              }
-
-              // This month's earnings (from requests completed this month)
-              if (status == 'completed' &&
-                  completionDate != null &&
-                  completionDate.month == now.month &&
-                  completionDate.year == now.year) {
-                monthEarnings += totalAmount;
-              }
+            // This month's earnings (from requests completed this month)
+            if (status == 'completed' &&
+                completionDate != null &&
+                completionDate.month == now.month &&
+                completionDate.year == now.year) {
+              monthEarnings += totalAmount;
             }
           }
 
@@ -1139,6 +1691,20 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           },
         ),
         _buildQuickActionItem(
+          title: 'Schedule Pickup',
+          icon: Icons.schedule,
+          color: Colors.orange,
+          onTap: () {
+            Navigator.pushNamed(
+              context,
+              AppRoutes.weeklyScheduling,
+              arguments: {
+                'collectorId': FirebaseAuth.instance.currentUser?.uid,
+              },
+            );
+          },
+        ),
+        _buildQuickActionItem(
           title: 'EcoMarket',
           icon: Icons.history,
           color: Colors.purple,
@@ -1147,15 +1713,15 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
             Navigator.pushNamed(context, AppRoutes.markethomescreen);
           },
         ),
-        _buildQuickActionItem(
-          title: 'Settings',
-          icon: Icons.settings,
-          color: Colors.grey,
-          onTap: () {
-            Navigator.pushNamed(context, AppRoutes.collectorProfile);
-            // Navigate to settings
-          },
-        ),
+        // _buildQuickActionItem(
+        //   title: 'Settings',
+        //   icon: Icons.settings,
+        //   color: Colors.grey,
+        //   onTap: () {
+        //     Navigator.pushNamed(context, AppRoutes.collectorProfile);
+        //     // Navigate to settings
+        //   },
+        // ),
       ],
     );
   }
@@ -1187,7 +1753,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
             Container(
               padding: const EdgeInsets.all(8),
               decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.1),
+                color: color.withAlpha((0.1 * 255).toInt()),
                 borderRadius: BorderRadius.circular(8),
               ),
               child: Icon(icon, color: color, size: 20),
@@ -1260,7 +1826,7 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                   Container(
                     padding: const EdgeInsets.all(8),
                     decoration: BoxDecoration(
-                      color: Colors.green.withValues(alpha: 0.1),
+                      color: Colors.green.withAlpha((0.1 * 255).toInt()),
                       borderRadius: BorderRadius.circular(8),
                     ),
                     child: const Icon(
@@ -1284,13 +1850,6 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
                               ),
                             ),
 
-                            // Text(
-                            //   '#${recentPickups[index].id}',
-                            //   style: const TextStyle(
-                            //     fontWeight: FontWeight.bold,
-                            //     color: Colors.black87,
-                            //   ),
-                            // ),
                             const Spacer(),
                             Column(
                               crossAxisAlignment: CrossAxisAlignment.end,

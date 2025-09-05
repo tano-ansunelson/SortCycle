@@ -26,8 +26,8 @@ class UserCollectorTrackingScreen extends StatefulWidget {
 class _UserCollectorTrackingScreenState
     extends State<UserCollectorTrackingScreen> {
   late GoogleMapController _mapController;
-  Set<Marker> _markers = {};
-  Set<Polyline> _polylines = {};
+  final Set<Marker> _markers = {};
+  final Set<Polyline> _polylines = {};
   LatLng? _userLocation;
   LatLng? _collectorLocation;
   bool _isLoading = true;

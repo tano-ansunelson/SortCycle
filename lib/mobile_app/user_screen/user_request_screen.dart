@@ -531,6 +531,101 @@ class _RequestCardState extends State<RequestCard>
 
                 const SizedBox(height: 20),
 
+                // Proof of Service Section (if available)
+                if (widget.requestData['proofImageUrl'] != null &&
+                    status == 'pending_confirmation') ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(
+                              Icons.verified,
+                              color: Colors.green[600],
+                              size: 16,
+                            ),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Proof of Service Provided',
+                              style: TextStyle(
+                                color: Colors.green[700],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => _showProofImage(
+                            widget.requestData['proofImageUrl'],
+                          ),
+                          child: Container(
+                            height: 120,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green.shade300),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                widget.requestData['proofImageUrl'],
+                                fit: BoxFit.cover,
+                                loadingBuilder:
+                                    (context, child, loadingProgress) {
+                                      if (loadingProgress == null) return child;
+                                      return Container(
+                                        color: Colors.grey.shade200,
+                                        child: const Center(
+                                          child: CircularProgressIndicator(),
+                                        ),
+                                      );
+                                    },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: Column(
+                                        mainAxisAlignment:
+                                            MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.error, color: Colors.red),
+                                          SizedBox(height: 4),
+                                          Text('Failed to load'),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                        const SizedBox(height: 8),
+                        Text(
+                          'Tap image to view full size. Please confirm completion to release payment.',
+                          style: TextStyle(
+                            color: Colors.green[600],
+                            fontSize: 12,
+                            fontStyle: FontStyle.italic,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                const SizedBox(height: 20),
+
                 // Action Buttons
                 Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
@@ -556,6 +651,26 @@ class _RequestCardState extends State<RequestCard>
                       const Spacer(),
 
                     if (status == 'pending') const SizedBox(width: 12),
+
+                    // Confirm Completion button (only when proof is provided and status is pending_confirmation)
+                    if (status == 'pending_confirmation' &&
+                        widget.requestData['proofImageUrl'] != null)
+                      Expanded(
+                        child: ElevatedButton.icon(
+                          onPressed: () => _confirmCompletion(),
+                          icon: const Icon(Icons.check_circle, size: 18),
+                          label: const Text('Confirm'),
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: Colors.green.shade600,
+                            foregroundColor: Colors.white,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            padding: const EdgeInsets.symmetric(vertical: 12),
+                            elevation: 2,
+                          ),
+                        ),
+                      ),
 
                     // View Details button
                     Expanded(
@@ -638,6 +753,18 @@ class _RequestCardState extends State<RequestCard>
         textColor = Colors.blue.shade800;
         icon = Icons.check_circle_outline_rounded;
         gradientColors = [Colors.blue.shade100, Colors.blue.shade50];
+        break;
+      case 'in_progress':
+        backgroundColor = Colors.purple.shade100;
+        textColor = Colors.purple.shade800;
+        icon = Icons.local_shipping_rounded;
+        gradientColors = [Colors.purple.shade100, Colors.purple.shade50];
+        break;
+      case 'pending_confirmation':
+        backgroundColor = Colors.amber.shade100;
+        textColor = Colors.amber.shade800;
+        icon = Icons.verified_user_rounded;
+        gradientColors = [Colors.amber.shade100, Colors.amber.shade50];
         break;
       case 'completed':
         backgroundColor = Colors.green.shade100;
@@ -876,6 +1003,225 @@ class _RequestCardState extends State<RequestCard>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Future<void> _confirmCompletion() async {
+    try {
+      // Show confirmation dialog
+      bool? shouldConfirm = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.check_circle, color: Colors.green.shade600),
+              const SizedBox(width: 8),
+              const Text('Confirm Completion'),
+            ],
+          ),
+          content: const Text(
+            'Are you satisfied with the service provided? Confirming will release payment to the collector and mark this request as completed.',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Not Yet',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.green.shade600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Yes, Confirm'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldConfirm == true) {
+        // Update the request status to completed
+        await FirebaseFirestore.instance
+            .collection('pickup_requests')
+            .doc(widget.requestId)
+            .update({
+              'status': 'completed',
+              'userConfirmedAt': FieldValue.serverTimestamp(),
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+
+        // Create notification for the collector
+        try {
+          final collectorId = widget.requestData['collectorId'];
+          final collectorName = widget.requestData['collectorName'];
+
+          if (collectorId != null) {
+            await FirebaseFirestore.instance.collection('notifications').add({
+              'userId': collectorId,
+              'type': 'pickup_confirmed',
+              'title': '✅ Pickup Confirmed',
+              'message':
+                  '${widget.requestData['userName']} has confirmed the pickup completion. Payment has been released.',
+              'data': {
+                'requestId': widget.requestId,
+                'userName': widget.requestData['userName'],
+                'userTown': widget.requestData['userTown'],
+                'totalAmount': widget.requestData['totalAmount'],
+                'status': 'completed',
+              },
+              'isRead': false,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+          }
+        } catch (e) {
+          print('Error creating confirmation notification: $e');
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.check_circle, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Pickup confirmed successfully!'),
+                ],
+              ),
+              backgroundColor: Colors.green.shade600,
+              behavior: SnackBarBehavior.floating,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Row(
+              children: [
+                const Icon(Icons.error, color: Colors.white),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text('Failed to confirm completion: ${e.toString()}'),
+                ),
+              ],
+            ),
+            backgroundColor: Colors.red.shade600,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+          ),
+        );
+      }
+    }
+  }
+
+  void _showProofImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+            maxWidth: MediaQuery.of(context).size.width * 0.9,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.verified, color: Colors.green[600]),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Proof of Service',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              // Image
+              Flexible(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 200,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 200,
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error, size: 48, color: Colors.red),
+                                SizedBox(height: 8),
+                                Text('Failed to load image'),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

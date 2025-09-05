@@ -29,12 +29,36 @@ exports.notifyAssignedCollectorOnPickup = functions.firestore
       return null;
     }
 
+    // Check if this is an emergency pickup
+    const isEmergency = data.isEmergency === true;
+    
     const message = {
       notification: {
-        title: "📦 New Pickup Assigned",
-        body: `You have a new pickup request from ${data.userName} in ${data.userTown}.`,
+        title: isEmergency ? "🚨 EMERGENCY Pickup Assigned" : "📦 New Pickup Assigned",
+        body: isEmergency 
+          ? `🚨 EMERGENCY: ${data.userName} needs urgent pickup in ${data.userTown}!`
+          : `You have a new pickup request from ${data.userName} in ${data.userTown}.`,
       },
       token: fcmToken,
+      android: {
+        priority: isEmergency ? "high" : "normal",
+        notification: {
+          priority: isEmergency ? "high" : "normal",
+          sound: isEmergency ? "default" : "default",
+          channelId: isEmergency ? "emergency_channel" : "default_channel",
+        },
+      },
+      apns: {
+        headers: {
+          "apns-priority": isEmergency ? "10" : "5",
+        },
+        payload: {
+          aps: {
+            sound: isEmergency ? "default" : "default",
+            badge: 1,
+          },
+        },
+      },
     };
 
     await admin.messaging().send(message);

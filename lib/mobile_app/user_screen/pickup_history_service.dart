@@ -2,6 +2,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter_application_1/mobile_app/chat_page/chat_page.dart';
+import 'package:flutter_application_1/mobile_app/widgets/rating_dialog.dart';
 import 'package:intl/intl.dart';
 
 class PickupHistoryScreen extends StatefulWidget {
@@ -523,6 +524,87 @@ class _HistoryCardState extends State<HistoryCard>
                     },
                   ),
 
+                // Proof of Service Section
+                if (widget.requestData['proofImageUrl'] != null) ...[
+                  const SizedBox(height: 16),
+                  Container(
+                    padding: const EdgeInsets.all(12),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(12),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Row(
+                          children: [
+                            Icon(Icons.verified, color: Colors.green[600], size: 16),
+                            const SizedBox(width: 8),
+                            Text(
+                              'Proof of Service Provided',
+                              style: TextStyle(
+                                color: Colors.green[700],
+                                fontWeight: FontWeight.bold,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                        const SizedBox(height: 8),
+                        GestureDetector(
+                          onTap: () => _showProofImage(widget.requestData['proofImageUrl']),
+                          child: Container(
+                            height: 120,
+                            width: double.infinity,
+                            decoration: BoxDecoration(
+                              borderRadius: BorderRadius.circular(8),
+                              border: Border.all(color: Colors.green.shade300),
+                            ),
+                            child: ClipRRect(
+                              borderRadius: BorderRadius.circular(8),
+                              child: Image.network(
+                                widget.requestData['proofImageUrl'],
+                                fit: BoxFit.cover,
+                                loadingBuilder: (context, child, loadingProgress) {
+                                  if (loadingProgress == null) return child;
+                                  return Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: CircularProgressIndicator(),
+                                    ),
+                                  );
+                                },
+                                errorBuilder: (context, error, stackTrace) {
+                                  return Container(
+                                    color: Colors.grey.shade200,
+                                    child: const Center(
+                                      child: Column(
+                                        mainAxisAlignment: MainAxisAlignment.center,
+                                        children: [
+                                          Icon(Icons.error, color: Colors.red),
+                                          SizedBox(height: 4),
+                                          Text('Failed to load'),
+                                        ],
+                                      ),
+                                    ),
+                                  );
+                                },
+                              ),
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+
+                // Rating Section
+                if (collectorId != null && widget.requestData['proofImageUrl'] != null) ...[
+                  const SizedBox(height: 16),
+                  _buildRatingSection(),
+                ],
+
                 const SizedBox(height: 20),
 
                 // Action Buttons
@@ -820,6 +902,191 @@ class _HistoryCardState extends State<HistoryCard>
             ),
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _buildRatingSection() {
+    return FutureBuilder<bool>(
+      future: _checkIfRated(),
+      builder: (context, snapshot) {
+        if (snapshot.connectionState == ConnectionState.waiting) {
+          return const Center(child: CircularProgressIndicator());
+        }
+
+        final isRated = snapshot.data ?? false;
+
+        if (isRated) {
+          return Container(
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.amber.shade50,
+              borderRadius: BorderRadius.circular(12),
+              border: Border.all(color: Colors.amber.shade200),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.star, color: Colors.amber[600], size: 16),
+                const SizedBox(width: 8),
+                Text(
+                  'Thank you for your rating!',
+                  style: TextStyle(
+                    color: Colors.amber[700],
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+              ],
+            ),
+          );
+        }
+
+        return Container(
+          width: double.infinity,
+          child: ElevatedButton.icon(
+            onPressed: _showRatingDialog,
+            icon: const Icon(Icons.star, size: 18),
+            label: const Text('Rate Collector'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.amber.shade600,
+              foregroundColor: Colors.white,
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(8),
+              ),
+            ),
+          ),
+        );
+      },
+    );
+  }
+
+  Future<bool> _checkIfRated() async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('pickup_requests')
+          .doc(widget.requestId)
+          .get();
+      
+      if (doc.exists) {
+        final data = doc.data()!;
+        return data['isRated'] == true;
+      }
+      return false;
+    } catch (e) {
+      print('Error checking rating status: $e');
+      return false;
+    }
+  }
+
+  void _showRatingDialog() async {
+    final result = await showDialog<bool>(
+      context: context,
+      builder: (context) => RatingDialog(
+        requestId: widget.requestId,
+        collectorId: widget.requestData['collectorId'] ?? '',
+        collectorName: widget.requestData['collectorName'] ?? 'Unknown Collector',
+      ),
+    );
+
+    if (result == true) {
+      setState(() {
+        // Trigger rebuild to show rated state
+      });
+    }
+  }
+
+  void _showProofImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+            maxWidth: MediaQuery.of(context).size.width * 0.9,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.verified, color: Colors.green[600]),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Proof of Service',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              // Image
+              Flexible(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 200,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 200,
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error, size: 48, color: Colors.red),
+                                SizedBox(height: 8),
+                                Text('Failed to load image'),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

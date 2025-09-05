@@ -14,6 +14,7 @@ import 'package:flutter_application_1/mobile_app/waste_collector/pending_summary
 import 'package:flutter_application_1/mobile_app/waste_collector/pickup.dart';
 import 'package:flutter_application_1/mobile_app/waste_collector/profile_screen.dart';
 import 'package:flutter_application_1/mobile_app/waste_collector/notification_page.dart';
+import 'package:flutter_application_1/mobile_app/waste_collector/analytics_dashboard.dart';
 
 //import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
@@ -1705,12 +1706,16 @@ class _CollectorHomePageState extends State<CollectorHomePage> {
           },
         ),
         _buildQuickActionItem(
-          title: 'EcoMarket',
-          icon: Icons.history,
+          title: 'Analytics',
+          icon: Icons.analytics,
           color: Colors.purple,
           onTap: () {
-            // _buildIncomingRequestsTab(),
-            Navigator.pushNamed(context, AppRoutes.markethomescreen);
+            Navigator.push(
+              context,
+              MaterialPageRoute(
+                builder: (context) => const AnalyticsDashboard(),
+              ),
+            );
           },
         ),
         // _buildQuickActionItem(

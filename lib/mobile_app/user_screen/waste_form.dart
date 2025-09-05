@@ -4,6 +4,7 @@ import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+// ignore: unused_import
 import 'package:flutter_application_1/mobile_app/user_screen/user_request_screen.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart' show DateFormat;
@@ -34,10 +35,10 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   bool _isLocationLoading = false;
   String _locationStatus = "Location not set";
 
-  // Date and time variables
-  bool _isPickupToday = true; // New: Track if pickup is today or scheduled
-  DateTime? _selectedDate;
-  TimeOfDay? _selectedTime;
+  // // Date and time variables
+  // bool _isPickupToday = true; // New: Track if pickup is today or scheduled
+  // DateTime? _selectedDate;
+  // TimeOfDay? _selectedTime;
 
   final Set<String> _selectedCategories = <String>{};
 
@@ -55,6 +56,10 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   bool _isPaymentCompleted = false;
   static const double _pricePerBin = 20.0; // GH₵20 per bin
   static const int _maxBinCount = 10; // Maximum number of bins allowed
+
+  // Emergency pickup variables
+  bool _isEmergencyPickup = false;
+  static const double _emergencyMultiplier = 1.5; // 50% extra for emergency
 
   @override
   void initState() {
@@ -459,7 +464,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         return null;
       }
 
-      final scheduleData = scheduleDoc.data() as Map<String, dynamic>?;
+      final scheduleData = scheduleDoc.data();
       final schedule = scheduleData?['schedule'] as Map<String, dynamic>? ?? {};
 
       List<DateTime> availableDates = [];
@@ -531,6 +536,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   }
 
   // Fetch collector's schedule for a specific town (legacy method for backward compatibility)
+  // ignore: unused_element
   Future<List<DateTime>> _fetchCollectorSchedule(
     String collectorId,
     String userTown,
@@ -545,7 +551,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         return [];
       }
 
-      final scheduleData = scheduleDoc.data() as Map<String, dynamic>?;
+      final scheduleData = scheduleDoc.data();
       final schedule = scheduleData?['schedule'] as Map<String, dynamic>? ?? {};
 
       List<DateTime> availableDates = [];
@@ -610,7 +616,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   void _onScheduleDateSelected(DateTime date) {
     setState(() {
       _selectedScheduleDate = date;
-      _selectedDate = date; // Update the main selected date
+      // _selectedDate = date; // Update the main selected date
     });
   }
 
@@ -728,10 +734,18 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
             // Payment and bin information
             'binCount': _selectedBinCount,
             'pricePerBin': _pricePerBin,
-            'totalAmount': _selectedBinCount * _pricePerBin,
+            'totalAmount':
+                _selectedBinCount *
+                _pricePerBin *
+                (_isEmergencyPickup ? _emergencyMultiplier : 1.0),
             'paymentStatus': 'paid',
             'paymentHeld': true, // Payment is held until completion
             'paymentReleased': false, // Payment not yet released to collector
+            // Emergency pickup information
+            'isEmergency': _isEmergencyPickup,
+            'emergencyMultiplier': _isEmergencyPickup
+                ? _emergencyMultiplier
+                : 1.0,
           });
 
       // Create notification for the collector if one is selected
@@ -739,10 +753,15 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         try {
           await FirebaseFirestore.instance.collection('notifications').add({
             'userId': collectorId,
-            'type': 'new_pickup_request',
-            'title': '🗑️ New Pickup Request',
-            'message':
-                '${userName} has requested a pickup in ${_townController.text.trim()}',
+            'type': _isEmergencyPickup
+                ? 'emergency_pickup_request'
+                : 'new_pickup_request',
+            'title': _isEmergencyPickup
+                ? '🚨 Emergency Pickup Request'
+                : '🗑️ New Pickup Request',
+            'message': _isEmergencyPickup
+                ? '🚨 EMERGENCY: ${userName} has requested an urgent pickup in ${_townController.text.trim()}'
+                : '${userName} has requested a pickup in ${_townController.text.trim()}',
             'data': {
               'pickupRequestId': pickupRequestRef.id,
               'userId': widget.userId,
@@ -751,6 +770,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
               'userTown': _townController.text.trim(),
               'pickupDate': Timestamp.fromDate(pickupDateTime),
               'status': 'pending',
+              'isEmergency': _isEmergencyPickup,
             },
             'isRead': false,
             'createdAt': FieldValue.serverTimestamp(),
@@ -1066,6 +1086,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
       _selectedScheduleDate = null; // Reset scheduled date
       // Reset payment variables
       _selectedBinCount = 1;
+      _isEmergencyPickup = false;
     });
   }
 
@@ -1162,6 +1183,13 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                           //   delay: 500,
                           //   child: _buildScheduleSection(),
                           // ),
+
+                          // NEW: Emergency Pickup Card
+                          _buildAnimatedCard(
+                            delay: 250,
+                            child: _buildEmergencyPickupSection(),
+                          ),
+                          const SizedBox(height: 16),
 
                           // NEW: Bin Selection and Payment Card
                           _buildAnimatedCard(
@@ -1643,6 +1671,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   //   );
   // }
 
+  // ignore: unused_element
   Widget _buildScheduleButton({
     required IconData icon,
     required String label,
@@ -2257,8 +2286,186 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
     );
   }
 
+  Widget _buildEmergencyPickupSection() {
+    return Container(
+      padding: const EdgeInsets.all(24),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(12),
+                decoration: BoxDecoration(
+                  color: Colors.red.shade50,
+                  borderRadius: BorderRadius.circular(12),
+                ),
+                child: Icon(
+                  Icons.emergency,
+                  color: Colors.red.shade600,
+                  size: 24,
+                ),
+              ),
+              const SizedBox(width: 16),
+              const Text(
+                'Emergency Pickup',
+                style: TextStyle(
+                  fontSize: 22,
+                  fontWeight: FontWeight.bold,
+                  color: Color(0xFF2E2E2E),
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 16),
+
+          // Emergency Toggle
+          GestureDetector(
+            onTap: () {
+              HapticFeedback.lightImpact();
+              setState(() {
+                _isEmergencyPickup = !_isEmergencyPickup;
+              });
+            },
+            child: Container(
+              padding: const EdgeInsets.all(20),
+              decoration: BoxDecoration(
+                color: _isEmergencyPickup
+                    ? Colors.red.shade50
+                    : Colors.grey.shade50,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(
+                  color: _isEmergencyPickup
+                      ? Colors.red.shade600
+                      : Colors.grey.shade300,
+                  width: _isEmergencyPickup ? 2 : 1,
+                ),
+              ),
+              child: Row(
+                children: [
+                  Container(
+                    width: 24,
+                    height: 24,
+                    decoration: BoxDecoration(
+                      color: _isEmergencyPickup
+                          ? Colors.red.shade600
+                          : Colors.transparent,
+                      border: Border.all(
+                        color: _isEmergencyPickup
+                            ? Colors.red.shade600
+                            : Colors.grey.shade400,
+                        width: 2,
+                      ),
+                      borderRadius: BorderRadius.circular(4),
+                    ),
+                    child: _isEmergencyPickup
+                        ? const Icon(Icons.check, color: Colors.white, size: 16)
+                        : null,
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Mark as Emergency Pickup',
+                          style: TextStyle(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w600,
+                            color: _isEmergencyPickup
+                                ? Colors.red.shade700
+                                : Colors.grey.shade700,
+                          ),
+                        ),
+                        const SizedBox(height: 4),
+                        Text(
+                          'Priority handling with 50% extra charge (GH₵${(_pricePerBin * _emergencyMultiplier).toStringAsFixed(0)} per bin)',
+                          style: TextStyle(
+                            fontSize: 14,
+                            color: _isEmergencyPickup
+                                ? Colors.red.shade600
+                                : Colors.grey.shade600,
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                  if (_isEmergencyPickup)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 4,
+                      ),
+                      decoration: BoxDecoration(
+                        color: Colors.red.shade600,
+                        borderRadius: BorderRadius.circular(12),
+                      ),
+                      child: const Text(
+                        'EMERGENCY',
+                        style: TextStyle(
+                          color: Colors.white,
+                          fontSize: 12,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                ],
+              ),
+            ),
+          ),
+
+          if (_isEmergencyPickup) ...[
+            const SizedBox(height: 16),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: Colors.orange.shade50,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(color: Colors.orange.shade200),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.info_outline,
+                    color: Colors.orange.shade700,
+                    size: 20,
+                  ),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: Text(
+                      'Emergency pickups are prioritized and will be handled as soon as possible. Additional charges apply.',
+                      style: TextStyle(
+                        fontSize: 14,
+                        color: Colors.orange.shade700,
+                        fontWeight: FontWeight.w500,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
   Widget _buildBinSelectionAndPaymentSection() {
-    final totalCost = _selectedBinCount * _pricePerBin;
+    final totalCost =
+        _selectedBinCount *
+        _pricePerBin *
+        (_isEmergencyPickup ? _emergencyMultiplier : 1.0);
 
     return Container(
       padding: const EdgeInsets.all(24),
@@ -2447,14 +2654,14 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      'Rate: GH₵${_pricePerBin.toStringAsFixed(2)} per bin',
+                      'Rate: GH₵${(_pricePerBin * (_isEmergencyPickup ? _emergencyMultiplier : 1.0)).toStringAsFixed(2)} per bin${_isEmergencyPickup ? ' (Emergency)' : ''}',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade500,
                       ),
                     ),
                     Text(
-                      '${_selectedBinCount} × GH₵${_pricePerBin.toStringAsFixed(2)}',
+                      '${_selectedBinCount} × GH₵${(_pricePerBin * (_isEmergencyPickup ? _emergencyMultiplier : 1.0)).toStringAsFixed(2)}',
                       style: TextStyle(
                         fontSize: 12,
                         color: Colors.grey.shade500,
@@ -2471,7 +2678,10 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
   }
 
   Widget _buildSubmitButton() {
-    final totalCost = _selectedBinCount * _pricePerBin;
+    final totalCost =
+        _selectedBinCount *
+        _pricePerBin *
+        (_isEmergencyPickup ? _emergencyMultiplier : 1.0);
 
     return Container(
       width: double.infinity,
@@ -2518,7 +2728,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
             ),
             const SizedBox(height: 4),
             Text(
-              'Pay GH₵${totalCost.toStringAsFixed(2)} • ${_selectedBinCount} bin${_selectedBinCount > 1 ? 's' : ''}',
+              'Pay GH₵${totalCost.toStringAsFixed(2)} • ${_selectedBinCount} bin${_selectedBinCount > 1 ? 's' : ''}${_isEmergencyPickup ? ' • EMERGENCY' : ''}',
               style: const TextStyle(
                 fontSize: 14,
                 color: Colors.white,

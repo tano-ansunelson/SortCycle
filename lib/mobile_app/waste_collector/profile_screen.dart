@@ -3,8 +3,11 @@ import 'package:flutter/material.dart';
 import 'package:flutter_application_1/mobile_app/provider/provider.dart';
 import 'package:flutter_application_1/mobile_app/routes/app_route.dart';
 import 'package:flutter_application_1/mobile_app/waste_collector/pending_summary.dart';
+import 'package:flutter_application_1/mobile_app/widgets/profile_picture_widget.dart';
+import 'package:flutter_application_1/mobile_app/widgets/profile_picture_picker_dialog.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 //import 'package:logger/web.dart';
 
 class CollectorProfileScreen extends StatefulWidget {
@@ -16,16 +19,23 @@ class CollectorProfileScreen extends StatefulWidget {
 
 class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
   final log = Logger();
+  String? _profilePictureUrl;
 
   @override
   void initState() {
     super.initState();
-    Future.microtask(
-      () => Provider.of<CollectorProvider>(
+    Future.microtask(() async {
+      await Provider.of<CollectorProvider>(
         context,
         listen: false,
-      ).fetchCollectorData(),
-    );
+      ).fetchCollectorData();
+      
+      // Load profile picture
+      final collectorId = FirebaseAuth.instance.currentUser?.uid;
+      if (collectorId != null) {
+        await _loadProfilePicture(collectorId);
+      }
+    });
   }
 
   @override
@@ -83,42 +93,15 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
                       // Profile Picture and Info
                       Row(
                         children: [
-                          Stack(
-                            children: [
-                              Container(
-                                width: 80,
-                                height: 80,
-                                decoration: BoxDecoration(
-                                  color: Colors.green[400],
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.person,
-                                  size: 40,
-                                  color: Colors.white,
-                                ),
-                              ),
-                              Positioned(
-                                bottom: 0,
-                                right: 0,
-                                child: Container(
-                                  decoration: const BoxDecoration(
-                                    color: Colors.white,
-                                    shape: BoxShape.circle,
-                                  ),
-                                  child: IconButton(
-                                    onPressed: () {},
-                                    icon: const Icon(
-                                      Icons.camera_alt,
-                                      size: 16,
-                                      color: Colors.green,
-                                    ),
-                                    iconSize: 16,
-                                    padding: const EdgeInsets.all(4),
-                                  ),
-                                ),
-                              ),
-                            ],
+                          ProfilePictureWidget(
+                            profilePictureUrl: _profilePictureUrl,
+                            userType: 'collector',
+                            size: 80,
+                            showEditButton: true,
+                            isOnline: true,
+                            borderColor: Colors.white,
+                            borderWidth: 2,
+                            onEditPressed: () => _showProfilePicturePicker(collectorId),
                           ),
                           const SizedBox(width: 16),
                           Expanded(
@@ -509,5 +492,39 @@ class _CollectorProfileScreenState extends State<CollectorProfileScreen> {
       }
       log.e('Logout error: $e'); // For debugging
     }
+  }
+
+  Future<void> _loadProfilePicture(String collectorId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('collectors')
+          .doc(collectorId)
+          .get();
+      
+      if (doc.exists && mounted) {
+        final data = doc.data()!;
+        setState(() {
+          _profilePictureUrl = data['profilePictureUrl'];
+        });
+      }
+    } catch (e) {
+      print('Error loading profile picture: $e');
+    }
+  }
+
+  void _showProfilePicturePicker(String collectorId) {
+    showDialog(
+      context: context,
+      builder: (context) => ProfilePicturePickerDialog(
+        userId: collectorId,
+        userType: 'collector',
+        currentProfilePictureUrl: _profilePictureUrl,
+        onProfilePictureUpdated: (result) {
+          if (result == 'updated') {
+            _loadProfilePicture(collectorId);
+          }
+        },
+      ),
+    );
   }
 }

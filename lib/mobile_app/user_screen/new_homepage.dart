@@ -614,13 +614,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
               [const Color(0xFF7B1FA2), const Color(0xFF9C27B0)],
               AppRoutes.pickuphistory,
             ),
-            _buildActionCard(
-              'EcoMarket',
-              'explore eco-friendly products',
-              Icons.shopping_bag_outlined,
-              [const Color(0xFFFF8F00), const Color(0xFFFFC107)],
-              AppRoutes.markethomescreen,
-            ),
+            // _buildActionCard(
+            //   'EcoMarket',
+            //   'explore eco-friendly products',
+            //   Icons.shopping_bag_outlined,
+            //   [const Color(0xFFFF8F00), const Color(0xFFFFC107)],
+            //   AppRoutes.markethomescreen,
+            // ),
           ],
         ),
       ],
@@ -752,7 +752,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 .where('status', isEqualTo: 'completed')
                 .where('userId', isEqualTo: currentUserId)
                 .orderBy('updatedAt', descending: true) // Use updatedAt to sort
-                .limit(3)
+                .limit(4)
                 .snapshots(),
             builder: (context, snapshot) {
               if (snapshot.hasError) {

@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:intl/intl.dart';
+import 'package:logger/logger.dart';
 import 'package:multi_select_flutter/multi_select_flutter.dart';
 
 class WeeklySchedulingPage extends StatefulWidget {
@@ -17,15 +18,15 @@ class WeeklySchedulingPage extends StatefulWidget {
       'Accra',
       'Tema',
       'Kumasi',
-      'Cape Coast',
+      'Deduako',
       'Takoradi',
       'Tamale',
       'Koforidua',
-      'Ho',
+      'Bomso',
       'Sunyani',
       'Bolgatanga',
-      'Wa',
-      'Kasoa',
+      'Ayeduase',
+      'Kotei',
       'Madina',
       'Ashaiman',
     ],
@@ -43,6 +44,7 @@ class _WeeklySchedulingPageState extends State<WeeklySchedulingPage>
 
   late AnimationController _slideController;
   late Animation<Offset> _slideAnimation;
+  final log = Logger();
 
   @override
   void initState() {
@@ -153,7 +155,7 @@ class _WeeklySchedulingPageState extends State<WeeklySchedulingPage>
         'schedule': currentSchedule,
       }, SetOptions(merge: true));
     } catch (e) {
-      print('Error updating schedule: $e');
+      log.i('Error updating schedule: $e');
       // Fallback to the original method if there's an error
       await _collectorDoc.set({
         'schedule': {key: towns},

@@ -5,6 +5,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:firebase_storage/firebase_storage.dart';
+import 'package:flutter_application_1/mobile_app/widgets/profile_picture_widget.dart';
 
 class ChatPage extends StatefulWidget {
   final String collectorName;
@@ -728,7 +729,10 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        if (data['imageUrl'] != null)
+                        // Special UI for proof messages
+                        if (data['type'] == 'proof' && data['imageUrl'] != null)
+                          _buildProofMessage(data, isMe)
+                        else if (data['imageUrl'] != null)
                           ClipRRect(
                             borderRadius: BorderRadius.circular(12),
                             child: Image.network(
@@ -760,7 +764,7 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
                               fontSize: 16,
                             ),
                           ),
-                        if (_getMessageTypeIcon(data['type']) != null) ...[
+                        if (_getMessageTypeIcon(data['type']) != null && data['type'] != 'proof') ...[
                           const SizedBox(height: 4),
                           _getMessageTypeIcon(data['type'])!,
                         ],
@@ -837,6 +841,203 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
     );
   }
 
+  Widget _buildProofMessage(Map<String, dynamic> data, bool isMe) {
+    return Container(
+      width: 250,
+      decoration: BoxDecoration(
+        color: Colors.green.shade50,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: Colors.green.shade200, width: 2),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          // Proof header
+          Container(
+            width: double.infinity,
+            padding: const EdgeInsets.all(12),
+            decoration: BoxDecoration(
+              color: Colors.green.shade100,
+              borderRadius: const BorderRadius.only(
+                topLeft: Radius.circular(10),
+                topRight: Radius.circular(10),
+              ),
+            ),
+            child: Row(
+              children: [
+                Icon(Icons.verified, color: Colors.green.shade600, size: 16),
+                const SizedBox(width: 8),
+                Expanded(
+                  child: Text(
+                    'Proof of Service',
+                    style: TextStyle(
+                      fontWeight: FontWeight.bold,
+                      color: Colors.green.shade700,
+                      fontSize: 14,
+                    ),
+                  ),
+                ),
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+                  decoration: BoxDecoration(
+                    color: Colors.green.shade200,
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    'COMPLETED',
+                    style: TextStyle(
+                      color: Colors.green.shade700,
+                      fontSize: 10,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          // Proof image
+          GestureDetector(
+            onTap: () => _showFullScreenProof(data['imageUrl']),
+            child: ClipRRect(
+              borderRadius: const BorderRadius.only(
+                bottomLeft: Radius.circular(10),
+                bottomRight: Radius.circular(10),
+              ),
+              child: Image.network(
+                data['imageUrl'],
+                width: double.infinity,
+                height: 150,
+                fit: BoxFit.cover,
+                loadingBuilder: (context, child, loadingProgress) {
+                  if (loadingProgress == null) return child;
+                  return Container(
+                    height: 150,
+                    color: Colors.grey.shade200,
+                    child: const Center(
+                      child: CircularProgressIndicator(),
+                    ),
+                  );
+                },
+                errorBuilder: (context, error, stackTrace) {
+                  return Container(
+                    height: 150,
+                    color: Colors.grey.shade200,
+                    child: const Center(
+                      child: Column(
+                        mainAxisAlignment: MainAxisAlignment.center,
+                        children: [
+                          Icon(Icons.error, color: Colors.red),
+                          SizedBox(height: 8),
+                          Text('Failed to load image'),
+                        ],
+                      ),
+                    ),
+                  );
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  void _showFullScreenProof(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.9,
+            maxWidth: MediaQuery.of(context).size.width * 0.95,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.verified, color: Colors.green[600]),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Proof of Service - Full View',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              // Image
+              Flexible(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 200,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 200,
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error, size: 48, color: Colors.red),
+                                SizedBox(height: 8),
+                                Text('Failed to load image'),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+
   Widget? _getMessageTypeIcon(String? type) {
     switch (type) {
       case 'location':
@@ -859,6 +1060,18 @@ class _ChatPageState extends State<ChatPage> with TickerProviderStateMixin {
             const SizedBox(width: 4),
             const Text(
               'Scheduled',
+              style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
+            ),
+          ],
+        );
+      case 'proof':
+        return Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.verified, size: 14, color: Colors.green[300]),
+            const SizedBox(width: 4),
+            const Text(
+              'Proof of Service',
               style: TextStyle(fontSize: 12, fontStyle: FontStyle.italic),
             ),
           ],

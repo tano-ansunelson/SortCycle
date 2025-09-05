@@ -4,8 +4,11 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/mobile_app/provider/provider.dart';
 import 'package:flutter_application_1/mobile_app/routes/app_route.dart';
+import 'package:flutter_application_1/mobile_app/widgets/profile_picture_widget.dart';
+import 'package:flutter_application_1/mobile_app/widgets/profile_picture_picker_dialog.dart';
 import 'package:logger/logger.dart';
 import 'package:provider/provider.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 
 class ProfileScreen extends StatefulWidget {
   const ProfileScreen({super.key});
@@ -21,6 +24,7 @@ class _ProfileScreenState extends State<ProfileScreen>
   late Animation<double> _fadeAnimation;
   late Animation<Offset> _slideAnimation;
   final log = Logger();
+  String? _profilePictureUrl;
 
   @override
   void initState() {
@@ -61,6 +65,9 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
         await sortScoreProvider.calculatePickupStats(userId);
         // Removed manual sort score generation since it auto-generates every 5 minutes
+        
+        // Load profile picture
+        await _loadProfilePicture(userId);
       }
     });
   }
@@ -192,54 +199,16 @@ class _ProfileScreenState extends State<ProfileScreen>
       child: Column(
         children: [
           const SizedBox(height: 20),
-          // Profile Picture with Online Status
-          Stack(
-            children: [
-              Container(
-                width: 120,
-                height: 120,
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  gradient: const LinearGradient(
-                    colors: [Color(0xFF4CAF50), Color(0xFF2E7D32)],
-                  ),
-                  boxShadow: [
-                    BoxShadow(
-                      color: const Color(0xFF4CAF50).withOpacity(0.3),
-                      blurRadius: 20,
-                      offset: const Offset(0, 10),
-                    ),
-                  ],
-                ),
-                child: user?.photoURL != null
-                    ? ClipOval(
-                        child: Image.network(
-                          user!.photoURL!,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              const Icon(
-                                Icons.person,
-                                size: 60,
-                                color: Colors.white,
-                              ),
-                        ),
-                      )
-                    : const Icon(Icons.person, size: 60, color: Colors.white),
-              ),
-              Positioned(
-                bottom: 8,
-                right: 8,
-                child: Container(
-                  width: 24,
-                  height: 24,
-                  decoration: BoxDecoration(
-                    color: Colors.green,
-                    shape: BoxShape.circle,
-                    border: Border.all(color: Colors.white, width: 3),
-                  ),
-                ),
-              ),
-            ],
+          // Profile Picture with Edit Button
+          ProfilePictureWidget(
+            profilePictureUrl: _profilePictureUrl,
+            userType: 'user',
+            size: 120,
+            showEditButton: true,
+            isOnline: true,
+            borderColor: const Color(0xFF4CAF50),
+            borderWidth: 3,
+            onEditPressed: () => _showProfilePicturePicker(user?.uid ?? ''),
           ),
           const SizedBox(height: 20),
           // Username with verified badge
@@ -882,5 +851,39 @@ class _ProfileScreenState extends State<ProfileScreen>
       }
       log.e('Logout error: $e');
     }
+  }
+
+  Future<void> _loadProfilePicture(String userId) async {
+    try {
+      final doc = await FirebaseFirestore.instance
+          .collection('users')
+          .doc(userId)
+          .get();
+      
+      if (doc.exists && mounted) {
+        final data = doc.data()!;
+        setState(() {
+          _profilePictureUrl = data['profilePictureUrl'];
+        });
+      }
+    } catch (e) {
+      print('Error loading profile picture: $e');
+    }
+  }
+
+  void _showProfilePicturePicker(String userId) {
+    showDialog(
+      context: context,
+      builder: (context) => ProfilePicturePickerDialog(
+        userId: userId,
+        userType: 'user',
+        currentProfilePictureUrl: _profilePictureUrl,
+        onProfilePictureUpdated: (result) {
+          if (result == 'updated') {
+            _loadProfilePicture(userId);
+          }
+        },
+      ),
+    );
   }
 }

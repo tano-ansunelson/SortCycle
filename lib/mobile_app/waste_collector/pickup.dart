@@ -5,6 +5,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 // ignore: unused_import
 import 'package:flutter_application_1/mobile_app/chat_page/chatlist_page.dart';
 import 'package:flutter_application_1/mobile_app/routes/app_route.dart';
+import 'package:flutter_application_1/mobile_app/widgets/proof_capture_dialog.dart';
 import 'package:intl/intl.dart';
 
 class PickupManagementPage extends StatefulWidget {
@@ -411,10 +412,10 @@ class _PickupManagementPageState extends State<PickupManagementPage>
             'collectorId',
             whereIn: ['', widget.collectorId],
           ) // Unassigned requests (empty string)
-          .where(
-            'userTown',
-            isEqualTo: _getCollectorTown(),
-          ) // Only show requests in collector's town
+          // .where(
+          //   'userTown',
+          //   isEqualTo: _getCollectorTown(),
+          // ) // Only show requests in collector's town
           .orderBy('createdAt', descending: true)
           .snapshots(),
       builder: (context, snapshot) {
@@ -593,6 +594,35 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                   ),
                 ),
               ),
+              if (request['isEmergency'] == true) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.emergency, color: Colors.red, size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        'EMERGENCY',
+                        style: TextStyle(
+                          color: Colors.red[700],
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const Spacer(),
               Text(
                 'GH₵ ${request['totalAmount']?.toString() ?? _calculateEarning(wasteCategories)}',
@@ -818,6 +848,35 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                   ),
                 ),
               ),
+              if (request['isEmergency'] == true) ...[
+                const SizedBox(width: 8),
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 4,
+                  ),
+                  decoration: BoxDecoration(
+                    color: Colors.red.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                    border: Border.all(color: Colors.red, width: 1),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      const Icon(Icons.emergency, color: Colors.red, size: 12),
+                      const SizedBox(width: 4),
+                      Text(
+                        'EMERGENCY',
+                        style: TextStyle(
+                          color: Colors.red[700],
+                          fontWeight: FontWeight.bold,
+                          fontSize: 10,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ],
               const Spacer(),
               Text(
                 'GH₵ ${request['totalAmount']?.toString() ?? _calculateEarning(wasteCategories)}',
@@ -900,6 +959,44 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                 Text(
                   '${request['binCount']} bins × GH₵${request['pricePerBin']} = GH₵${request['totalAmount']}',
                   style: TextStyle(color: Colors.grey[600], fontSize: 13),
+                ),
+              ],
+            ),
+          const SizedBox(height: 4),
+
+          // Proof of Service
+          if (request['proofImageUrl'] != null)
+            Row(
+              children: [
+                Icon(Icons.verified, color: Colors.green[600], size: 16),
+                const SizedBox(width: 4),
+                Text(
+                  'Proof of service provided',
+                  style: TextStyle(
+                    color: Colors.green[600],
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+                const SizedBox(width: 8),
+                GestureDetector(
+                  onTap: () => _showProofImage(request['proofImageUrl']),
+                  child: Container(
+                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    decoration: BoxDecoration(
+                      color: Colors.green.shade50,
+                      borderRadius: BorderRadius.circular(8),
+                      border: Border.all(color: Colors.green.shade200),
+                    ),
+                    child: Text(
+                      'View Proof',
+                      style: TextStyle(
+                        color: Colors.green.shade700,
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                      ),
+                    ),
+                  ),
                 ),
               ],
             ),
@@ -1385,7 +1482,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
       builder: (context) => AlertDialog(
         title: const Text('Complete Pickup'),
         content: const Text(
-          'Mark this pickup as completed?\n\n⚠️ User will be notified to confirm completion before payment is released.',
+          'Mark this pickup as completed?\n\n📸 You will be asked to provide proof of service (photo of collected waste).\n\n⚠️ User will be notified to confirm completion before payment is released.',
         ),
         actions: [
           TextButton(
@@ -1395,11 +1492,153 @@ class _PickupManagementPageState extends State<PickupManagementPage>
           ElevatedButton(
             onPressed: () {
               Navigator.pop(context);
-              _updateRequestStatus(requestId, 'pending_confirmation');
+              _showProofCaptureDialog(requestId);
             },
-            child: const Text('Complete'),
+            child: const Text('Complete with Proof'),
           ),
         ],
+      ),
+    );
+  }
+
+  void _showProofCaptureDialog(String requestId) async {
+    // Get request details to pass to the dialog
+    try {
+      final requestDoc = await FirebaseFirestore.instance
+          .collection('pickup_requests')
+          .doc(requestId)
+          .get();
+
+      if (requestDoc.exists) {
+        final requestData = requestDoc.data()!;
+        final userId = requestData['userId'];
+
+        if (userId != null) {
+          final result = await showDialog<bool>(
+            context: context,
+            barrierDismissible: false,
+            builder: (context) => ProofCaptureDialog(
+              requestId: requestId,
+              collectorId: widget.collectorId,
+              collectorName: widget.collectorName,
+              userId: userId,
+            ),
+          );
+
+          if (result == true) {
+            // Proof was successfully submitted, update status
+            _updateRequestStatus(requestId, 'pending_confirmation');
+          }
+        } else {
+          _showErrorSnackBar('Unable to get user information for this request.');
+        }
+      }
+    } catch (e) {
+      _showErrorSnackBar('Error: $e');
+    }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(message),
+        backgroundColor: Colors.red,
+      ),
+    );
+  }
+
+  void _showProofImage(String imageUrl) {
+    showDialog(
+      context: context,
+      builder: (context) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          constraints: BoxConstraints(
+            maxHeight: MediaQuery.of(context).size.height * 0.8,
+            maxWidth: MediaQuery.of(context).size.width * 0.9,
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: const BorderRadius.only(
+                    topLeft: Radius.circular(12),
+                    topRight: Radius.circular(12),
+                  ),
+                ),
+                child: Row(
+                  children: [
+                    Icon(Icons.verified, color: Colors.green[600]),
+                    const SizedBox(width: 8),
+                    const Expanded(
+                      child: Text(
+                        'Proof of Service',
+                        style: TextStyle(
+                          fontSize: 18,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ),
+                    IconButton(
+                      onPressed: () => Navigator.pop(context),
+                      icon: const Icon(Icons.close),
+                    ),
+                  ],
+                ),
+              ),
+              // Image
+              Flexible(
+                child: Container(
+                  decoration: const BoxDecoration(
+                    color: Colors.white,
+                    borderRadius: BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                  ),
+                  child: ClipRRect(
+                    borderRadius: const BorderRadius.only(
+                      bottomLeft: Radius.circular(12),
+                      bottomRight: Radius.circular(12),
+                    ),
+                    child: Image.network(
+                      imageUrl,
+                      fit: BoxFit.contain,
+                      loadingBuilder: (context, child, loadingProgress) {
+                        if (loadingProgress == null) return child;
+                        return Container(
+                          height: 200,
+                          child: const Center(
+                            child: CircularProgressIndicator(),
+                          ),
+                        );
+                      },
+                      errorBuilder: (context, error, stackTrace) {
+                        return Container(
+                          height: 200,
+                          child: const Center(
+                            child: Column(
+                              mainAxisAlignment: MainAxisAlignment.center,
+                              children: [
+                                Icon(Icons.error, size: 48, color: Colors.red),
+                                SizedBox(height: 8),
+                                Text('Failed to load image'),
+                              ],
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

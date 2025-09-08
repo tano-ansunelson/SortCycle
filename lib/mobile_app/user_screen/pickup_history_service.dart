@@ -67,6 +67,7 @@ class _PickupHistoryScreenState extends State<PickupHistoryScreen>
             .collection('pickup_requests')
             .where('userId', isEqualTo: widget.userId)
             .where('status', isEqualTo: 'completed')
+            .where('archivedByUser', isNull: true) // Exclude requests archived by user
             .orderBy('userConfirmedAt', descending: true)
             .snapshots(),
         builder: (context, snapshot) {
@@ -258,7 +259,12 @@ class _PickupHistoryScreenState extends State<PickupHistoryScreen>
       );
 
       if (shouldDelete == true) {
-        await _firestore.collection('pickup_requests').doc(requestId).delete();
+        // Instead of deleting, archive the request by marking it as archived by user
+        await _firestore.collection('pickup_requests').doc(requestId).update({
+          'archivedByUser': true,
+          'archivedAt': FieldValue.serverTimestamp(),
+          'archivedReason': 'History item removed from user view',
+        });
 
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(

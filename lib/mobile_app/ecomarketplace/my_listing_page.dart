@@ -257,37 +257,77 @@ class MyListingsScreen extends StatelessWidget {
                           bottom: Radius.circular(16),
                         ),
                       ),
-                      child: Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      child: Column(
                         children: [
                           Row(
+                            mainAxisAlignment: MainAxisAlignment.spaceBetween,
                             children: [
-                              Container(
-                                width: 8,
-                                height: 8,
-                                decoration: BoxDecoration(
-                                  color: _getStatusColor(data['status']),
-                                  shape: BoxShape.circle,
-                                ),
+                              Row(
+                                children: [
+                                  Container(
+                                    width: 8,
+                                    height: 8,
+                                    decoration: BoxDecoration(
+                                      color: _getStatusColor(data['status']),
+                                      shape: BoxShape.circle,
+                                    ),
+                                  ),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    _getStatusText(data['status']),
+                                    style: TextStyle(
+                                      color: _getStatusColor(data['status']),
+                                      fontWeight: FontWeight.w500,
+                                      fontSize: 12,
+                                    ),
+                                  ),
+                                ],
                               ),
-                              const SizedBox(width: 6),
                               Text(
-                                _getStatusText(data['status']),
+                                _formatTimestamp(data['createdAt']),
                                 style: TextStyle(
-                                  color: _getStatusColor(data['status']),
-                                  fontWeight: FontWeight.w500,
-                                  fontSize: 12,
+                                  color: Colors.grey[500],
+                                  fontSize: 11,
                                 ),
                               ),
                             ],
                           ),
-                          Text(
-                            _formatTimestamp(data['createdAt']),
-                            style: TextStyle(
-                              color: Colors.grey[500],
-                              fontSize: 11,
+                          // Show deletion countdown for sold items
+                          if (data['status'] == 'sold' || data['status'] == 'claimed')
+                            Container(
+                              margin: const EdgeInsets.only(top: 4),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 8,
+                                vertical: 4,
+                              ),
+                              decoration: BoxDecoration(
+                                color: Colors.orange.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                                border: Border.all(
+                                  color: Colors.orange.withOpacity(0.3),
+                                  width: 1,
+                                ),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.schedule,
+                                    size: 12,
+                                    color: Colors.orange[700],
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Text(
+                                    _getDeletionCountdown(data['deleteAfter']),
+                                    style: TextStyle(
+                                      color: Colors.orange[700],
+                                      fontSize: 10,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
                             ),
-                          ),
                         ],
                       ),
                     ),
@@ -483,6 +523,30 @@ class MyListingsScreen extends StatelessWidget {
       }
     } catch (e) {
       return '';
+    }
+  }
+
+  String _getDeletionCountdown(dynamic deleteAfter) {
+    if (deleteAfter == null) return 'Deletion time not set';
+
+    try {
+      final deleteDate = (deleteAfter as Timestamp).toDate();
+      final now = DateTime.now();
+      final difference = deleteDate.difference(now);
+
+      if (difference.isNegative) {
+        return 'Will be deleted soon';
+      } else if (difference.inDays > 0) {
+        return 'Deletes in ${difference.inDays}d ${difference.inHours % 24}h';
+      } else if (difference.inHours > 0) {
+        return 'Deletes in ${difference.inHours}h ${difference.inMinutes % 60}m';
+      } else if (difference.inMinutes > 0) {
+        return 'Deletes in ${difference.inMinutes}m';
+      } else {
+        return 'Deletes in ${difference.inSeconds}s';
+      }
+    } catch (e) {
+      return 'Deletion time error';
     }
   }
 }

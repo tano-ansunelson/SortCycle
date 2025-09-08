@@ -284,6 +284,7 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
         .collection('pickup_requests')
         .where('status', whereIn: ['in_progress', 'accepted'])
         .where('collectorId', isEqualTo: widget.collectorId)
+        .where('archivedByCollector', isNull: true) // Exclude archived requests
         .snapshots()
         .listen(
           (snapshot) {
@@ -585,6 +586,7 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
           .collection('pickup_requests')
           .where('status', whereIn: ['in_progress', 'accepted'])
           .where('collectorId', isEqualTo: widget.collectorId)
+          .where('archivedByCollector', isNull: true) // Exclude archived requests
           .get();
 
       if (snapshot.docs.isEmpty) {

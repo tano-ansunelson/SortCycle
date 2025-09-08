@@ -1,5 +1,6 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/mobile_app/ecomarketplace/homescreen.dart';
 //import 'package:flutter_application_1/mobile_app/ecomarketplace/homescreen.dart';
 
 import 'package:flutter_application_1/mobile_app/user_screen/new_homepage.dart';
@@ -26,6 +27,7 @@ class _HomeScreenState extends State<HomeScreen> {
       UserRequestsScreen(userId: FirebaseAuth.instance.currentUser?.uid ?? ''),
 
       const HomePage(),
+      const MarketHomeScreen(),
       const ProfileScreen(),
     ];
     return Scaffold(
@@ -62,6 +64,11 @@ class _HomeScreenState extends State<HomeScreen> {
               icon: Icon(Icons.home_outlined),
               activeIcon: Icon(Icons.home),
               label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.storefront_outlined),
+              activeIcon: Icon(Icons.storefront),
+              label: 'Market',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),

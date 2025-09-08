@@ -65,7 +65,7 @@ class _ProfileScreenState extends State<ProfileScreen>
         );
         await sortScoreProvider.calculatePickupStats(userId);
         // Removed manual sort score generation since it auto-generates every 5 minutes
-        
+
         // Load profile picture
         await _loadProfilePicture(userId);
       }
@@ -317,38 +317,38 @@ class _ProfileScreenState extends State<ProfileScreen>
             selector: (context, provider) => {
               'totalPickups': provider.totalPickups,
               'sortScore': provider.sortScore,
-              'isLoading': provider.isLoading,
+              //'isLoading': provider.isLoading,
             },
             builder: (context, data, child) {
               final totalPickups = data['totalPickups'] as int;
               final sortScore = data['sortScore'] as int;
-              final isLoading = data['isLoading'] as bool;
+              // final isLoading = data['isLoading'] as bool;
 
-              if (isLoading) {
-                return Container(
-                  padding: const EdgeInsets.all(40),
-                  child: const Center(
-                    child: Column(
-                      children: [
-                        CircularProgressIndicator(
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            Color(0xFF4CAF50),
-                          ),
-                        ),
-                        SizedBox(height: 16),
-                        Text(
-                          'Loading stats...',
-                          style: TextStyle(
-                            color: Color(0xFF1B5E20),
-                            fontSize: 16,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                );
-              }
+              // if (isLoading) {
+              //   return Container(
+              //     padding: const EdgeInsets.all(40),
+              //     child: const Center(
+              //       child: Column(
+              //         children: [
+              //           CircularProgressIndicator(
+              //             valueColor: AlwaysStoppedAnimation<Color>(
+              //               Color(0xFF4CAF50),
+              //             ),
+              //           ),
+              //           SizedBox(height: 16),
+              //           Text(
+              //             'Loading stats...',
+              //             style: TextStyle(
+              //               color: Color(0xFF1B5E20),
+              //               fontSize: 16,
+              //               fontWeight: FontWeight.w500,
+              //             ),
+              //           ),
+              //         ],
+              //       ),
+              //     ),
+              //   );
+              // }
 
               return Row(
                 children: [
@@ -374,61 +374,61 @@ class _ProfileScreenState extends State<ProfileScreen>
             },
           ),
           const SizedBox(height: 16),
-          Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              GestureDetector(
-                onTap: () {
-                  final userId = FirebaseAuth.instance.currentUser?.uid;
-                  if (userId != null) {
-                    final provider = Provider.of<SortScoreProvider>(
-                      context,
-                      listen: false,
-                    );
-                    provider.calculatePickupStats(userId);
+          // Row(
+          //   mainAxisAlignment: MainAxisAlignment.center,
+          //   children: [
+          //     GestureDetector(
+          //       onTap: () {
+          //         final userId = FirebaseAuth.instance.currentUser?.uid;
+          //         if (userId != null) {
+          //           final provider = Provider.of<SortScoreProvider>(
+          //             context,
+          //             listen: false,
+          //           );
+          //           provider.calculatePickupStats(userId);
 
-                    // Show feedback
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(
-                        content: const Text('Stats refreshed!'),
-                        backgroundColor: Colors.blue,
-                        behavior: SnackBarBehavior.floating,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(12),
-                        ),
-                      ),
-                    );
-                  }
-                },
-                child: Container(
-                  padding: const EdgeInsets.symmetric(
-                    vertical: 8,
-                    horizontal: 16,
-                  ),
-                  decoration: BoxDecoration(
-                    color: Colors.blue.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
-                    border: Border.all(color: Colors.blue.withOpacity(0.3)),
-                  ),
-                  child: const Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Icon(Icons.refresh, color: Colors.blue, size: 16),
-                      SizedBox(width: 4),
-                      Text(
-                        'Refresh Stats',
-                        style: TextStyle(
-                          color: Colors.blue,
-                          fontSize: 12,
-                          fontWeight: FontWeight.w600,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-              ),
-            ],
-          ),
+          //           // Show feedback
+          //           ScaffoldMessenger.of(context).showSnackBar(
+          //             SnackBar(
+          //               content: const Text('Stats refreshed!'),
+          //               backgroundColor: Colors.blue,
+          //               behavior: SnackBarBehavior.floating,
+          //               shape: RoundedRectangleBorder(
+          //                 borderRadius: BorderRadius.circular(12),
+          //               ),
+          //             ),
+          //           );
+          //         }
+          //       },
+          //       child: Container(
+          //         padding: const EdgeInsets.symmetric(
+          //           vertical: 8,
+          //           horizontal: 16,
+          //         ),
+          //         decoration: BoxDecoration(
+          //           color: Colors.blue.withOpacity(0.1),
+          //           borderRadius: BorderRadius.circular(8),
+          //           border: Border.all(color: Colors.blue.withOpacity(0.3)),
+          //         ),
+          //         child: const Row(
+          //           mainAxisSize: MainAxisSize.min,
+          //           children: [
+          //             Icon(Icons.refresh, color: Colors.blue, size: 16),
+          //             SizedBox(width: 4),
+          //             Text(
+          //               'Refresh Stats',
+          //               style: TextStyle(
+          //                 color: Colors.blue,
+          //                 fontSize: 12,
+          //                 fontWeight: FontWeight.w600,
+          //               ),
+          //             ),
+          //           ],
+          //         ),
+          //       ),
+          //     ),
+          //   ],
+          // ),
         ],
       ),
     );
@@ -441,43 +441,43 @@ class _ProfileScreenState extends State<ProfileScreen>
     required Color color,
   }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(12),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(20),
+        borderRadius: BorderRadius.circular(12),
         boxShadow: [
           BoxShadow(
-            color: color.withOpacity(0.1),
-            blurRadius: 15,
-            offset: const Offset(0, 5),
+            color: color.withOpacity(0.08),
+            blurRadius: 8,
+            offset: const Offset(0, 2),
           ),
         ],
-        border: Border.all(color: color.withOpacity(0.2)),
+        border: Border.all(color: color.withOpacity(0.15)),
       ),
       child: Column(
         children: [
           Container(
-            padding: const EdgeInsets.all(12),
+            padding: const EdgeInsets.all(8),
             decoration: BoxDecoration(
               color: color.withOpacity(0.1),
               shape: BoxShape.circle,
             ),
-            child: Icon(icon, color: color, size: 24),
+            child: Icon(icon, color: color, size: 12),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8),
           Text(
             value,
             style: TextStyle(
-              fontSize: 24,
+              fontSize: 18,
               fontWeight: FontWeight.bold,
               color: color,
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           Text(
             title,
             style: TextStyle(
-              fontSize: 12,
+              fontSize: 10,
               color: Colors.grey[600],
               fontWeight: FontWeight.w500,
             ),
@@ -562,6 +562,15 @@ class _ProfileScreenState extends State<ProfileScreen>
         'onTap': () {
           Navigator.pushNamed(context, AppRoutes.pickuphistory);
           // Navigate to pickup history
+        },
+      },
+      {
+        'icon': Icons.payment_rounded,
+        'title': 'Payment History',
+        'subtitle': 'View your payment transactions',
+        'color': const Color(0xFF2196F3),
+        'onTap': () {
+          Navigator.pushNamed(context, AppRoutes.paymenthistory);
         },
       },
       {
@@ -859,7 +868,7 @@ class _ProfileScreenState extends State<ProfileScreen>
           .collection('users')
           .doc(userId)
           .get();
-      
+
       if (doc.exists && mounted) {
         final data = doc.data()!;
         setState(() {

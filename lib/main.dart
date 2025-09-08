@@ -24,6 +24,8 @@ import 'package:flutter_application_1/mobile_app/user_screen/edit_profile.dart';
 //import 'package:flutter_application_1/user_screen/forms.dart';
 import 'package:flutter_application_1/mobile_app/user_screen/log_in/sign_in_screen.dart';
 import 'package:flutter_application_1/mobile_app/user_screen/pickup_history_service.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/payment_history_screen.dart';
+//import 'package:flutter_application_1/mobile_app/user_screen/waste_calculator_modal.dart';
 
 import 'package:flutter_application_1/mobile_app/user_screen/waste_form.dart';
 import 'package:flutter_application_1/mobile_app/waste_collector/collectorMapScreen.dart';
@@ -196,6 +198,9 @@ class _MyAppState extends State<MyApp> {
         final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
 
         return _createRoute(PickupHistoryScreen(userId: userId));
+      case AppRoutes.paymenthistory:
+        final userId = FirebaseAuth.instance.currentUser?.uid ?? '';
+        return _createRoute(PaymentHistoryScreen(userId: userId));
       case AppRoutes.profile:
         return _createRoute(const ProfileScreen());
       case AppRoutes.wastepickupformupdated:
@@ -284,10 +289,12 @@ class _MyAppState extends State<MyApp> {
         final collectorId = args['collectorId'] as String?;
         if (collectorId != null) {
           // Create WeeklySchedulingPage with default suggested towns
-          return _createRoute(WeeklySchedulingPage(
-            collectorId: collectorId,
-            // The suggestedTowns will use the default value from the constructor
-          ));
+          return _createRoute(
+            WeeklySchedulingPage(
+              collectorId: collectorId,
+              // The suggestedTowns will use the default value from the constructor
+            ),
+          );
         } else {
           return _createRoute(
             const Scaffold(

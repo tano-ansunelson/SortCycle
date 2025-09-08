@@ -627,106 +627,7 @@ class _RequestCardState extends State<RequestCard>
                 const SizedBox(height: 20),
 
                 // Action Buttons
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    // Cancel button (only for pending requests)
-                    if (status == 'pending')
-                      Expanded(
-                        child: OutlinedButton.icon(
-                          onPressed: widget.onCancel,
-                          icon: const Icon(Icons.close, size: 18),
-                          label: const Text('Cancel'),
-                          style: OutlinedButton.styleFrom(
-                            foregroundColor: Colors.red.shade600,
-                            side: BorderSide(color: Colors.red.shade300),
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                          ),
-                        ),
-                      )
-                    else
-                      const Spacer(),
-
-                    if (status == 'pending') const SizedBox(width: 12),
-
-                    // Confirm Completion button (only when proof is provided and status is pending_confirmation)
-                    if (status == 'pending_confirmation' &&
-                        widget.requestData['proofImageUrl'] != null)
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () => _confirmCompletion(),
-                          icon: const Icon(Icons.check_circle, size: 18),
-                          label: const Text('Confirm'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade600,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            elevation: 2,
-                          ),
-                        ),
-                      ),
-
-                    // View Details button
-                    Expanded(
-                      child: OutlinedButton.icon(
-                        onPressed: () => _showRequestDetails(context),
-                        icon: const Icon(Icons.info_outline, size: 18),
-                        label: const Text('Details'),
-                        style: OutlinedButton.styleFrom(
-                          foregroundColor: Colors.blue.shade600,
-                          side: BorderSide(color: Colors.blue.shade300),
-                          shape: RoundedRectangleBorder(
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          padding: const EdgeInsets.symmetric(vertical: 12),
-                        ),
-                      ),
-                    ),
-
-                    const SizedBox(width: 12),
-
-                    // Chat button (only if collector is assigned)
-                    if (hasCollector)
-                      Expanded(
-                        child: ElevatedButton.icon(
-                          onPressed: () {
-                            Navigator.pushNamed(
-                              context,
-                              '/chat',
-                              arguments: {
-                                'collectorId': collectorId,
-                                'collectorName':
-                                    widget.requestData['collectorName'] ??
-                                    'Collector',
-                                'requestId': widget.requestId,
-                                'userName':
-                                    widget.requestData['userName'] ?? 'User',
-                              },
-                            );
-                          },
-                          icon: const Icon(Icons.chat_bubble_outline, size: 18),
-                          label: const Text('Chat'),
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: Colors.green.shade600,
-                            foregroundColor: Colors.white,
-                            shape: RoundedRectangleBorder(
-                              borderRadius: BorderRadius.circular(10),
-                            ),
-                            padding: const EdgeInsets.symmetric(vertical: 12),
-                            elevation: 2,
-                          ),
-                        ),
-                      )
-                    else
-                      const Spacer(),
-                  ],
-                ),
+                _buildActionButtons(status, hasCollector, collectorId),
               ],
             ),
           ),
@@ -777,6 +678,21 @@ class _RequestCardState extends State<RequestCard>
         textColor = Colors.red.shade800;
         icon = Icons.cancel_outlined;
         gradientColors = [Colors.red.shade100, Colors.red.shade50];
+        break;
+      case 'missed':
+        backgroundColor = Colors.deepOrange.shade100;
+        textColor = Colors.deepOrange.shade800;
+        icon = Icons.warning_rounded;
+        gradientColors = [
+          Colors.deepOrange.shade100,
+          Colors.deepOrange.shade50,
+        ];
+        break;
+      case 'refunded':
+        backgroundColor = Colors.purple.shade100;
+        textColor = Colors.purple.shade800;
+        icon = Icons.money_off_rounded;
+        gradientColors = [Colors.purple.shade100, Colors.purple.shade50];
         break;
       default:
         backgroundColor = Colors.grey.shade100;
@@ -1007,6 +923,157 @@ class _RequestCardState extends State<RequestCard>
     );
   }
 
+  Widget _buildActionButtons(String status, bool hasCollector, String? collectorId) {
+    List<Widget> buttons = [];
+    
+    // Primary action button (left side)
+    if (status == 'pending') {
+      buttons.add(
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: widget.onCancel,
+            icon: const Icon(Icons.close, size: 18),
+            label: const Text('Cancel'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.red.shade600,
+              side: BorderSide(color: Colors.red.shade300),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      );
+    } else if (status == 'missed') {
+      buttons.add(
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () => _rescheduleRequest(),
+            icon: const Icon(Icons.schedule, size: 18),
+            label: const Text('Reschedule'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.blue.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              elevation: 2,
+            ),
+          ),
+        ),
+      );
+    } else if (status == 'pending_confirmation' && widget.requestData['proofImageUrl'] != null) {
+      buttons.add(
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () => _confirmCompletion(),
+            icon: const Icon(Icons.check_circle, size: 18),
+            label: const Text('Confirm'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              elevation: 2,
+            ),
+          ),
+        ),
+      );
+    } else {
+      // Add spacer if no primary action
+      buttons.add(const Spacer());
+    }
+    
+    // Add spacing between primary and secondary buttons
+    if (buttons.isNotEmpty && buttons.first is! Spacer) {
+      buttons.add(const SizedBox(width: 12));
+    }
+    
+    // Details button (always present)
+    buttons.add(
+      Expanded(
+        child: OutlinedButton.icon(
+          onPressed: () => _showRequestDetails(context),
+          icon: const Icon(Icons.info_outline, size: 18),
+          label: const Text('Details'),
+          style: OutlinedButton.styleFrom(
+            foregroundColor: Colors.blue.shade600,
+            side: BorderSide(color: Colors.blue.shade300),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(10),
+            ),
+            padding: const EdgeInsets.symmetric(vertical: 12),
+          ),
+        ),
+      ),
+    );
+    
+    // Add spacing before tertiary button
+    buttons.add(const SizedBox(width: 12));
+    
+    // Tertiary action button (right side)
+    if (status == 'missed') {
+      buttons.add(
+        Expanded(
+          child: OutlinedButton.icon(
+            onPressed: () => _requestRefund(),
+            icon: const Icon(Icons.money_off, size: 18),
+            label: const Text('Refund'),
+            style: OutlinedButton.styleFrom(
+              foregroundColor: Colors.orange.shade600,
+              side: BorderSide(color: Colors.orange.shade300),
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+            ),
+          ),
+        ),
+      );
+    } else if (hasCollector && status != 'missed' && status != 'completed') {
+      buttons.add(
+        Expanded(
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.pushNamed(
+                context,
+                '/chat',
+                arguments: {
+                  'collectorId': collectorId,
+                  'collectorName': widget.requestData['collectorName'] ?? 'Collector',
+                  'requestId': widget.requestId,
+                  'userName': widget.requestData['userName'] ?? 'User',
+                },
+              );
+            },
+            icon: const Icon(Icons.chat_bubble_outline, size: 18),
+            label: const Text('Chat'),
+            style: ElevatedButton.styleFrom(
+              backgroundColor: Colors.green.shade600,
+              foregroundColor: Colors.white,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(10),
+              ),
+              padding: const EdgeInsets.symmetric(vertical: 12),
+              elevation: 2,
+            ),
+          ),
+        ),
+      );
+    } else {
+      // Add spacer if no tertiary action
+      buttons.add(const Spacer());
+    }
+    
+    return Row(
+      children: buttons,
+    );
+  }
+
   Future<void> _confirmCompletion() async {
     try {
       // Show confirmation dialog
@@ -1224,5 +1291,178 @@ class _RequestCardState extends State<RequestCard>
         ),
       ),
     );
+  }
+
+  Future<void> _rescheduleRequest() async {
+    try {
+      // Show confirmation dialog
+      bool? shouldReschedule = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.schedule, color: Colors.blue.shade600),
+              const SizedBox(width: 8),
+              const Text('Reschedule Pickup'),
+            ],
+          ),
+          content: const Text(
+            'This will create a new pickup request with the same details. The current missed request will be cancelled. Do you want to proceed?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.blue.shade600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Reschedule'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldReschedule == true) {
+        // Navigate to waste pickup form with pre-filled data
+        Navigator.pushNamed(
+          context,
+          '/wastepickupformupdated',
+          arguments: {
+            'isReschedule': true,
+            'originalRequestId': widget.requestId,
+            'originalRequestData': widget.requestData,
+          },
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error rescheduling request: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
+  }
+
+  Future<void> _requestRefund() async {
+    try {
+      // Show confirmation dialog
+      bool? shouldRefund = await showDialog<bool>(
+        context: context,
+        builder: (context) => AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
+          ),
+          title: Row(
+            children: [
+              Icon(Icons.money_off, color: Colors.orange.shade600),
+              const SizedBox(width: 8),
+              const Text('Request Refund'),
+            ],
+          ),
+          content: Text(
+            'You will receive a full refund of GH₵${widget.requestData['totalAmount']?.toStringAsFixed(2) ?? '0.00'} for this missed pickup. The request will be cancelled. Do you want to proceed?',
+          ),
+          actions: [
+            TextButton(
+              onPressed: () => Navigator.of(context).pop(false),
+              child: Text(
+                'Cancel',
+                style: TextStyle(color: Colors.grey.shade600),
+              ),
+            ),
+            ElevatedButton(
+              onPressed: () => Navigator.of(context).pop(true),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: Colors.orange.shade600,
+                foregroundColor: Colors.white,
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(8),
+                ),
+              ),
+              child: const Text('Request Refund'),
+            ),
+          ],
+        ),
+      );
+
+      if (shouldRefund == true) {
+        // Update the request status to refunded
+        await FirebaseFirestore.instance
+            .collection('pickup_requests')
+            .doc(widget.requestId)
+            .update({
+              'status': 'refunded',
+              'refundRequestedAt': FieldValue.serverTimestamp(),
+              'refundAmount': widget.requestData['totalAmount'],
+              'refundReason': 'Missed pickup - service not provided',
+              'updatedAt': FieldValue.serverTimestamp(),
+            });
+
+        // Create notification for the collector about refund
+        try {
+          final collectorId = widget.requestData['collectorId'];
+          if (collectorId != null) {
+            await FirebaseFirestore.instance.collection('notifications').add({
+              'collectorId': collectorId,
+              'type': 'refund_requested',
+              'title': '💰 Refund Requested',
+              'message':
+                  '${widget.requestData['userName']} has requested a refund for the missed pickup. Amount: GH₵${widget.requestData['totalAmount']?.toStringAsFixed(2) ?? '0.00'}',
+              'data': {
+                'requestId': widget.requestId,
+                'userName': widget.requestData['userName'],
+                'userTown': widget.requestData['userTown'],
+                'refundAmount': widget.requestData['totalAmount'],
+                'status': 'refunded',
+              },
+              'isRead': false,
+              'createdAt': FieldValue.serverTimestamp(),
+            });
+          }
+        } catch (e) {
+          print('Error creating refund notification: $e');
+        }
+
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: const Row(
+                children: [
+                  Icon(Icons.money_off, color: Colors.white),
+                  SizedBox(width: 8),
+                  Text('Refund requested successfully!'),
+                ],
+              ),
+              backgroundColor: Colors.orange.shade600,
+            ),
+          );
+        }
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error requesting refund: ${e.toString()}'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    }
   }
 }

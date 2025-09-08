@@ -214,6 +214,9 @@ class _BuyerFormScreenState extends State<BuyerFormScreen> {
             'soldAt': timestamp,
             'purchaseId': purchaseId,
             'updatedAt': timestamp,
+            'deleteAfter': Timestamp.fromDate(
+              DateTime.now().add(const Duration(hours: 24))
+            ), // Set deletion time to 24 hours from now
           });
 
       // Update user profile with latest info (try users first, then collectors)

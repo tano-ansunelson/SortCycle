@@ -109,6 +109,10 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                   .collection('pickup_requests')
                   .where('collectorId', isEqualTo: widget.collectorId)
                   .where(
+                    'archivedByCollector',
+                    isNull: true,
+                  ) // Exclude archived requests
+                  .where(
                     'pickupDate',
                     isGreaterThanOrEqualTo: DateTime.now().copyWith(
                       hour: 0,
@@ -481,6 +485,10 @@ class _PickupManagementPageState extends State<PickupManagementPage>
       stream: FirebaseFirestore.instance
           .collection('pickup_requests')
           .where('collectorId', isEqualTo: widget.collectorId)
+          .where(
+            'archivedByCollector',
+            isNull: true,
+          ) // Exclude archived requests
           .orderBy(
             'pickupDate',
             descending: false,
@@ -982,7 +990,10 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                 GestureDetector(
                   onTap: () => _showProofImage(request['proofImageUrl']),
                   child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 2,
+                    ),
                     decoration: BoxDecoration(
                       color: Colors.green.shade50,
                       borderRadius: BorderRadius.circular(8),
@@ -1278,6 +1289,10 @@ class _PickupManagementPageState extends State<PickupManagementPage>
         return Colors.green;
       case 'cancelled':
         return Colors.red;
+      case 'missed':
+        return Colors.deepOrange;
+      case 'refunded':
+        return Colors.purple;
       default:
         return Colors.grey;
     }
@@ -1293,6 +1308,10 @@ class _PickupManagementPageState extends State<PickupManagementPage>
         return 'Completed';
       case 'cancelled':
         return 'Cancelled';
+      case 'missed':
+        return 'Missed';
+      case 'refunded':
+        return 'Refunded';
       default:
         return 'Unknown';
     }
@@ -1403,10 +1422,15 @@ class _PickupManagementPageState extends State<PickupManagementPage>
 
   Future<void> _deleteRequest(String requestId) async {
     try {
+      // Instead of deleting, archive the request by marking it as archived
       await FirebaseFirestore.instance
           .collection('pickup_requests')
           .doc(requestId)
-          .delete();
+          .update({
+            'archivedByCollector': true,
+            'archivedAt': FieldValue.serverTimestamp(),
+            'archivedReason': 'Completed request removed from collector view',
+          });
 
       ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(
@@ -1530,7 +1554,9 @@ class _PickupManagementPageState extends State<PickupManagementPage>
             _updateRequestStatus(requestId, 'pending_confirmation');
           }
         } else {
-          _showErrorSnackBar('Unable to get user information for this request.');
+          _showErrorSnackBar(
+            'Unable to get user information for this request.',
+          );
         }
       }
     } catch (e) {
@@ -1540,10 +1566,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
 
   void _showErrorSnackBar(String message) {
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(
-        content: Text(message),
-        backgroundColor: Colors.red,
-      ),
+      SnackBar(content: Text(message), backgroundColor: Colors.red),
     );
   }
 
@@ -1563,9 +1586,9 @@ class _PickupManagementPageState extends State<PickupManagementPage>
               // Header
               Container(
                 padding: const EdgeInsets.all(16),
-                decoration: BoxDecoration(
+                decoration: const BoxDecoration(
                   color: Colors.white,
-                  borderRadius: const BorderRadius.only(
+                  borderRadius: BorderRadius.only(
                     topLeft: Radius.circular(12),
                     topRight: Radius.circular(12),
                   ),
@@ -1649,7 +1672,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
       builder: (context) => AlertDialog(
         title: const Text('Delete Completed Request'),
         content: const Text(
-          'Are you sure you want to delete this completed pickup request?\n\nThis action cannot be undone.',
+          'Are you sure you want to delete this completed pickup request?\n\nThis will remove it from your list but the user can still see it in their history.',
         ),
         actions: [
           TextButton(
@@ -1678,6 +1701,7 @@ class _PickupManagementPageState extends State<PickupManagementPage>
   // }
 
   // Get collector's town from widget parameter
+  // ignore: unused_element
   String _getCollectorTown() {
     return widget.collectorTown;
   }

@@ -3,6 +3,7 @@
 import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter_application_1/mobile_app/ecomarketplace/homescreen.dart';
 import 'package:flutter_application_1/mobile_app/provider/provider.dart';
 import 'package:flutter_application_1/mobile_app/provider/notification_provider.dart';
 //import 'package:flutter_application_1/mobile_app/provider/sort_score_provider.dart';
@@ -62,6 +63,7 @@ class _CollectorMainScreenState extends State<CollectorMainScreen> {
             collectorTown: context.watch<CollectorProvider>().town ?? '',
           ),
           const CollectorHomePage(),
+          const MarketHomeScreen(),
           const CollectorProfileScreen(),
         ],
       ),
@@ -107,6 +109,11 @@ class _CollectorMainScreenState extends State<CollectorMainScreen> {
               icon: Icon(Icons.home_outlined),
               activeIcon: Icon(Icons.home),
               label: 'Home',
+            ),
+            BottomNavigationBarItem(
+              icon: Icon(Icons.storefront_outlined),
+              activeIcon: Icon(Icons.storefront),
+              label: 'Market',
             ),
             BottomNavigationBarItem(
               icon: Icon(Icons.person_outline),

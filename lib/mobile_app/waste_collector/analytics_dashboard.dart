@@ -21,7 +21,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 3, vsync: this);
+    _tabController = TabController(length: 2, vsync: this);
     _loadAnalyticsData();
   }
 
@@ -48,7 +48,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
         _analytics = results[0] as Map<String, dynamic>;
         _demandInsights = results[1] as List<Map<String, dynamic>>;
         _weeklyTrends = results[2] as List<Map<String, dynamic>>;
-        _forecast = results[3] as Map<String, dynamic>;
+        //_forecast = results[3] as Map<String, dynamic>;
         _isLoading = false;
       });
     } catch (e) {
@@ -86,7 +86,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
           tabs: const [
             Tab(text: 'Overview', icon: Icon(Icons.dashboard)),
             Tab(text: 'Demand', icon: Icon(Icons.location_city)),
-            Tab(text: 'Forecast', icon: Icon(Icons.trending_up)),
+            // Tab(text: 'Forecast', icon: Icon(Icons.trending_up)),
           ],
         ),
         actions: [
@@ -103,7 +103,7 @@ class _AnalyticsDashboardState extends State<AnalyticsDashboard>
               children: [
                 _buildOverviewTab(),
                 _buildDemandTab(),
-                _buildForecastTab(),
+                //_buildForecastTab(),
               ],
             ),
     );

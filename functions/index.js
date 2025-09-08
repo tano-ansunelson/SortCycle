@@ -775,6 +775,159 @@ exports.listAdminUsers = functions.https.onRequest(async (req, res) => {
   }
 });
 
+// 🚨 Mark missed pickup requests daily
+exports.markMissedPickupRequests = onSchedule("0 1 * * *", async (event) => {
+  console.log("🔄 Starting daily check for missed pickup requests...");
+  
+  try {
+    const now = admin.firestore.Timestamp.now();
+    const yesterday = new Date(now.toDate());
+    yesterday.setDate(yesterday.getDate() - 1);
+    yesterday.setHours(23, 59, 59, 999); // End of yesterday
+    
+    console.log(`📅 Checking for requests before: ${yesterday.toISOString()}`);
+    
+    // Find all pending requests that were scheduled before yesterday
+    const missedRequestsQuery = await admin.firestore()
+      .collection("pickup_requests")
+      .where("status", "in", ["pending", "accepted", "in_progress"])
+      .where("pickupDate", "<", admin.firestore.Timestamp.fromDate(yesterday))
+      .get();
+    
+    console.log(`🔍 Found ${missedRequestsQuery.size} potentially missed requests`);
+    
+    const batch = admin.firestore().batch();
+    let missedCount = 0;
+    
+    for (const doc of missedRequestsQuery.docs) {
+      const requestData = doc.data();
+      const requestId = doc.id;
+      
+      // Skip if already marked as missed
+      if (requestData.status === "missed") {
+        continue;
+      }
+      
+      // Mark as missed
+      batch.update(doc.ref, {
+        status: "missed",
+        missedAt: admin.firestore.Timestamp.now(),
+        missedReason: "Pickup day has passed without completion"
+      });
+      
+      missedCount++;
+      
+      // Create notifications for both user and collector
+      await createMissedRequestNotifications(requestData, requestId);
+    }
+    
+    if (missedCount > 0) {
+      await batch.commit();
+      console.log(`✅ Marked ${missedCount} requests as missed`);
+    } else {
+      console.log("✅ No missed requests found");
+    }
+    
+    return { success: true, missedCount };
+  } catch (error) {
+    console.error("❌ Error marking missed requests:", error);
+    throw error;
+  }
+});
+
+// Helper function to create notifications for missed requests
+async function createMissedRequestNotifications(requestData, requestId) {
+  try {
+    const { userId, collectorId, collectorName, userName, userTown, pickupDate } = requestData;
+    
+    // Notify user
+    if (userId) {
+      const userDoc = await admin.firestore().collection("users").doc(userId).get();
+      const userFcmToken = userDoc.data()?.fcmToken;
+      
+      if (userFcmToken) {
+        const userMessage = {
+          notification: {
+            title: "⚠️ Pickup Missed",
+            body: `Your pickup request scheduled for ${pickupDate.toDate().toLocaleDateString()} was not completed. You can reschedule or request a refund.`,
+          },
+          token: userFcmToken,
+          data: {
+            type: "missed_pickup",
+            requestId: requestId,
+            action: "reschedule"
+          }
+        };
+        
+        await admin.messaging().send(userMessage);
+        console.log(`📱 Notified user ${userId} about missed pickup`);
+      }
+      
+      // Create in-app notification for user
+      await admin.firestore().collection("notifications").add({
+        userId: userId,
+        type: "missed_pickup",
+        title: "⚠️ Pickup Request Missed",
+        message: `Your pickup request scheduled for ${pickupDate.toDate().toLocaleDateString()} was not completed. You can reschedule or request a refund.`,
+        data: {
+          pickupRequestId: requestId,
+          collectorId: collectorId,
+          collectorName: collectorName,
+          userTown: userTown,
+          pickupDate: pickupDate,
+          action: "reschedule"
+        },
+        isRead: false,
+        createdAt: admin.firestore.Timestamp.now()
+      });
+    }
+    
+    // Notify collector
+    if (collectorId) {
+      const collectorDoc = await admin.firestore().collection("collectors").doc(collectorId).get();
+      const collectorFcmToken = collectorDoc.data()?.fcmToken;
+      
+      if (collectorFcmToken) {
+        const collectorMessage = {
+          notification: {
+            title: "⚠️ Missed Pickup Alert",
+            body: `You missed a pickup request from ${userName} in ${userTown} scheduled for ${pickupDate.toDate().toLocaleDateString()}. Please contact the user to reschedule.`,
+          },
+          token: collectorFcmToken,
+          data: {
+            type: "missed_pickup_collector",
+            requestId: requestId,
+            action: "contact_user"
+          }
+        };
+        
+        await admin.messaging().send(collectorMessage);
+        console.log(`📱 Notified collector ${collectorId} about missed pickup`);
+      }
+      
+      // Create in-app notification for collector
+      await admin.firestore().collection("notifications").add({
+        collectorId: collectorId,
+        type: "missed_pickup_collector",
+        title: "⚠️ Missed Pickup Alert",
+        message: `You missed a pickup request from ${userName} in ${userTown} scheduled for ${pickupDate.toDate().toLocaleDateString()}. Please contact the user to reschedule.`,
+        data: {
+          pickupRequestId: requestId,
+          userId: userId,
+          userName: userName,
+          userTown: userTown,
+          pickupDate: pickupDate,
+          action: "contact_user"
+        },
+        isRead: false,
+        createdAt: admin.firestore.Timestamp.now()
+      });
+    }
+  } catch (error) {
+    console.error("❌ Error creating missed request notifications:", error);
+  }
+}
+
 exports.updateAdminUser = functions.https.onRequest(async (req, res) => {
   try {
     const { adminId } = req.params;
@@ -829,5 +982,240 @@ exports.deleteAdminUser = functions.https.onRequest(async (req, res) => {
   } catch (error) {
     console.error("Error deleting admin user:", error);
     res.status(500).json({ error: error.message });
+  }
+});
+
+// 🗑️ Auto-delete sold marketplace items after 24 hours
+exports.autoDeleteSoldMarketplaceItems = onSchedule("every 1 hours", async () => {
+  console.log("🔄 Starting auto-deletion of sold marketplace items...");
+  
+  try {
+    const now = admin.firestore.Timestamp.now();
+    
+    console.log(`📅 Current time: ${now.toDate().toISOString()}`);
+    
+    // Find all sold items where deleteAfter time has passed
+    const soldItemsQuery = await admin.firestore()
+      .collection("marketplace_items")
+      .where("status", "in", ["sold", "claimed"])
+      .where("deleteAfter", "<=", now)
+      .get();
+    
+    console.log(`🔍 Found ${soldItemsQuery.size} sold items ready for deletion`);
+    
+    if (soldItemsQuery.empty) {
+      console.log("✅ No sold items found for deletion");
+      return null;
+    }
+    
+    const batch = admin.firestore().batch();
+    let deletedCount = 0;
+    
+    for (const doc of soldItemsQuery.docs) {
+      const itemData = doc.data();
+      const itemId = doc.id;
+      const soldAt = itemData.soldAt?.toDate();
+      const deleteAfter = itemData.deleteAfter?.toDate();
+      
+      console.log(`🗑️ Deleting sold item: ${itemData.name} (ID: ${itemId})`);
+      console.log(`   Sold at: ${soldAt?.toISOString()}`);
+      console.log(`   Delete after: ${deleteAfter?.toISOString()}`);
+      
+      // Delete the item
+      batch.delete(doc.ref);
+      deletedCount++;
+      
+      // Create notification for seller about item deletion
+      await createItemDeletionNotification(itemData, itemId);
+    }
+    
+    await batch.commit();
+    console.log(`✅ Successfully deleted ${deletedCount} sold marketplace items`);
+    
+    return { success: true, deletedCount };
+  } catch (error) {
+    console.error("❌ Error auto-deleting sold marketplace items:", error);
+    throw error;
+  }
+});
+
+// Helper function to create notifications for item deletion
+async function createItemDeletionNotification(itemData, itemId) {
+  try {
+    const { ownerId, name, price, buyerId } = itemData;
+    
+    // Notify seller about item deletion
+    if (ownerId) {
+      // Try users collection first, then collectors
+      let sellerDoc = await admin.firestore().collection("users").doc(ownerId).get();
+      let sellerCollection = "users";
+      
+      if (!sellerDoc.exists) {
+        sellerDoc = await admin.firestore().collection("collectors").doc(ownerId).get();
+        sellerCollection = "collectors";
+      }
+      
+      if (sellerDoc.exists) {
+        const sellerData = sellerDoc.data();
+        const fcmToken = sellerData.fcmToken;
+        
+        if (fcmToken) {
+          const message = {
+            notification: {
+              title: "🗑️ Item Deleted",
+              body: `Your sold item "${name}" has been automatically removed from the marketplace after 24 hours.`,
+            },
+            token: fcmToken,
+            data: {
+              type: "item_deleted",
+              itemId: itemId,
+              itemName: name,
+              action: "view_sales_history"
+            }
+          };
+          
+          await admin.messaging().send(message);
+          console.log(`📱 Notified seller ${ownerId} about item deletion`);
+        }
+        
+        // Create in-app notification for seller
+        await admin.firestore().collection("notifications").add({
+          userId: ownerId,
+          type: "item_deleted",
+          title: "🗑️ Item Automatically Deleted",
+          message: `Your sold item "${name}" (GHS ${price}) has been automatically removed from the marketplace after 24 hours.`,
+          data: {
+            itemId: itemId,
+            itemName: name,
+            itemPrice: price,
+            buyerId: buyerId,
+            action: "view_sales_history"
+          },
+          isRead: false,
+          createdAt: admin.firestore.Timestamp.now()
+        });
+      }
+    }
+    
+    // Notify buyer about item deletion (optional - for their purchase history)
+    if (buyerId) {
+      const buyerDoc = await admin.firestore().collection("users").doc(buyerId).get();
+      
+      if (buyerDoc.exists) {
+        const buyerData = buyerDoc.data();
+        const fcmToken = buyerData.fcmToken;
+        
+        if (fcmToken) {
+          const message = {
+            notification: {
+              title: "📦 Purchase Item Removed",
+              body: `The item "${name}" you purchased has been removed from the marketplace.`,
+            },
+            token: fcmToken,
+            data: {
+              type: "purchased_item_removed",
+              itemId: itemId,
+              itemName: name,
+              action: "view_purchase_history"
+            }
+          };
+          
+          await admin.messaging().send(message);
+          console.log(`📱 Notified buyer ${buyerId} about item removal`);
+        }
+        
+        // Create in-app notification for buyer
+        await admin.firestore().collection("notifications").add({
+          userId: buyerId,
+          type: "purchased_item_removed",
+          title: "📦 Purchased Item Removed",
+          message: `The item "${name}" (GHS ${price}) you purchased has been removed from the marketplace.`,
+          data: {
+            itemId: itemId,
+            itemName: name,
+            itemPrice: price,
+            sellerId: ownerId,
+            action: "view_purchase_history"
+          },
+          isRead: false,
+          createdAt: admin.firestore.Timestamp.now()
+        });
+      }
+    }
+  } catch (error) {
+    console.error("❌ Error creating item deletion notifications:", error);
+  }
+}
+
+// 🧪 Manual trigger function for testing auto-deletion (for development/testing)
+exports.manualDeleteSoldItems = functions.https.onRequest(async (req, res) => {
+  try {
+    console.log("🧪 Manual trigger: Starting auto-deletion of sold marketplace items...");
+    
+    const now = admin.firestore.Timestamp.now();
+    
+    console.log(`📅 Current time: ${now.toDate().toISOString()}`);
+    
+    // Find all sold items where deleteAfter time has passed
+    const soldItemsQuery = await admin.firestore()
+      .collection("marketplace_items")
+      .where("status", "in", ["sold", "claimed"])
+      .where("deleteAfter", "<=", now)
+      .get();
+    
+    console.log(`🔍 Found ${soldItemsQuery.size} sold items ready for deletion`);
+    
+    if (soldItemsQuery.empty) {
+      console.log("✅ No sold items found for deletion");
+      return res.json({ 
+        message: "No sold items found for deletion",
+        deletedCount: 0 
+      });
+    }
+    
+    const batch = admin.firestore().batch();
+    let deletedCount = 0;
+    const deletedItems = [];
+    
+    for (const doc of soldItemsQuery.docs) {
+      const itemData = doc.data();
+      const itemId = doc.id;
+      const soldAt = itemData.soldAt?.toDate();
+      const deleteAfter = itemData.deleteAfter?.toDate();
+      
+      console.log(`🗑️ Deleting sold item: ${itemData.name} (ID: ${itemId})`);
+      console.log(`   Sold at: ${soldAt?.toISOString()}`);
+      console.log(`   Delete after: ${deleteAfter?.toISOString()}`);
+      
+      // Delete the item
+      batch.delete(doc.ref);
+      deletedCount++;
+      deletedItems.push({
+        id: itemId,
+        name: itemData.name,
+        price: itemData.price,
+        soldAt: soldAt?.toISOString(),
+        deleteAfter: deleteAfter?.toISOString()
+      });
+      
+      // Create notification for seller about item deletion
+      await createItemDeletionNotification(itemData, itemId);
+    }
+    
+    await batch.commit();
+    console.log(`✅ Successfully deleted ${deletedCount} sold marketplace items`);
+    
+    res.json({ 
+      success: true, 
+      deletedCount,
+      deletedItems,
+      message: `Successfully deleted ${deletedCount} sold marketplace items`
+    });
+  } catch (error) {
+    console.error("❌ Error manually deleting sold marketplace items:", error);
+    res.status(500).json({ 
+      error: error.message,
+      success: false 
+    });
   }
 });

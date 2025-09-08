@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+// ignore: unused_import
 import 'package:flutter_application_1/mobile_app/services/profile_picture_service.dart';
 
 class ProfilePictureWidget extends StatelessWidget {

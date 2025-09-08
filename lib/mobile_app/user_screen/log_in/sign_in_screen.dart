@@ -2,6 +2,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_application_1/mobile_app/routes/app_route.dart';
+import 'package:flutter_application_1/mobile_app/user_screen/log_in/forgot_password_modal.dart';
 
 class SignInScreen extends StatefulWidget {
   const SignInScreen({super.key});
@@ -269,9 +270,7 @@ class _SignInScreenState extends State<SignInScreen>
     return Align(
       alignment: Alignment.centerRight,
       child: TextButton(
-        onPressed: () {
-          // Handle forgot password
-        },
+        onPressed: _showForgotPasswordModal,
         child: const Text(
           'Forgot Password?',
           style: TextStyle(
@@ -472,6 +471,15 @@ class _SignInScreenState extends State<SignInScreen>
         SnackBar(content: Text(errorMsg), backgroundColor: Colors.red),
       );
     }
+  }
+
+  void _showForgotPasswordModal() {
+    showModalBottomSheet(
+      context: context,
+      isScrollControlled: true,
+      backgroundColor: Colors.transparent,
+      builder: (context) => const ForgotPasswordModal(),
+    );
   }
 }
 

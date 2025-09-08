@@ -35,6 +35,7 @@ class _MarketHomeScreen extends State<MarketHomeScreen> {
     Query query = FirebaseFirestore.instance
         .collection('marketplace_items')
         .where('isActive', isEqualTo: true)
+        .where('status', isEqualTo: 'available') // Only show available items
         .orderBy('createdAt', descending: true);
 
     if (selectedCategory != 'All') {

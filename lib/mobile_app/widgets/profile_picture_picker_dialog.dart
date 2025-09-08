@@ -62,14 +62,14 @@ class _ProfilePicturePickerDialogState
                   child: Icon(
                     Icons.person,
                     color: Colors.blue.shade600,
-                    size: 24,
+                    size: 18,
                   ),
                 ),
                 const SizedBox(width: 12),
                 Text(
                   'Update Profile Picture',
                   style: Theme.of(context).textTheme.headlineSmall?.copyWith(
-                    fontWeight: FontWeight.w700,
+                    fontWeight: FontWeight.w300,
                     color: Colors.blue.shade800,
                   ),
                 ),

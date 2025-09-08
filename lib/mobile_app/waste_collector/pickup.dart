@@ -1,3 +1,4 @@
+import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 
@@ -481,18 +482,12 @@ class _PickupManagementPageState extends State<PickupManagementPage>
   }
 
   Widget _buildYourPickupsTab() {
+    print('🔍 Your Pickups Tab - Collector ID: ${widget.collectorId}');
+
     return StreamBuilder<QuerySnapshot>(
       stream: FirebaseFirestore.instance
           .collection('pickup_requests')
           .where('collectorId', isEqualTo: widget.collectorId)
-          .where(
-            'archivedByCollector',
-            isNull: true,
-          ) // Exclude archived requests
-          .orderBy(
-            'pickupDate',
-            descending: false,
-          ) // Order by pickup date ascending
           .snapshots(),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
@@ -524,12 +519,12 @@ class _PickupManagementPageState extends State<PickupManagementPage>
                 ),
                 SizedBox(height: 16),
                 Text(
-                  'No accepted pickups yet',
+                  'No pickup requests assigned yet',
                   style: TextStyle(fontSize: 18, color: Colors.grey),
                 ),
                 SizedBox(height: 8),
                 Text(
-                  'Accepted pickup requests will appear here',
+                  'Pickup requests will appear here once assigned',
                   style: TextStyle(fontSize: 14, color: Colors.grey),
                 ),
               ],
@@ -537,8 +532,63 @@ class _PickupManagementPageState extends State<PickupManagementPage>
           );
         }
 
-        // Group requests by date
-        final requests = snapshot.data!.docs;
+        final allRequests = snapshot.data!.docs;
+        print(
+          '🔍 Found ${allRequests.length} requests for collector ${widget.collectorId}',
+        );
+
+        // Show only accepted and active requests
+        final requests = allRequests.where((doc) {
+          final data = doc.data() as Map<String, dynamic>;
+          final status = data['status'] as String?;
+          final isArchived = data['archivedByCollector'] == true;
+
+          print('Request ${doc.id}: status="$status", archived=$isArchived');
+
+          // Show accepted, in_progress, pending_confirmation, and completed requests
+          return !isArchived &&
+              [
+                'accepted',
+                'in_progress',
+                'pending_confirmation',
+                'completed',
+              ].contains(status);
+        }).toList();
+
+        print('🔍 After filtering: ${requests.length} active requests');
+
+        if (requests.isEmpty) {
+          return Center(
+            child: Column(
+              mainAxisAlignment: MainAxisAlignment.center,
+              children: [
+                const Icon(
+                  Icons.local_shipping_outlined,
+                  size: 64,
+                  color: Colors.grey,
+                ),
+                const SizedBox(height: 16),
+                const Text(
+                  'No active pickups yet',
+                  style: TextStyle(fontSize: 18, color: Colors.grey),
+                ),
+                const SizedBox(height: 8),
+                const Text(
+                  'Accepted pickup requests will appear here',
+                  style: TextStyle(fontSize: 14, color: Colors.grey),
+                ),
+                if (allRequests.isNotEmpty) ...[
+                  const SizedBox(height: 16),
+                  Text(
+                    'Debug: Found ${allRequests.length} total requests',
+                    style: const TextStyle(fontSize: 12, color: Colors.orange),
+                  ),
+                ],
+              ],
+            ),
+          );
+        }
+
         final groupedRequests = _groupRequestsByDate(requests);
 
         return RefreshIndicator(
@@ -1281,8 +1331,12 @@ class _PickupManagementPageState extends State<PickupManagementPage>
 
   Color _getStatusColor(String status) {
     switch (status) {
-      case 'pending_confirmation':
+      case 'accepted':
+        return Colors.blue;
+      case 'in_progress':
         return Colors.orange;
+      case 'pending_confirmation':
+        return Colors.amber;
       case 'confirmed':
         return Colors.blue;
       case 'completed':
@@ -1300,8 +1354,12 @@ class _PickupManagementPageState extends State<PickupManagementPage>
 
   String _getStatusText(String status) {
     switch (status) {
+      case 'accepted':
+        return 'Accepted';
+      case 'in_progress':
+        return 'In Progress';
       case 'pending_confirmation':
-        return 'Pending';
+        return 'Pending Confirmation';
       case 'confirmed':
         return 'Confirmed';
       case 'completed':

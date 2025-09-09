@@ -1380,16 +1380,49 @@ class _PickupManagementPageState extends State<PickupManagementPage>
     try {
       final updateData = {
         'status': newStatus,
-        if (newStatus == 'completed') ...{
-          'updatedAt': FieldValue.serverTimestamp(),
-          'collectorId': widget.collectorId,
-        },
+        'updatedAt': FieldValue.serverTimestamp(),
+        if (newStatus == 'completed') ...{'collectorId': widget.collectorId},
       };
 
       await FirebaseFirestore.instance
           .collection('pickup_requests')
           .doc(requestId)
           .update(updateData);
+
+      // Update payment history status if completed
+      if (newStatus == 'completed') {
+        try {
+          final requestDoc = await FirebaseFirestore.instance
+              .collection('pickup_requests')
+              .doc(requestId)
+              .get();
+
+          if (requestDoc.exists) {
+            final requestData = requestDoc.data()!;
+            final userId = requestData['userId'];
+            final totalAmount = (requestData['totalAmount'] ?? 0.0).toDouble();
+
+            if (userId != null) {
+              // Update payment history record
+              final paymentHistoryQuery = await FirebaseFirestore.instance
+                  .collection('payment_history')
+                  .where('requestId', isEqualTo: requestId)
+                  .where('userId', isEqualTo: userId)
+                  .limit(1)
+                  .get();
+
+              if (paymentHistoryQuery.docs.isNotEmpty) {
+                await paymentHistoryQuery.docs.first.reference.update({
+                  'status': 'completed',
+                  'updatedAt': FieldValue.serverTimestamp(),
+                });
+              }
+            }
+          }
+        } catch (e) {
+          print('Error updating payment history: $e');
+        }
+      }
 
       // Create notification for the user about status change
       try {

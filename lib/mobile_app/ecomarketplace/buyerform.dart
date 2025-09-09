@@ -6,6 +6,7 @@ import 'package:cloud_firestore/cloud_firestore.dart';
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter_application_1/mobile_app/services/payment_service.dart';
 
 class BuyerFormScreen extends StatefulWidget {
   final Map<String, dynamic> itemData;
@@ -255,6 +256,19 @@ class _BuyerFormScreenState extends State<BuyerFormScreen> {
       // For paid items, simulate payment processing
       if (!isFreeItem) {
         await _processPayment(purchaseId);
+      }
+
+      // Create payment history record
+      try {
+        await PaymentService.createMarketplacePaymentRecord(
+          purchaseId: purchaseId,
+          userId: currentUserId,
+          amount: widget.itemData['price'].toDouble(),
+          status: isFreeItem ? 'claimed' : 'completed',
+          purchaseData: purchaseData,
+        );
+      } catch (e) {
+        print('Error creating marketplace payment history record: $e');
       }
 
       _showSnackBar(

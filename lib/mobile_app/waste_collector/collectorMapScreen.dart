@@ -207,6 +207,9 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
   double? _nearestDistance;
   Timer? _refreshTimer;
   StreamSubscription<QuerySnapshot>? _requestsListener;
+  bool _showOnlyToday = false;
+  int _todayRequestCount = 0;
+  List<Map<String, dynamic>> _todayRequests = [];
 
   // Add your Google Maps API key here
   static const String _googleMapsApiKey =
@@ -225,6 +228,7 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
   Future<void> _initializeMap() async {
     try {
       await Future.wait([_getCurrentLocation(), _loadAcceptedRequests()]);
+      await _checkTodayRequests();
       await _drawRouteToNearestLocation();
     } catch (e) {
       setState(() {
@@ -331,19 +335,27 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
         // Check if pickup is scheduled for today
         final isTodayPickup = _isPickupToday(data['pickupDate']);
         final pickupDateText = _formatPickupDate(data['pickupDate']);
-        
+
         // Determine marker color based on status and date
         BitmapDescriptor markerIcon;
         if (isTodayPickup) {
           // Today's pickups get priority colors
           markerIcon = data['status'] == 'in_progress'
-              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed) // Red for urgent today pickups
-              : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow); // Yellow for today's accepted pickups
+              ? BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueRed,
+                ) // Red for urgent today pickups
+              : BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueYellow,
+                ); // Yellow for today's accepted pickups
         } else {
           // Future pickups get standard colors
           markerIcon = data['status'] == 'in_progress'
-              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange)
-              : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+              ? BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueOrange,
+                )
+              : BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueGreen,
+                );
         }
 
         final marker = Marker(
@@ -351,7 +363,7 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
           position: LatLng(lat, lng),
           infoWindow: InfoWindow(
             title: data['userName'] ?? 'Pickup Request',
-            snippet: isTodayPickup 
+            snippet: isTodayPickup
                 ? '🔥 TODAY: ${_formatWasteCategories(data['wasteCategories'])} - $pickupDateText'
                 : '📅 ${_formatWasteCategories(data['wasteCategories'])} - $pickupDateText',
           ),
@@ -586,7 +598,10 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
           .collection('pickup_requests')
           .where('status', whereIn: ['in_progress', 'accepted'])
           .where('collectorId', isEqualTo: widget.collectorId)
-          .where('archivedByCollector', isNull: true) // Exclude archived requests
+          .where(
+            'archivedByCollector',
+            isNull: true,
+          ) // Exclude archived requests
           .get();
 
       if (snapshot.docs.isEmpty) {
@@ -641,19 +656,27 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
         // Check if pickup is scheduled for today
         final isTodayPickup = _isPickupToday(data['pickupDate']);
         final pickupDateText = _formatPickupDate(data['pickupDate']);
-        
+
         // Determine marker color based on status and date
         BitmapDescriptor markerIcon;
         if (isTodayPickup) {
           // Today's pickups get priority colors
           markerIcon = data['status'] == 'in_progress'
-              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed) // Red for urgent today pickups
-              : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueYellow); // Yellow for today's accepted pickups
+              ? BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueRed,
+                ) // Red for urgent today pickups
+              : BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueYellow,
+                ); // Yellow for today's accepted pickups
         } else {
           // Future pickups get standard colors
           markerIcon = data['status'] == 'in_progress'
-              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueOrange)
-              : BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueGreen);
+              ? BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueOrange,
+                )
+              : BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueGreen,
+                );
         }
 
         final marker = Marker(
@@ -661,7 +684,7 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
           position: LatLng(lat, lng),
           infoWindow: InfoWindow(
             title: data['userName'] ?? 'Pickup Request',
-            snippet: isTodayPickup 
+            snippet: isTodayPickup
                 ? '🔥 TODAY: ${_formatWasteCategories(data['wasteCategories'])} - $pickupDateText'
                 : '📅 ${_formatWasteCategories(data['wasteCategories'])} - $pickupDateText',
           ),
@@ -1092,12 +1115,15 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
               ),
             ],
             const SizedBox(height: 12),
-            
+
             // Priority indicator for today's pickups
             if (_isPickupToday(data['pickupDate'])) ...[
               Container(
                 width: double.infinity,
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 8,
+                ),
                 decoration: BoxDecoration(
                   color: Colors.red.withOpacity(0.1),
                   borderRadius: BorderRadius.circular(8),
@@ -1105,7 +1131,11 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.priority_high, color: Colors.red, size: 20),
+                    const Icon(
+                      Icons.priority_high,
+                      color: Colors.red,
+                      size: 20,
+                    ),
                     const SizedBox(width: 8),
                     const Text(
                       '🔥 PRIORITY: TODAY\'S PICKUP',
@@ -1120,7 +1150,7 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
               ),
               const SizedBox(height: 12),
             ],
-            
+
             _buildDetailRow(
               Icons.delete_outline,
               'Waste',
@@ -1281,6 +1311,276 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
       return pickupDay == today;
     }
     return false;
+  }
+
+  // Check for today's scheduled requests
+  Future<void> _checkTodayRequests() async {
+    try {
+      final now = DateTime.now();
+      final startOfToday = DateTime(now.year, now.month, now.day);
+      final endOfToday = DateTime(now.year, now.month, now.day, 23, 59, 59);
+
+      final snapshot = await FirebaseFirestore.instance
+          .collection('pickup_requests')
+          .where('collectorId', isEqualTo: widget.collectorId)
+          .where(
+            'status',
+            whereIn: ['accepted', 'in_progress', 'pending_confirmation'],
+          )
+          .where(
+            'pickupDate',
+            isGreaterThanOrEqualTo: Timestamp.fromDate(startOfToday),
+          )
+          .where(
+            'pickupDate',
+            isLessThanOrEqualTo: Timestamp.fromDate(endOfToday),
+          )
+          .where('archivedByCollector', isNull: true)
+          .get();
+
+      setState(() {
+        _todayRequestCount = snapshot.docs.length;
+        _todayRequests = snapshot.docs.map((doc) {
+          final data = doc.data();
+          data['id'] = doc.id;
+          return data;
+        }).toList();
+      });
+
+      print('Found $_todayRequestCount requests scheduled for today');
+    } catch (e) {
+      print('Error checking today requests: $e');
+    }
+  }
+
+  // Start route - focus on today's requests
+  Future<void> _startRoute() async {
+    await _checkTodayRequests();
+
+    if (_todayRequestCount == 0) {
+      _showNoRequestsDialog();
+      return;
+    }
+
+    setState(() {
+      _showOnlyToday = true;
+    });
+
+    // Filter markers to show only today's requests
+    _filterTodayMarkers();
+
+    // Show route summary
+    _showRouteSummaryDialog();
+  }
+
+  // Filter markers to show only today's requests
+  void _filterTodayMarkers() {
+    setState(() {
+      _markers.removeWhere((marker) => marker.markerId.value != 'collector');
+
+      for (var request in _todayRequests) {
+        final userLatitude = request['userLatitude'];
+        final userLongitude = request['userLongitude'];
+
+        if (userLatitude == null || userLongitude == null) continue;
+
+        try {
+          double lat = userLatitude is double
+              ? userLatitude
+              : double.parse(userLatitude.toString());
+          double lng = userLongitude is double
+              ? userLongitude
+              : double.parse(userLongitude.toString());
+
+          if (lat.abs() > 90 || lng.abs() > 180) continue;
+
+          final isTodayPickup = _isPickupToday(request['pickupDate']);
+          final pickupDateText = _formatPickupDate(request['pickupDate']);
+
+          // Today's pickups get priority colors
+          BitmapDescriptor markerIcon = request['status'] == 'in_progress'
+              ? BitmapDescriptor.defaultMarkerWithHue(BitmapDescriptor.hueRed)
+              : BitmapDescriptor.defaultMarkerWithHue(
+                  BitmapDescriptor.hueYellow,
+                );
+
+          final marker = Marker(
+            markerId: MarkerId(request['id']),
+            position: LatLng(lat, lng),
+            infoWindow: InfoWindow(
+              title: request['userName'] ?? 'Pickup Request',
+              snippet:
+                  '🔥 TODAY: ${_formatWasteCategories(request['wasteCategories'])} - $pickupDateText',
+            ),
+            icon: markerIcon,
+            onTap: () => _showRequestDetails(request['id'], request),
+          );
+
+          _markers.add(marker);
+        } catch (e) {
+          print('Error processing today request ${request['id']}: $e');
+          continue;
+        }
+      }
+    });
+
+    // Fit all today's markers in view
+    if (_todayRequests.isNotEmpty) {
+      Future.delayed(const Duration(milliseconds: 500), () {
+        if (mounted) _fitTodayMarkersInView();
+      });
+    }
+  }
+
+  // Show dialog when no requests are scheduled for today
+  void _showNoRequestsDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.info_outline, color: Colors.blue),
+            SizedBox(width: 8),
+            Text('No Requests Today'),
+          ],
+        ),
+        content: const Text(
+          'You have no pickup requests scheduled for today. Check your schedule or wait for new requests.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Show route summary dialog
+  void _showRouteSummaryDialog() {
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Row(
+          children: [
+            Icon(Icons.route, color: Colors.green),
+            SizedBox(width: 8),
+            Text('Route Started'),
+          ],
+        ),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              'You have $_todayRequestCount pickup${_todayRequestCount > 1 ? 's' : ''} scheduled for today.',
+            ),
+            const SizedBox(height: 16),
+            const Text(
+              'Route Summary:',
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 8),
+            ..._todayRequests
+                .take(5)
+                .map(
+                  (request) => Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 2),
+                    child: Row(
+                      children: [
+                        Icon(
+                          request['status'] == 'in_progress'
+                              ? Icons.play_circle
+                              : Icons.schedule,
+                          size: 16,
+                          color: request['status'] == 'in_progress'
+                              ? Colors.red
+                              : Colors.orange,
+                        ),
+                        const SizedBox(width: 8),
+                        Expanded(
+                          child: Text(
+                            '${request['userName']} - ${request['userTown']}',
+                            style: const TextStyle(fontSize: 12),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ),
+            if (_todayRequestCount > 5)
+              Text(
+                '... and ${_todayRequestCount - 5} more',
+                style: TextStyle(fontSize: 12, color: Colors.grey[600]),
+              ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () {
+              Navigator.pop(context);
+              _showOnlyToday = false;
+              _loadAcceptedRequests(); // Reload all requests
+            },
+            child: const Text('Show All'),
+          ),
+          ElevatedButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Continue Route'),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // Fit today's markers in view
+  void _fitTodayMarkersInView() {
+    if (_todayRequests.isEmpty) return;
+
+    double minLat = double.infinity;
+    double maxLat = -double.infinity;
+    double minLng = double.infinity;
+    double maxLng = -double.infinity;
+
+    // Include collector position
+    minLat = math.min(minLat, _initialPosition.latitude);
+    maxLat = math.max(maxLat, _initialPosition.latitude);
+    minLng = math.min(minLng, _initialPosition.longitude);
+    maxLng = math.max(maxLng, _initialPosition.longitude);
+
+    // Include all today's request positions
+    for (var request in _todayRequests) {
+      final userLatitude = request['userLatitude'];
+      final userLongitude = request['userLongitude'];
+
+      if (userLatitude != null && userLongitude != null) {
+        try {
+          double lat = userLatitude is double
+              ? userLatitude
+              : double.parse(userLatitude.toString());
+          double lng = userLongitude is double
+              ? userLongitude
+              : double.parse(userLongitude.toString());
+
+          minLat = math.min(minLat, lat);
+          maxLat = math.max(maxLat, lat);
+          minLng = math.min(minLng, lng);
+          maxLng = math.max(maxLng, lng);
+        } catch (e) {
+          continue;
+        }
+      }
+    }
+
+    if (minLat != double.infinity && maxLat != -double.infinity) {
+      final bounds = LatLngBounds(
+        southwest: LatLng(minLat, minLng),
+        northeast: LatLng(maxLat, maxLng),
+      );
+
+      _mapController.animateCamera(CameraUpdate.newLatLngBounds(bounds, 100.0));
+    }
   }
 
   void _navigateToLocation(String requestId, Map<String, dynamic> data) async {
@@ -1708,7 +2008,11 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
       appBar: AppBar(
         title: Row(
           children: [
-            const Text('Pickup Routes'),
+            Text(
+              _showOnlyToday
+                  ? 'Today\'s Route ($_todayRequestCount)'
+                  : 'Pickup Routes',
+            ),
             const SizedBox(width: 8),
             // Enhanced location tracking indicator
             StreamBuilder<bool>(
@@ -1761,6 +2065,13 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
         backgroundColor: Colors.blue,
         foregroundColor: Colors.white,
         actions: [
+          // Show All button when in today mode
+          if (_showOnlyToday)
+            IconButton(
+              icon: const Icon(Icons.list),
+              onPressed: _showAllRequests,
+              tooltip: 'Show all requests',
+            ),
           if (_nearestLocationId != null)
             IconButton(
               icon: const Icon(Icons.near_me),
@@ -2033,14 +2344,21 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
                       child: StreamBuilder<QuerySnapshot>(
                         stream: FirebaseFirestore.instance
                             .collection('pickup_requests')
-                            .where('status', whereIn: ['in_progress', 'accepted'])
+                            .where(
+                              'status',
+                              whereIn: ['in_progress', 'accepted'],
+                            )
                             .where('collectorId', isEqualTo: widget.collectorId)
                             .snapshots(),
                         builder: (context, snapshot) {
                           if (!snapshot.hasData) {
                             return const SizedBox(
                               width: 120,
-                              child: Center(child: CircularProgressIndicator(strokeWidth: 2)),
+                              child: Center(
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              ),
                             );
                           }
 
@@ -2071,7 +2389,10 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.red.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
@@ -2092,7 +2413,10 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
                               Row(
                                 children: [
                                   Container(
-                                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 8,
+                                      vertical: 4,
+                                    ),
                                     decoration: BoxDecoration(
                                       color: Colors.blue.withOpacity(0.1),
                                       borderRadius: BorderRadius.circular(12),
@@ -2316,11 +2640,43 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
                       ),
                     ),
                   ),
+                // Route Summary Widget for Today's Requests
+                if (_showOnlyToday && _todayRequestCount > 0)
+                  Positioned(
+                    top: 16,
+                    left: 16,
+                    right: 16,
+                    child: _buildRouteSummaryCard(),
+                  ),
               ],
             ),
       floatingActionButton: Column(
         mainAxisAlignment: MainAxisAlignment.end,
         children: [
+          // Start Route button - Main action
+          FloatingActionButton.extended(
+            heroTag: "start_route",
+            backgroundColor: _todayRequestCount > 0
+                ? Colors.green
+                : Colors.grey,
+            onPressed: _todayRequestCount > 0 ? _startRoute : null,
+            tooltip: _todayRequestCount > 0
+                ? 'Start today\'s route ($_todayRequestCount pickups)'
+                : 'No pickups scheduled for today',
+            icon: Icon(
+              _todayRequestCount > 0 ? Icons.play_arrow : Icons.schedule,
+              color: Colors.white,
+            ),
+            label: Text(
+              _todayRequestCount > 0 ? 'Start Route' : 'No Pickups',
+              style: const TextStyle(
+                color: Colors.white,
+                fontWeight: FontWeight.bold,
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
           // Quick navigate to nearest
           if (_nearestLocationId != null)
             FloatingActionButton(
@@ -2448,6 +2804,14 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
     }
   }
 
+  // Show all requests (exit today's route mode)
+  void _showAllRequests() {
+    setState(() {
+      _showOnlyToday = false;
+    });
+    _loadAcceptedRequests();
+  }
+
   @override
   void dispose() {
     WidgetsBinding.instance.removeObserver(this);
@@ -2461,6 +2825,103 @@ class _CollectorMapScreenState extends State<CollectorMapScreen>
     locationService.updateTrackingBasedOnRequests(widget.collectorId);
 
     super.dispose();
+  }
+
+  // Build route summary card for today's requests
+  Widget _buildRouteSummaryCard() {
+    return Card(
+      elevation: 4,
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Row(
+              children: [
+                const Icon(Icons.route, color: Colors.blue, size: 20),
+                const SizedBox(width: 8),
+                Text(
+                  'Today\'s Route Summary',
+                  style: const TextStyle(
+                    fontSize: 16,
+                    fontWeight: FontWeight.bold,
+                    color: Colors.blue,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 12),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSummaryItem(
+                    icon: Icons.location_on,
+                    label: 'Pickups',
+                    value: '$_todayRequestCount',
+                    color: Colors.green,
+                  ),
+                ),
+                Expanded(
+                  child: _buildSummaryItem(
+                    icon: Icons.access_time,
+                    label: 'Est. Time',
+                    value: '${(_todayRequestCount * 15)} min',
+                    color: Colors.orange,
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 8),
+            Row(
+              children: [
+                Expanded(
+                  child: _buildSummaryItem(
+                    icon: Icons.attach_money,
+                    label: 'Est. Earnings',
+                    value: '₦${(_todayRequestCount * 500)}',
+                    color: Colors.green,
+                  ),
+                ),
+                Expanded(
+                  child: _buildSummaryItem(
+                    icon: Icons.directions,
+                    label: 'Distance',
+                    value: '~${(_todayRequestCount * 2)} km',
+                    color: Colors.blue,
+                  ),
+                ),
+              ],
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // Build individual summary item
+  Widget _buildSummaryItem({
+    required IconData icon,
+    required String label,
+    required String value,
+    required Color color,
+  }) {
+    return Column(
+      children: [
+        Icon(icon, color: color, size: 16),
+        const SizedBox(height: 4),
+        Text(
+          value,
+          style: TextStyle(
+            fontSize: 14,
+            fontWeight: FontWeight.bold,
+            color: color,
+          ),
+        ),
+        Text(label, style: const TextStyle(fontSize: 10, color: Colors.grey)),
+      ],
+    );
   }
 }
 

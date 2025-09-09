@@ -40,14 +40,26 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
     });
 
     try {
-      final payments = await PaymentService.getCombinedPaymentHistory(
-        widget.userId,
-      );
-      setState(() {
-        _allPayments = payments;
-        _isLoading = false;
-      });
+      // Try to get from dedicated payment_history collection first
+      final payments = await PaymentService.getPaymentHistory(widget.userId);
+
+      // If no dedicated payment history, fall back to combined method
+      if (payments.isEmpty) {
+        final combinedPayments = await PaymentService.getCombinedPaymentHistory(
+          widget.userId,
+        );
+        setState(() {
+          _allPayments = combinedPayments;
+          _isLoading = false;
+        });
+      } else {
+        setState(() {
+          _allPayments = payments;
+          _isLoading = false;
+        });
+      }
     } catch (e) {
+      print('Error loading payments: $e');
       setState(() {
         _isLoading = false;
       });
@@ -349,13 +361,18 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
 
     for (var payment in payments) {
       if (payment['type'] == 'pickup') {
-        final amount = (payment['totalAmount'] ?? 0.0).toDouble();
+        // Handle both old and new payment structure
+        final amount = (payment['amount'] ?? payment['totalAmount'] ?? 0.0)
+            .toDouble();
         total += amount;
         count++;
       } else if (payment['type'] == 'marketplace') {
+        // Handle both old and new payment structure
         final transactionDetails =
             payment['transactionDetails'] as Map<String, dynamic>?;
-        final amount = (transactionDetails?['totalAmount'] ?? 0.0).toDouble();
+        final amount =
+            (payment['amount'] ?? transactionDetails?['totalAmount'] ?? 0.0)
+                .toDouble();
         total += amount;
         count++;
       }
@@ -380,19 +397,26 @@ class _PaymentHistoryScreenState extends State<PaymentHistoryScreen>
 
     if (data['type'] == 'pickup') {
       title = 'Waste Pickup';
-      subtitle = data['userTown'] ?? 'Unknown Location';
-      amount = (data['totalAmount'] ?? 0.0).toDouble();
+      // Handle both old and new structure
+      final metadata = data['metadata'] as Map<String, dynamic>?;
+      subtitle =
+          metadata?['userTown'] ?? data['userTown'] ?? 'Unknown Location';
+      amount = (data['amount'] ?? data['totalAmount'] ?? 0.0).toDouble();
       status = data['status'] ?? 'Unknown';
       timestamp = data['createdAt'] as Timestamp?;
       icon = Icons.local_shipping_rounded;
       iconColor = const Color(0xFF2196F3);
     } else {
+      // Handle both old and new structure
+      final metadata = data['metadata'] as Map<String, dynamic>?;
       final itemDetails = data['itemDetails'] as Map<String, dynamic>?;
-      title = itemDetails?['name'] ?? 'Marketplace Item';
+      title =
+          metadata?['itemName'] ?? itemDetails?['name'] ?? 'Marketplace Item';
       subtitle = 'EcoMarketplace Purchase';
       final transactionDetails =
           data['transactionDetails'] as Map<String, dynamic>?;
-      amount = (transactionDetails?['totalAmount'] ?? 0.0).toDouble();
+      amount = (data['amount'] ?? transactionDetails?['totalAmount'] ?? 0.0)
+          .toDouble();
       status = data['status'] ?? 'Unknown';
       timestamp = data['createdAt'] as Timestamp?;
       icon = Icons.shopping_bag_rounded;

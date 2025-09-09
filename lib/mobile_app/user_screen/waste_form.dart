@@ -6,6 +6,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 // ignore: unused_import
 import 'package:flutter_application_1/mobile_app/user_screen/user_request_screen.dart';
+import 'package:flutter_application_1/mobile_app/services/payment_service.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:intl/intl.dart' show DateFormat;
 import 'dart:math'; // Added for Random
@@ -713,6 +714,11 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
         collectorName = selectedCollector['name'] ?? 'Unknown Collector';
       }
 
+      // Calculate total amount
+      final totalAmount = _selectedBinCount *
+          _pricePerBin *
+          (_isEmergencyPickup ? _emergencyMultiplier : 1.0);
+
       // Save pickup request
       final pickupRequestRef = await FirebaseFirestore.instance
           .collection('pickup_requests')
@@ -734,10 +740,7 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
             // Payment and bin information
             'binCount': _selectedBinCount,
             'pricePerBin': _pricePerBin,
-            'totalAmount':
-                _selectedBinCount *
-                _pricePerBin *
-                (_isEmergencyPickup ? _emergencyMultiplier : 1.0),
+            'totalAmount': totalAmount,
             'paymentStatus': 'paid',
             'paymentHeld': true, // Payment is held until completion
             'paymentReleased': false, // Payment not yet released to collector
@@ -747,6 +750,24 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
                 ? _emergencyMultiplier
                 : 1.0,
           });
+
+      // Create payment history record
+      try {
+        await PaymentService.createPickupPaymentRecord(
+          requestId: pickupRequestRef.id,
+          userId: widget.userId,
+          amount: totalAmount,
+          status: 'pending',
+          requestData: {
+            'userTown': _townController.text.trim().toLowerCase(),
+            'binCount': _selectedBinCount,
+            'pricePerBin': _pricePerBin,
+            'isEmergency': _isEmergencyPickup,
+          },
+        );
+      } catch (e) {
+        print('Error creating payment history record: $e');
+      }
 
       // Create notification for the collector if one is selected
       if (collectorId != null && collectorId.isNotEmpty) {

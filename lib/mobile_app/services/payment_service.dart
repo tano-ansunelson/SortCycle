@@ -191,4 +191,87 @@ class PaymentService {
         return 'payment_rounded';
     }
   }
+
+  /// Get payment history from dedicated collection
+  static Future<List<Map<String, dynamic>>> getPaymentHistory(String userId) async {
+    try {
+      final query = await _firestore
+          .collection('payment_history')
+          .where('userId', isEqualTo: userId)
+          .orderBy('createdAt', descending: true)
+          .get();
+
+      return query.docs.map((doc) {
+        final data = doc.data();
+        data['id'] = doc.id;
+        return data;
+      }).toList();
+    } catch (e) {
+      print('Error fetching payment history: $e');
+      return [];
+    }
+  }
+
+  /// Create payment history record for pickup
+  static Future<void> createPickupPaymentRecord({
+    required String requestId,
+    required String userId,
+    required double amount,
+    required String status,
+    required Map<String, dynamic> requestData,
+  }) async {
+    try {
+      await _firestore.collection('payment_history').add({
+        'type': 'pickup',
+        'requestId': requestId,
+        'userId': userId,
+        'amount': amount,
+        'status': status,
+        'createdAt': FieldValue.serverTimestamp(),
+        'requestData': requestData,
+        'description': 'Waste pickup service',
+      });
+    } catch (e) {
+      print('Error creating pickup payment record: $e');
+    }
+  }
+
+  /// Create payment history record for marketplace
+  static Future<void> createMarketplacePaymentRecord({
+    required String purchaseId,
+    required String userId,
+    required double amount,
+    required String status,
+    required Map<String, dynamic> purchaseData,
+  }) async {
+    try {
+      await _firestore.collection('payment_history').add({
+        'type': 'marketplace',
+        'purchaseId': purchaseId,
+        'userId': userId,
+        'amount': amount,
+        'status': status,
+        'createdAt': FieldValue.serverTimestamp(),
+        'purchaseData': purchaseData,
+        'description': 'EcoMarketplace purchase',
+      });
+    } catch (e) {
+      print('Error creating marketplace payment record: $e');
+    }
+  }
+
+  /// Update payment history record status
+  static Future<void> updatePaymentHistoryStatus({
+    required String paymentId,
+    required String newStatus,
+  }) async {
+    try {
+      await _firestore.collection('payment_history').doc(paymentId).update({
+        'status': newStatus,
+        'updatedAt': FieldValue.serverTimestamp(),
+      });
+    } catch (e) {
+      print('Error updating payment history status: $e');
+    }
+  }
 }

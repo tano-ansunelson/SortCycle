@@ -156,7 +156,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                               colors: [Colors.white, Colors.white70],
                             ).createShader(bounds),
                             child: const Text(
-                              'Waste Classifier &\nEnvironmental Guide',
+                              'Waste Pickups &\nManagement System',
                               textAlign: TextAlign.center,
                               style: TextStyle(
                                 fontSize: 28,
@@ -188,7 +188,7 @@ class _WelcomeScreenState extends State<WelcomeScreen>
                             ),
                           ),
                           child: const Text(
-                            'Helping you recycle smarter and cleaner.\nIdentify waste and learn its impact.',
+                            'Helping you recycle smarter and cleaner.\nTogether, we make a greener planet.',
                             textAlign: TextAlign.center,
                             style: TextStyle(
                               fontSize: 16,

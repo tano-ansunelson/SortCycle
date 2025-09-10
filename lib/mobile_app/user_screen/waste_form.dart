@@ -715,7 +715,8 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
       }
 
       // Calculate total amount
-      final totalAmount = _selectedBinCount *
+      final totalAmount =
+          _selectedBinCount *
           _pricePerBin *
           (_isEmergencyPickup ? _emergencyMultiplier : 1.0);
 
@@ -733,9 +734,10 @@ class _WastePickupFormUpdatedState extends State<WastePickupFormUpdated>
             'collectorName':
                 collectorName ?? '', // Empty string if no collector
             'pickupDate': Timestamp.fromDate(pickupDateTime),
-            'isPickupToday':
-                false, // Always false since we removed today option
+            'isPickupToday': false,
+            // Always false since we removed today option
             'status': 'pending',
+
             'createdAt': FieldValue.serverTimestamp(),
             // Payment and bin information
             'binCount': _selectedBinCount,
